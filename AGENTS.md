@@ -39,10 +39,10 @@ Each task given to an AI coding agent should state:
 
 ## The Lost Ball prototype exception
 
-For the dependency-free WebGL2 experience prototype in `src/*.mjs`, `index.html`, and `styles.css`:
+For the browser experience prototype in `src/*.mjs`, `index.html`, and `styles.css`:
 
 - JavaScript modules are permitted even though the production direction remains strict TypeScript.
-- Do not add a framework, backend, account system, telemetry, or CDN without an explicit ticket.
-- Keep episode state, emotional perception, rendering, and release concerns separated.
+- Three.js is the sanctioned rendering library for this prototype, vendored locally under `src/vendor/three/` — see `docs/superpowers/specs/2026-08-23-merge-v02-into-lost-ball-design.md` for the explicit ticket that approved it. Do not add any *other* framework, backend, account system, telemetry, or CDN without a new explicit ticket, and do not switch Three.js back to a CDN reference.
+- Keep episode state, emotional perception, rendering, and release concerns separated (`src/logic.mjs`, `src/camera.mjs` / `src/characters.mjs` / `src/scene.mjs`, and `src/game.mjs`'s orchestration respectively).
 - Run `npm run verify` and inspect the prototype in a WebGL2 browser before claiming completion.
 - Follow the ownership boundaries in `docs/AGENT_ORCHESTRATION.md`.
