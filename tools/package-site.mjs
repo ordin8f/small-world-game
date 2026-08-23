@@ -13,5 +13,6 @@ for (const file of ['index.html', 'styles.css', '.nojekyll']) {
   await cp(resolve(root, file), resolve(dist, file));
 }
 await cp(resolve(root, 'src/game.bundle.js'), resolve(dist, 'src/game.bundle.js'));
+await cp(resolve(root, 'v02'), resolve(dist, 'v02'), { recursive: true });
 
-console.log('Packaged the public playtest site in dist/.');
+console.log('Packaged the public Lost Ball playtest and the additive v0.2 character/camera preview in dist/.');
