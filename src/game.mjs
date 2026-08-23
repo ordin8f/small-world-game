@@ -1,15 +1,10 @@
-import { EpisodeDirector, EpisodeState, EmotionalLens, clamp, lerp } from './logic.mjs';
-import { WebGLRenderer, vec3 } from './renderer.mjs';
-import {
-  canMoveTo,
-  drawBall,
-  drawChalkCircle,
-  drawChild,
-  drawFireflies,
-  drawHomeGlow,
-  drawStaticWorld,
-  interpolateColor
-} from './world.mjs';
+// src/game.mjs
+import * as THREE from 'three';
+import { EpisodeDirector, EpisodeState, EmotionalLens, clamp, lerp, interpolateColor } from './logic.mjs';
+import { canMoveTo } from './world.mjs';
+import { cameraProfile, damp, inputDirection } from './camera.mjs';
+import { loadCharacter, switchAction, animateFallback } from './characters.mjs';
+import { buildStaticWorld, createChalkCircle, createFireflies, createBall, createHomeGlow } from './scene.mjs';
 import { AudioDirector } from './audio.mjs';
 
 const canvas = document.querySelector('#game-canvas');
@@ -32,9 +27,38 @@ const restartButton = document.querySelector('#restart-button');
 const copyFeedback = document.querySelector('#copy-feedback');
 const copyStatus = document.querySelector('#copy-status');
 
-let renderer;
+let renderer, scene, threeCamera, sun, hemi;
 try {
-  renderer = new WebGLRenderer(canvas);
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x4f6070, 10, 27);
+
+  threeCamera = new THREE.PerspectiveCamera(56, canvas.clientWidth / Math.max(1, canvas.clientHeight), 0.08, 120);
+
+  hemi = new THREE.HemisphereLight(0x9fb0c0, 0x4a4030, 1.6);
+  scene.add(hemi);
+
+  sun = new THREE.DirectionalLight(0xffd59a, 2.4);
+  sun.position.set(5.5, 10, 3.5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -14;
+  sun.shadow.camera.right = 14;
+  sun.shadow.camera.top = 14;
+  sun.shadow.camera.bottom = -14;
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 40;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+
+  buildStaticWorld(scene);
 } catch (error) {
   console.error(error);
   unsupported.hidden = false;
@@ -42,27 +66,54 @@ try {
   throw error;
 }
 
+const chalkCircle = createChalkCircle(scene);
+const fireflies = createFireflies(scene);
+const ballObject = createBall(scene);
+const homeGlow = createHomeGlow(scene);
+
 const director = new EpisodeDirector();
 const lens = new EmotionalLens();
 const audio = new AudioDirector();
 const keys = new Set();
+
 const player = {
-  position: [0,0,6.5],
-  heading: Math.PI,
+  position: [0, 0, 6.5],
+  heading: 0,
   walkCycle: 0,
   moving: false,
   running: false
 };
-const camera = {
-  yaw: Math.PI,
-  pitch: 0.10,
-  position: [0,2.35,10.8],
-  target: [0,1,6.5],
-  fov: 56
-};
-const groupPosition = [0,0,-3.8];
-const ballStart = [0.5,0.45,-3.7];
-const ballEnd = [8.6,0.45,-6.6];
+const playerGroup = new THREE.Group();
+scene.add(playerGroup);
+
+const NPC_DEFS = [
+  { name: 'Mina', url: '', kenney: 'character-female-b.glb', position: [-0.95, 0, -3.8], heading: 0.2, tint: 0xf1eadc },
+  { name: 'Arun', url: '', kenney: 'character-male-c.glb', position: [0.35, 0, -4.25], heading: -0.1, tint: 0xead9c2 },
+  { name: 'Third', url: '', kenney: 'character-male-a.glb', position: [1.45, 0, -3.55], heading: -0.4, tint: 0xc9d3e0 },
+];
+const ASSET_BASE = './src/assets/kenney/';
+let playerCharacter = null;
+let npcCharacters = [];
+let fallbackPhase = 0;
+
+async function loadCharacters() {
+  playerCharacter = await loadCharacter(`${ASSET_BASE}character-male-a.glb`, { targetHeight: 1.08, tint: 0xf4eee2, isPlayer: true });
+  playerGroup.add(playerCharacter.root);
+
+  npcCharacters = await Promise.all(NPC_DEFS.map(async (def) => {
+    const character = await loadCharacter(`${ASSET_BASE}${def.kenney}`, { targetHeight: 1.0, tint: def.tint });
+    character.root.position.set(def.position[0], def.position[1], def.position[2]);
+    character.root.rotation.y = def.heading + Math.PI;
+    scene.add(character.root);
+    if (character.actions) character.actions.idle.play();
+    return { ...character, name: def.name };
+  }));
+}
+const charactersReady = loadCharacters();
+
+const groupPosition = [0, 0, -3.8];
+const ballStart = [0.5, 0.45, -3.7];
+const ballEnd = [8.6, 0.45, -6.6];
 let ballPosition = [...ballStart];
 let ballFlight = 0;
 let carryingBall = false;
@@ -72,7 +123,9 @@ let lastFrame = performance.now();
 let dialogueTimer = 0;
 let debugVisible = false;
 let dragActive = false;
-let previousPointer = [0,0];
+let previousPointer = [0, 0];
+let lookYaw = 0;
+let lookPitch = 0;
 let activePrompt = null;
 let runId = 0;
 
@@ -111,28 +164,30 @@ function setObjective() {
 }
 
 function distance2D(a, b) {
-  return Math.hypot(a[0]-b[0], a[2]-b[2]);
+  return Math.hypot(a[0] - b[0], a[2] - b[2]);
 }
 
 function nearestInteraction() {
   const state = director.state;
-  if (state === EpisodeState.ARRIVE && distance2D(player.position,[0,0,-1.2]) < 2.3) {
+  if (state === EpisodeState.ARRIVE && distance2D(player.position, [0, 0, -1.2]) < 2.3) {
     return { label: 'Watch the children', event: 'observe' };
   }
-  if (state === EpisodeState.FIND_BALL && distance2D(player.position,ballEnd) < 1.45) {
+  if (state === EpisodeState.FIND_BALL && distance2D(player.position, ballEnd) < 1.45) {
     return { label: 'Pick up the ball', event: 'ball_picked_up' };
   }
-  if (state === EpisodeState.RETURN_BALL && distance2D(player.position,groupPosition) < 2.1) {
+  if (state === EpisodeState.RETURN_BALL && distance2D(player.position, groupPosition) < 2.1) {
     return { label: 'Give the ball back', event: 'ball_returned' };
   }
-  if (state === EpisodeState.INVITED && distance2D(player.position,[0,0,-3.1]) < 2.2) {
+  if (state === EpisodeState.INVITED && distance2D(player.position, [0, 0, -3.1]) < 2.2) {
     return { label: 'Join the circle', event: 'joined' };
   }
-  if (state === EpisodeState.GO_HOME && distance2D(player.position,[0,0,10.8]) < 1.8) {
+  if (state === EpisodeState.GO_HOME && distance2D(player.position, [0, 0, 10.8]) < 1.8) {
     return { label: 'Go inside', event: 'entered_home' };
   }
   return null;
 }
+
+function mina() { return npcCharacters.find((c) => c.name === 'Mina'); }
 
 function dispatch(eventName) {
   if (!director.dispatch(eventName)) return false;
@@ -162,8 +217,9 @@ function dispatch(eventName) {
       break;
     case EpisodeState.INVITED:
       carryingBall = false;
-      ballPosition = [0.45,0.42,-3.9];
+      ballPosition = [0.45, 0.42, -3.9];
       showDialogue(dialogues.return, 3.7);
+      { const m = mina(); if (m?.actions?.wave) m.actions.wave.reset().setLoop(THREE.LoopOnce, 1).fadeIn(0.2).play(); }
       break;
     case EpisodeState.GO_HOME:
       showDialogue(dialogues.join, 3.2);
@@ -187,16 +243,14 @@ function resetGame() {
   runId += 1;
   director.state = EpisodeState.ARRIVE;
   director.start();
-  lens.value = { comfort:0.38, energy:0.48, curiosity:0.58 };
+  lens.value = { comfort: 0.38, energy: 0.48, curiosity: 0.58 };
   lens.target = { ...lens.value };
-  player.position = [0,0,6.5];
-  player.heading = Math.PI;
+  player.position = [0, 0, 6.5];
+  player.heading = 0;
   player.walkCycle = 0;
   player.moving = false;
-  camera.yaw = Math.PI;
-  camera.pitch = 0.10;
-  camera.position = [0,2.35,10.8];
-  camera.target = [0,1,6.5];
+  lookYaw = 0;
+  lookPitch = 0;
   ballPosition = [...ballStart];
   ballFlight = 0;
   carryingBall = false;
@@ -213,6 +267,7 @@ async function begin() {
   startScreen.hidden = true;
   hud.hidden = false;
   await audio.start();
+  await charactersReady;
   director.start();
   setObjective();
   showDialogue(dialogues.arrival, 3.5);
@@ -235,7 +290,7 @@ motionButton.addEventListener('click', () => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(event.code)) {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
     event.preventDefault();
   }
   keys.add(event.code);
@@ -253,7 +308,7 @@ window.addEventListener('blur', () => keys.clear());
 
 canvas.addEventListener('pointerdown', (event) => {
   dragActive = true;
-  previousPointer = [event.clientX,event.clientY];
+  previousPointer = [event.clientX, event.clientY];
   canvas.setPointerCapture?.(event.pointerId);
 });
 canvas.addEventListener('pointerup', (event) => {
@@ -263,136 +318,149 @@ canvas.addEventListener('pointerup', (event) => {
 canvas.addEventListener('pointercancel', () => { dragActive = false; });
 canvas.addEventListener('pointermove', (event) => {
   if (!dragActive || reducedMotion) return;
-  const dx = event.clientX-previousPointer[0];
-  const dy = event.clientY-previousPointer[1];
-  previousPointer = [event.clientX,event.clientY];
-  camera.yaw -= dx*0.006;
-  camera.pitch = clamp(camera.pitch+dy*0.004, -0.02, 0.62);
+  const dx = event.clientX - previousPointer[0];
+  const dy = event.clientY - previousPointer[1];
+  previousPointer = [event.clientX, event.clientY];
+  lookYaw = clamp(lookYaw - dx * 0.0045, -0.36, 0.36);
+  lookPitch = clamp(lookPitch + dy * 0.0025, -0.12, 0.2);
 });
+
+function angleDelta(target, current) {
+  return Math.atan2(Math.sin(target - current), Math.cos(target - current));
+}
 
 function movePlayer(dt) {
   const x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0)
     - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
   const z = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0)
     - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0);
-  const magnitude = Math.hypot(x,z);
+  const magnitude = Math.hypot(x, z);
   player.moving = magnitude > 0.01;
   player.running = keys.has('ShiftLeft') || keys.has('ShiftRight');
   if (!player.moving) return;
 
-  const nx = x/magnitude;
-  const nz = z/magnitude;
-  const forward = [Math.sin(camera.yaw),0,Math.cos(camera.yaw)];
-  const right = [-Math.cos(camera.yaw),0,Math.sin(camera.yaw)];
-  const direction = vec3.normalize([
-    right[0]*nx + forward[0]*nz,
-    0,
-    right[2]*nx + forward[2]*nz
-  ]);
+  const profile = cameraProfile(player.position[2]);
+  const yaw = profile.authoredYaw + lookYaw;
+  const direction = inputDirection(x, z, yaw);
   const speed = player.running ? 4.1 : 2.65;
-  const dx = direction[0]*speed*dt;
-  const dz = direction[2]*speed*dt;
+  const dx = direction.x * speed * dt;
+  const dz = direction.z * speed * dt;
 
-  const nextX = player.position[0]+dx;
+  const nextX = player.position[0] + dx;
   if (canMoveTo(nextX, player.position[2])) player.position[0] = nextX;
-  const nextZ = player.position[2]+dz;
+  const nextZ = player.position[2] + dz;
   if (canMoveTo(player.position[0], nextZ)) player.position[2] = nextZ;
 
-  const targetHeading = Math.atan2(direction[0], direction[2]);
-  const delta = ((targetHeading-player.heading+Math.PI)%(Math.PI*2))-Math.PI;
-  player.heading += delta*Math.min(1,dt*10);
-  player.walkCycle += dt*(player.running ? 10 : 7);
-  audio.step(performance.now()/1000, player.running);
+  const targetHeading = Math.atan2(-direction.x, -direction.z);
+  player.heading += angleDelta(targetHeading, player.heading) * Math.min(1, dt * 10);
+  player.walkCycle += dt * (player.running ? 10 : 7);
+  audio.step(performance.now() / 1000, player.running);
 }
 
 function updateBall(dt) {
   if (director.state === EpisodeState.BALL_IN_FLIGHT) {
-    ballFlight = clamp(ballFlight+dt/1.8);
-    const arc = Math.sin(ballFlight*Math.PI)*2.1;
+    ballFlight = clamp(ballFlight + dt / 1.8);
+    const arc = Math.sin(ballFlight * Math.PI) * 2.1;
     ballPosition = [
-      lerp(ballStart[0],ballEnd[0],ballFlight),
-      lerp(ballStart[1],ballEnd[1],ballFlight)+arc,
-      lerp(ballStart[2],ballEnd[2],ballFlight)
+      lerp(ballStart[0], ballEnd[0], ballFlight),
+      lerp(ballStart[1], ballEnd[1], ballFlight) + arc,
+      lerp(ballStart[2], ballEnd[2], ballFlight)
     ];
     if (ballFlight >= 1) dispatch('ball_landed');
   } else if (carryingBall) {
-    const side = [Math.cos(player.heading)*0.36,0,-Math.sin(player.heading)*0.36];
-    ballPosition = [player.position[0]+side[0],0.88,player.position[2]+side[2]];
+    const side = [Math.cos(player.heading) * 0.36, 0, -Math.sin(player.heading) * 0.36];
+    ballPosition = [player.position[0] + side[0], 0.88, player.position[2] + side[2]];
   }
 }
 
 function updateEmotion(dt) {
-  const distanceFromGroup = distance2D(player.position,groupPosition);
+  const distanceFromGroup = distance2D(player.position, groupPosition);
   lens.setTarget(director.emotionalTarget({ distanceFromGroup }));
   const value = lens.update(dt);
   audio.setMood(value);
   return lens.getVisuals();
 }
 
-function updateCamera(dt, visuals, time) {
-  const target = [player.position[0],1.08,player.position[2]];
-  const sway = reducedMotion ? 0 : Math.sin(time*1.3)*visuals.sway;
-  const horizontal = visuals.cameraDistance*Math.cos(camera.pitch);
-  const desired = [
-    target[0]-Math.sin(camera.yaw+sway)*horizontal,
-    target[1]+0.82+Math.sin(camera.pitch)*visuals.cameraDistance,
-    target[2]-Math.cos(camera.yaw+sway)*horizontal
-  ];
-  // Keep the camera inside the courtyard shell. A production build will use a swept camera collider.
-  desired[0] = clamp(desired[0], -9.65, 9.65);
-  desired[2] = clamp(desired[2], -12.55, 11.05);
-  const smoothing = 1-Math.exp(-dt*(reducedMotion ? 16 : 7));
-  camera.position = vec3.lerp(camera.position,desired,smoothing);
-  camera.target = vec3.lerp(camera.target,target,smoothing);
-  camera.fov = lerp(camera.fov,visuals.cameraFov,smoothing);
-}
+function updateCamera(dt) {
+  const profile = cameraProfile(player.position[2]);
+  if (!dragActive || reducedMotion) {
+    lookYaw = damp(lookYaw, 0, 2.0, dt);
+    lookPitch = damp(lookPitch, 0, 2.3, dt);
+  }
 
-function environmentFor(visuals) {
-  const warm = visuals.warmth;
-  const fogColor = interpolateColor([0.23,0.28,0.33],[0.72,0.58,0.39],warm);
-  const ambient = interpolateColor([0.22,0.24,0.28],[0.45,0.40,0.31],warm);
-  const lightColor = interpolateColor([0.58,0.65,0.76],[1.08,0.84,0.54],warm);
-  document.documentElement.style.setProperty('--vignette',visuals.vignette.toFixed(3));
-  document.documentElement.style.setProperty('--warmth',warm.toFixed(3));
-  document.documentElement.style.setProperty('--sky-top',warm > 0.55 ? '#798b91' : '#4f6070');
-  document.documentElement.style.setProperty('--sky-bottom',warm > 0.55 ? '#e8c486' : '#aa917b');
-  return {
-    lightDirection: [-0.55,-1,-0.35],
-    lightColor,
-    ambient,
-    fogColor,
-    fogNear: visuals.fogNear,
-    fogFar: visuals.fogFar
-  };
-}
-
-function drawScene(time, visuals) {
-  renderer.begin(camera,environmentFor(visuals));
-  drawStaticWorld(renderer);
-  const pulse = (Math.sin(time*2.1)+1)/2;
-  drawChalkCircle(
-    renderer,
-    pulse,
-    director.state === EpisodeState.ARRIVE || director.state === EpisodeState.INVITED
+  const yaw = profile.authoredYaw + lookYaw;
+  const sin = Math.sin(yaw);
+  const cos = Math.cos(yaw);
+  const desired = new THREE.Vector3(
+    player.position[0] + sin * profile.distance + cos * profile.lateral,
+    profile.height + lookPitch * 2.8,
+    player.position[2] + cos * profile.distance - sin * profile.lateral,
   );
+  desired.x = clamp(desired.x, -9.65, 9.65);
+  desired.z = clamp(desired.z, -12.55, 11.05);
 
-  const groupWave = director.state === EpisodeState.INVITED || director.state === EpisodeState.GO_HOME ? 0.8 : 0;
-  drawChild(renderer,{position:[-0.95,0,-3.8],heading:0.2,shirt:[0.52,0.31,0.24],shorts:[0.23,0.25,0.28],skin:[0.58,0.38,0.25],hair:[0.08,0.06,0.05],walk:time*0.7,wave:groupWave,scale:0.95});
-  drawChild(renderer,{position:[0.35,0,-4.25],heading:-0.1,shirt:[0.31,0.44,0.28],shorts:[0.29,0.24,0.21],skin:[0.72,0.52,0.35],hair:[0.16,0.11,0.07],walk:time*0.6,scale:0.98});
-  drawChild(renderer,{position:[1.45,0,-3.55],heading:-0.4,shirt:[0.38,0.36,0.54],shorts:[0.2,0.23,0.3],skin:[0.46,0.30,0.22],hair:[0.07,0.05,0.04],walk:time*0.5,scale:0.92});
+  const alpha = 1 - Math.exp(-dt * (reducedMotion ? 16 : 7.3));
+  threeCamera.position.lerp(desired, alpha);
+  threeCamera.fov = damp(threeCamera.fov, profile.fov, 5.5, dt);
+  threeCamera.updateProjectionMatrix();
 
-  drawChild(renderer,{position:player.position,heading:player.heading,shirt:[0.25,0.42,0.5],shorts:[0.16,0.24,0.31],skin:[0.68,0.47,0.32],hair:[0.10,0.075,0.055],walk:player.moving?player.walkCycle:0,scale:1});
+  const forward = new THREE.Vector3(-sin, 0, -cos);
+  const target = new THREE.Vector3(player.position[0], profile.targetHeight, player.position[2])
+    .addScaledVector(forward, profile.lead);
+  threeCamera.lookAt(target);
+}
 
-  const hiddenWithGroup = [EpisodeState.INVITED,EpisodeState.GO_HOME,EpisodeState.COMPLETE].includes(director.state);
-  if (!hiddenWithGroup || carryingBall) {
-    drawBall(renderer,ballPosition,1,director.state === EpisodeState.FIND_BALL ? visuals.curiosityGlow*0.55 : 0);
+function applyEnvironment(visuals) {
+  const warm = visuals.warmth;
+  const fogColor = interpolateColor([0.23, 0.28, 0.33], [0.72, 0.58, 0.39], warm);
+  const ambientColor = interpolateColor([0.22, 0.24, 0.28], [0.45, 0.40, 0.31], warm);
+  const lightColor = interpolateColor([0.58, 0.65, 0.76], [1.08, 0.84, 0.54], warm);
+  scene.fog.color.setRGB(...fogColor);
+  scene.fog.near = visuals.fogNear;
+  scene.fog.far = visuals.fogFar;
+  sun.color.setRGB(...lightColor);
+  hemi.groundColor.setRGB(...ambientColor);
+  renderer.toneMappingExposure = lerp(0.82, 1.12, warm);
+  document.documentElement.style.setProperty('--vignette', visuals.vignette.toFixed(3));
+  document.documentElement.style.setProperty('--warmth', warm.toFixed(3));
+  document.documentElement.style.setProperty('--sky-top', warm > 0.55 ? '#798b91' : '#4f6070');
+  document.documentElement.style.setProperty('--sky-bottom', warm > 0.55 ? '#e8c486' : '#aa917b');
+}
+
+function updateScene(time, visuals, dt) {
+  playerGroup.position.set(player.position[0], 0, player.position[2]);
+  playerGroup.rotation.y = player.heading;
+  if (playerCharacter) {
+    if (playerCharacter.actions) {
+      const next = player.moving
+        ? (player.running ? playerCharacter.actions.run : playerCharacter.actions.walk)
+        : playerCharacter.actions.idle;
+      playerCharacter.actions.current = switchAction(playerCharacter.actions.current, next);
+      playerCharacter.mixer?.update(dt);
+    } else {
+      fallbackPhase = animateFallback(playerCharacter.root, player.moving ? 1 : 0, player.running, dt, fallbackPhase);
+    }
   }
+  for (const character of npcCharacters) character.mixer?.update(dt);
+
+  const pulse = (Math.sin(time * 2.1) + 1) / 2;
+  chalkCircle.update(pulse, director.state === EpisodeState.ARRIVE || director.state === EpisodeState.INVITED);
+
+  const hiddenWithGroup = [EpisodeState.INVITED, EpisodeState.GO_HOME, EpisodeState.COMPLETE].includes(director.state);
+  const ballVisible = !hiddenWithGroup || carryingBall;
+  ballObject.setVisible(ballVisible);
+  if (ballVisible) {
+    ballObject.setPosition(ballPosition);
+    ballObject.setEmissive(director.state === EpisodeState.FIND_BALL ? visuals.curiosityGlow * 0.55 : 0);
+  }
+
   if (director.state === EpisodeState.FIND_BALL) {
-    drawFireflies(renderer,time,visuals.curiosityGlow,ballPosition);
+    fireflies.update(time, visuals.curiosityGlow, ballPosition);
+  } else {
+    fireflies.update(time, 0, ballPosition);
   }
-  if (director.state === EpisodeState.GO_HOME || director.state === EpisodeState.COMPLETE) {
-    drawHomeGlow(renderer,0.65+pulse*0.25);
-  }
+
+  homeGlow.update(director.state === EpisodeState.GO_HOME || director.state === EpisodeState.COMPLETE ? 0.65 + pulse * 0.25 : 0);
 }
 
 function updateUI(visuals) {
@@ -407,7 +475,7 @@ function updateUI(visuals) {
       `energy: ${lens.value.energy.toFixed(2)}`,
       `curiosity: ${lens.value.curiosity.toFixed(2)}`,
       `position: ${player.position[0].toFixed(2)}, ${player.position[2].toFixed(2)}`,
-      `ball: ${ballPosition.map((value)=>value.toFixed(2)).join(', ')}`,
+      `ball: ${ballPosition.map((value) => value.toFixed(2)).join(', ')}`,
       `reducedMotion: ${reducedMotion}`
     ].join('\n');
   }
@@ -416,15 +484,15 @@ function updateUI(visuals) {
 function showEnding() {
   hud.hidden = true;
   endScreen.hidden = false;
-  const seconds = Math.round(director.elapsed()/1000);
-  const minutes = Math.max(1,Math.round(seconds/60));
+  const seconds = Math.round(director.elapsed() / 1000);
+  const minutes = Math.max(1, Math.round(seconds / 60));
   endSummary.textContent = `The children made room for you. You finished this playtest in about ${minutes} minute${minutes === 1 ? '' : 's'}. No emotion score was shown; the world changed around the feeling instead.`;
 }
 
 function feedbackText() {
   const data = new FormData(document.querySelector('#feedback-form'));
   const notes = document.querySelector('#feedback-notes').value.trim();
-  const elapsed = Math.round(director.elapsed()/1000);
+  const elapsed = Math.round(director.elapsed() / 1000);
   return [
     'SMALL WORLD — THE LOST BALL PLAYTEST',
     `Date: ${new Date().toISOString()}`,
@@ -443,7 +511,7 @@ copyFeedback.addEventListener('click', async () => {
     await navigator.clipboard.writeText(text);
     copyStatus.textContent = 'Playtest notes copied.';
   } catch {
-    const blob = new Blob([text],{type:'text/plain'});
+    const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -454,8 +522,16 @@ copyFeedback.addEventListener('click', async () => {
   }
 });
 
+function resize() {
+  const width = canvas.clientWidth || window.innerWidth;
+  const height = canvas.clientHeight || window.innerHeight;
+  renderer.setSize(width, height, false);
+  threeCamera.aspect = width / Math.max(1, height);
+  threeCamera.updateProjectionMatrix();
+}
+
 function frame(now) {
-  const dt = Math.min(0.05,Math.max(0,(now-lastFrame)/1000));
+  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
   if (started && endScreen.hidden) {
     movePlayer(dt);
@@ -466,13 +542,16 @@ function frame(now) {
     }
   }
   const visuals = updateEmotion(dt);
-  updateCamera(dt,visuals,now/1000);
-  drawScene(now/1000,visuals);
+  updateCamera(dt);
+  applyEnvironment(visuals);
+  updateScene(now / 1000, visuals, dt);
   if (started && endScreen.hidden) updateUI(visuals);
+  renderer.render(scene, threeCamera);
   requestAnimationFrame(frame);
 }
 
-window.addEventListener('resize', () => renderer.resize());
+window.addEventListener('resize', resize);
+resize();
 requestAnimationFrame(frame);
 
 // Intentional smoke-test/debug hook; not shown in the player UI.
@@ -480,7 +559,7 @@ window.__SMALL_WORLD__ = {
   director,
   lens,
   player,
-  camera,
+  camera: threeCamera,
   dispatch,
   resetGame,
   get ballPosition() { return [...ballPosition]; },
