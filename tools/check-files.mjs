@@ -34,11 +34,31 @@ if (/^import\s/m.test(bundle)) throw new Error('Player bundle still contains an 
 new Function(bundle);
 
 const v02Html = await readFile(resolve(root,'v02/index.html'),'utf8');
-for (const reference of ['./styles.css','./main.js','three@0.180.0']) {
+for (const reference of ['./styles.css','./main.js','./vendor/three/build/three.module.js']) {
   if (!v02Html.includes(reference)) throw new Error(`v02/index.html is missing ${reference}`);
 }
 const v02Main = await readFile(resolve(root,'v02/main.js'),'utf8');
 if (!v02Main.includes('window.__SMALL_WORLD_V02__')) throw new Error('v0.2 preview is missing its smoke/debug hook.');
 if (!v02Main.includes('character-male-a.glb')) throw new Error('v0.2 preview is missing the visible player asset route.');
+if (v02Main.includes('cdn.jsdelivr.net') || v02Main.includes('jsdelivr')) throw new Error('v0.2 preview must not stream assets from a live CDN.');
+
+const vendoredAssets = [
+  'v02/vendor/three/build/three.module.js',
+  'v02/vendor/three/examples/jsm/loaders/GLTFLoader.js',
+  'v02/vendor/three/examples/jsm/utils/BufferGeometryUtils.js',
+  'v02/assets/kenney/character-male-a.glb',
+  'v02/assets/kenney/character-female-b.glb',
+  'v02/assets/kenney/character-male-c.glb',
+  'v02/assets/kenney/Textures/colormap.png',
+  'v02/assets/house/house.gltf',
+  'v02/assets/house/house.bin',
+  'v02/assets/house/tiny_treats_texture_1.png',
+  'v02/assets/park/tree_large.gltf',
+  'v02/assets/park/bush_large.gltf',
+  'v02/assets/park/bench.gltf',
+  'v02/assets/park/street_lantern.gltf',
+  'v02/assets/park/tiny_treats_texture_1.png',
+];
+for (const file of vendoredAssets) await access(resolve(root, file));
 
 console.log('Static Lost Ball and v0.2 preview files look consistent.');
