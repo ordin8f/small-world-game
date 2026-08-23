@@ -9,9 +9,9 @@ import {
 } from './camera-model.mjs';
 
 const THREE_VERSION = '0.180.0';
-const KENNEY_BASE = './assets/kenney/';
-const HOUSE_BASE = './assets/house/';
-const PARK_BASE = './assets/park/';
+const KENNEY_BASE = '../src/assets/kenney/';
+const HOUSE_BASE = '../src/assets/house/';
+const PARK_BASE = '../src/assets/park/';
 
 const canvas = document.querySelector('#game');
 const loading = document.querySelector('#loading');
