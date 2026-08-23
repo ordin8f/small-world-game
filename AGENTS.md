@@ -36,3 +36,13 @@ Each task given to an AI coding agent should state:
 - Acceptance tests
 - Verification commands
 - Expected completion report
+
+## The Lost Ball prototype exception
+
+For the dependency-free WebGL2 experience prototype in `src/*.mjs`, `index.html`, and `styles.css`:
+
+- JavaScript modules are permitted even though the production direction remains strict TypeScript.
+- Do not add a framework, backend, account system, telemetry, or CDN without an explicit ticket.
+- Keep episode state, emotional perception, rendering, and release concerns separated.
+- Run `npm run verify` and inspect the prototype in a WebGL2 browser before claiming completion.
+- Follow the ownership boundaries in `docs/AGENT_ORCHESTRATION.md`.

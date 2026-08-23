@@ -23,7 +23,8 @@ export const colliders = [
   { x: 0, z: -13.3, halfX: 11.5, halfZ: 0.6 },
   { x: -3.4, z: -5.6, halfX: 1.35, halfZ: 1.35 },
   { x: 3.4, z: -5.6, halfX: 1.35, halfZ: 1.35 },
-  { x: 5.4, z: -4.3, halfX: 0.35, halfZ: 3.8 },
+  { x: 5.4, z: -5.9, halfX: 0.35, halfZ: 2.1 },
+  { x: 5.4, z: -1.1, halfX: 0.35, halfZ: 0.7 },
   { x: 8.1, z: -0.8, halfX: 2.35, halfZ: 0.35 },
   { x: 8.3, z: -8.2, halfX: 1.0, halfZ: 1.0 },
   { x: -7.6, z: 1.7, halfX: 0.65, halfZ: 0.65 }
@@ -75,8 +76,8 @@ add('cube', [0,2.3,-5.6], [4.8,0.25,1.15], palette.wood);
 add('cube', [-3.4,0.95,-2.9], [1.25,0.18,5.2], palette.slide, [-0.54,0,0]);
 
 // Garden wall with one discoverable opening.
-add('cube', [5.4,0.55,-5.7], [0.6,1.2,5.0], palette.plasterLight);
-add('cube', [5.4,0.55,-1.4], [0.6,1.2,1.9], palette.plasterLight);
+add('cube', [5.4,0.55,-5.9], [0.6,1.2,4.2], palette.plasterLight);
+add('cube', [5.4,0.55,-1.1], [0.6,1.2,1.4], palette.plasterLight);
 add('cube', [8.1,0.55,-0.8], [4.7,1.2,0.6], palette.plasterLight);
 
 // Puddles, stepping stones, and bench.
