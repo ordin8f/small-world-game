@@ -1,10 +1,20 @@
 # Small World
 
-A browser-first, stylized 3D narrative game about an ordinary afternoon in the life of a young child: getting ready, walking to a playground, playing, approaching other children, making friends, hearing a parent call, and returning home.
+A browser-first, minimalistic 3D narrative game about an ordinary afternoon in the life of a young child. The world is deliberately small, but it should feel enormous through scale, light, sound, uncertainty, curiosity, and imagination.
 
-The first objective is not to build a full game. It is to prove one complete 15–20 minute vertical slice:
+The first objective is one complete 15–20 minute vertical slice:
 
 **Home → get ready → playground → play alone → approach children → shared activity → parent calls → collect belongings → return home → put things away → end-of-day drawing.**
+
+## Design north star
+
+- Minimal environment, exceptional composition and lighting.
+- Third-person camera designed from a child's height rather than an adult camera scaled down.
+- Ordinary spaces become adventure through scale and perception.
+- No combat, game-over loop, morality meter, visible friendship bar, or visible emotion meter.
+- Emotional state changes how the child **perceives** the same physical world.
+- Fear, boredom, loneliness, happiness, anxiety, curiosity, and excitement are not success/failure states.
+- Imagination appears as brief perceptual transformations rather than separate fantasy levels.
 
 ## Technical direction
 
@@ -18,17 +28,16 @@ The first objective is not to build a full game. It is to prove one complete 15�
 - Static browser deployment
 - No runtime generative AI
 
-## Repository status
-
-This initial commit contains the product contract, implementation roadmap, AI-agent working rules, and first development backlog. Gameplay code starts with milestone P0-01.
-
 ## Documents
 
 - [`docs/PRODUCT_CONTRACT.md`](docs/PRODUCT_CONTRACT.md) — non-negotiable experience and scope rules
+- [`docs/ART_DIRECTION.md`](docs/ART_DIRECTION.md) — minimal child-scale visual language, composition, light, materials, and concept-art targets
+- [`docs/EMOTIONAL_LENS.md`](docs/EMOTIONAL_LENS.md) — comfort/energy/curiosity model and perception system
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — architecture, systems, milestones, gates, risks, and asset strategy
 - [`docs/BACKLOG.md`](docs/BACKLOG.md) — ordered first implementation tickets
+- [`docs/concept-art/`](docs/concept-art/) — refined visual references
 - [`AGENTS.md`](AGENTS.md) — guardrails for local coding agents
 
 ## Core principle
 
-Ordinary childhood actions should feel meaningful without combat, danger, scoring, morality meters, or overcomplicated systems.
+> Ordinary childhood should feel like an adventure without needing to turn the world into a fantasy world.
