@@ -188,16 +188,9 @@ This prevents every emotion from requiring a duplicate environment.
 
 ## Concept art in this repository
 
-The images under [`concept-art/`](concept-art/) are reference targets for mood, composition, scale, and lighting. They are not literal asset specifications.
+The consolidated reference sheet under [`concept-art/visual-direction-contact-sheet.jpg`](concept-art/visual-direction-contact-sheet.jpg) captures the refined mood, composition, scale, and lighting direction explored so far. It is a visual target, not a literal asset specification.
 
-Key images:
-
-- `small-world-childs-journey.jpg` — overall visual language and journey framing;
-- `golden-alley-to-playground.jpg` — small child against a large, inviting route;
-- `golden-light-through-door.jpg` — home scale and the threshold between safety and exploration;
-- `child-golden-hour-walkway.jpg` — route composition and low camera;
-- `golden-hour-playground.jpg` — playground as architecture, not colorful clutter;
-- `twilight-path-home.jpg` — dusk vulnerability and the warm-home anchor.
+The sheet covers six recurring compositions: home/threshold, path/discovery, playground/scale, journey/child-height, return/safety, and the overall visual direction.
 
 ## Production test
 
