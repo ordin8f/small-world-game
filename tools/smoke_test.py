@@ -72,6 +72,13 @@ async def main() -> None:
         moved_z = await page.evaluate("window.__SMALL_WORLD__.player.position[2]")
         assert moved_z < start_z - 0.2, (start_z, moved_z)
 
+        start_x = await page.evaluate("window.__SMALL_WORLD__.player.position[0]")
+        await page.keyboard.down("d")
+        await page.wait_for_timeout(550)
+        await page.keyboard.up("d")
+        moved_x = await page.evaluate("window.__SMALL_WORLD__.player.position[0]")
+        assert moved_x > start_x + 0.2, (start_x, moved_x)
+
         canvas_size = await page.locator("#game-canvas").evaluate(
             "canvas => ({width: canvas.width, height: canvas.height})"
         )
