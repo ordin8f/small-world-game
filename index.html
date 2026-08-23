@@ -22,6 +22,7 @@
           part of their game—yet.
         </p>
         <button id="start-button" class="primary-button" type="button">Begin the afternoon</button>
+        <p id="boot-status" class="prototype-note" role="status" aria-live="polite"></p>
         <p class="controls-summary">
           Move: <kbd>WASD</kbd> / arrows · Look: drag mouse · Interact: <kbd>E</kbd> or
           <kbd>Space</kbd> · Run: <kbd>Shift</kbd>
@@ -101,6 +102,28 @@
       </div>
     </div>
 
-    <script type="module" src="./src/game.mjs"></script>
+    <script>
+      (() => {
+        const reportBootFailure = (message) => {
+          const status = document.querySelector('#boot-status');
+          const button = document.querySelector('#start-button');
+          if (window.__SMALL_WORLD__ || !status || !button) return;
+          status.textContent = message;
+          button.disabled = true;
+          button.textContent = 'Unable to start';
+        };
+        window.addEventListener('error', (event) => {
+          reportBootFailure(`The game could not load: ${event.message || 'browser script error'}`);
+        });
+        window.addEventListener('load', () => {
+          window.setTimeout(() => {
+            if (!window.__SMALL_WORLD__) {
+              reportBootFailure('The game code did not load. Please reload the page or try a current browser.');
+            }
+          }, 1200);
+        });
+      })();
+    </script>
+    <script defer src="./src/game.bundle.js"></script>
   </body>
 </html>
