@@ -283,7 +283,7 @@ function movePlayer(dt) {
   const nx = x/magnitude;
   const nz = z/magnitude;
   const forward = [Math.sin(camera.yaw),0,Math.cos(camera.yaw)];
-  const right = [Math.cos(camera.yaw),0,-Math.sin(camera.yaw)];
+  const right = [-Math.cos(camera.yaw),0,Math.sin(camera.yaw)];
   const direction = vec3.normalize([
     right[0]*nx + forward[0]*nz,
     0,

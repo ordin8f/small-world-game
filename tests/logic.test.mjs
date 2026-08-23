@@ -6,6 +6,7 @@ import {
   EpisodeDirector,
   EpisodeState
 } from '../src/logic.mjs';
+import { canMoveTo } from '../src/world.mjs';
 
 test('dominant emotions are derived rather than stored as independent meters', () => {
   assert.equal(dominantEmotion({ comfort: 0.2, energy: 0.8, curiosity: 0.4 }), 'anxious');
@@ -46,4 +47,12 @@ test('episode completes only through the intended sequence', () => {
   }
   assert.equal(director.state, EpisodeState.COMPLETE);
   assert.equal(director.history.length, 8);
+});
+
+
+test('garden wall leaves the intended child-sized opening traversable', () => {
+  assert.equal(canMoveTo(5.4, -5.9), false);
+  assert.equal(canMoveTo(5.4, -1.1), false);
+  assert.equal(canMoveTo(5.4, -3.0), true);
+  assert.equal(canMoveTo(5.4, -2.6), true);
 });
