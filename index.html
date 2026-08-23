@@ -124,6 +124,14 @@
         });
       })();
     </script>
-    <script defer src="./src/game.bundle.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./src/vendor/three/build/three.module.js",
+          "three/addons/": "./src/vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./src/game.mjs"></script>
   </body>
 </html>
