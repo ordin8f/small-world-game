@@ -160,7 +160,7 @@ export function createFireflies(scene) {
 
   return {
     update(time, intensity, ballPosition) {
-      const count = Math.floor(3 + intensity * 9);
+      const count = intensity <= 0 ? 0 : Math.floor(3 + intensity * 9);
       for (let i = 0; i < MAX; i += 1) {
         const mesh = meshes[i];
         if (i >= count) { mesh.visible = false; continue; }
