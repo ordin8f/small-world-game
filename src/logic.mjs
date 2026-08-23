@@ -16,6 +16,10 @@ export const smoothstep = (edge0, edge1, value) => {
   return x * x * (3 - 2 * x);
 };
 
+export function interpolateColor(a, b, t) {
+  return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
+}
+
 export function dominantEmotion({ comfort, energy, curiosity }) {
   if (comfort < 0.35 && energy > 0.62) return 'anxious';
   if (comfort < 0.4 && energy <= 0.62) return 'lonely';
