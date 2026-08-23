@@ -19,6 +19,9 @@ These rules apply to every coding task unless a ticket explicitly overrides one.
 15. Do not modify binary 3D/audio assets unless the ticket explicitly asks for it.
 16. Prefer small, reviewable tickets over broad autonomous rewrites.
 17. Never implement features listed under `Decisions to postpone` unless explicitly requested.
+18. Treat `docs/ART_DIRECTION.md` as the visual contract for camera, scale, composition, and environment work.
+19. Treat `docs/EMOTIONAL_LENS.md` as the contract for emotional-state and perception work; do not introduce a player-facing emotion score without an explicit design change.
+20. Emotional/perception systems must not mutate physical collision or silently control narrative progression.
 
 ## Required ticket format
 
