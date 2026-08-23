@@ -1,0 +1,133 @@
+# Initial Backlog
+
+Work in order. Do not move to a new milestone until the preceding exit gate is met.
+
+## P0 — Foundation
+
+### P0-01 Project scaffold
+
+Create a code-first PlayCanvas Engine project using TypeScript and Vite.
+
+Acceptance:
+- development server starts;
+- default scene renders;
+- production build succeeds;
+- no uncaught console errors;
+- Git history remains clean.
+
+### P0-02 Engineering guardrails
+
+Add strict TypeScript, format/lint/typecheck/test/build commands and CI-ready verification.
+
+Acceptance:
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+All pass.
+
+### P0-03 Debug harness
+
+Add a development-only overlay with FPS, scene, player coordinates, narrative state, and recent domain events.
+
+## P1 — Movement, camera, greybox
+
+### P1-01 Input actions
+
+Create an input abstraction for move, look, interact, cancel, and pause. Gameplay systems must not read raw keys directly.
+
+### P1-02 Child controller
+
+Implement stable capsule/kinematic movement, grounding, gravity, acceleration, deceleration, slope limits, step handling, and facing direction.
+
+### P1-03 Camera
+
+Implement third-person follow/orbit, vertical limits, collision avoidance, and indoor distance adjustment.
+
+### P1-04 Greybox route
+
+Build a primitive-only route from bedroom to playground and back. Do not add production art.
+
+Exit gate:
+- first-time tester can traverse bedroom → doorway → courtyard → playground → home;
+- camera is usable everywhere;
+- intended boundaries feel natural;
+- player does not need a minimap.
+
+## P2 — Interaction
+
+### P2-01 Interaction focus
+
+One readable nearby interactable receives focus. Prevent selection through walls and prompt flicker.
+
+### P2-02 Carrying and placement
+
+One carried item at a time. Support pickup, carry, safe drop, placement zones, and recovery of important objects.
+
+## P3 — Narrative framework
+
+### P3-01 Typed event bus
+
+Create typed domain events without embedding narrative progression inside the bus.
+
+### P3-02 Narrative Director
+
+Implement chapter/beat state, entry actions, completion events, transition, debug restart/skip, and save restoration.
+
+### P3-03 Day-one content skeleton
+
+Represent these beats as data:
+
+```text
+GET_READY
+CHOOSE_TOY
+LEAVE_HOME
+REACH_PLAYGROUND
+PLAY_ALONE
+OBSERVE_GROUP
+ATTEMPT_TO_JOIN
+SHARED_PROBLEM
+JOIN_GAME
+MOTHER_CALLS
+COLLECT_THINGS
+RETURN_HOME
+PUT_AWAY
+DRAWING
+COMPLETE
+```
+
+## P4 — Social slice
+
+Add three placeholder children, authored reactions, observing/waving/approach behaviors, temporary rejection, recovery, a shared problem, and goodbye.
+
+Required approaches:
+1. Watch first, then approach.
+2. Approach directly.
+3. Interrupt accidentally, recover, and later help.
+
+All three must eventually reach shared play without a dead end.
+
+## P5 — Return-home loop
+
+Add parent call, repeated call if ignored, belongings check, directional accessibility cue, home return, put-away routine, and final drawing.
+
+## P6 — Art and animation
+
+Only after the greybox slice is playable end-to-end:
+- one shared child skeleton;
+- modular hair/material variants;
+- simple matte stylized environment;
+- animation blending;
+- ambient audio and footsteps;
+- no photorealistic asset direction.
+
+## P7 — Performance and accessibility
+
+Add quality presets, compression, subtitle controls, reduced camera motion, browser smoke tests, and asset-size reports.
+
+## P8 — Additional afternoons
+
+Only after the vertical slice passes its product and performance gates.
