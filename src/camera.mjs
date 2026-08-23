@@ -22,9 +22,9 @@ export function inputDirection(inputX, inputZ, cameraYaw) {
   };
 }
 
-const THRESHOLD = { distance: 5.4, height: 2.15, targetHeight: 0.95, fov: 50, lateral: 0.4, lead: 0.35, authoredYaw: -0.045 };
-const APPROACH  = { distance: 6.6, height: 2.35, targetHeight: 1.0,  fov: 54, lateral: 0.6, lead: 0.9,  authoredYaw: 0.035 };
-const REVEAL    = { distance: 7.6, height: 2.55, targetHeight: 1.05, fov: 58, lateral: 0.9, lead: 1.6,  authoredYaw: -0.07 };
+const THRESHOLD = { distance: 12.0, height: 3.2, targetHeight: 1.15, fov: 46, lateral: 0.55, lead: 0.5, authoredYaw: -0.045 };
+const APPROACH  = { distance: 14.0, height: 3.6, targetHeight: 1.2,  fov: 48, lateral: 0.85, lead: 1.2, authoredYaw: 0.035 };
+const REVEAL    = { distance: 16.0, height: 4.0, targetHeight: 1.25, fov: 50, lateral: 1.25, lead: 2.1, authoredYaw: -0.07 };
 
 function blend(a, b, t) {
   return {
