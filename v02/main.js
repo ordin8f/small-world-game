@@ -9,12 +9,9 @@ import {
 } from './camera-model.mjs';
 
 const THREE_VERSION = '0.180.0';
-const KENNEY_BASE =
-  'https://cdn.jsdelivr.net/gh/mengfoong-dev/codex-candidate-assesment-system@main/apps/incident-room/assets/third_party/kenney-mini-characters/';
-const HOUSE_BASE =
-  'https://cdn.jsdelivr.net/gh/TinyTreats-Game-Assets/Tiny-Treats-Homely-House-1.0@main/addons/tiny_treats_homely_house_set/Assets/gltf/';
-const PARK_BASE =
-  'https://cdn.jsdelivr.net/gh/TinyTreats-Game-Assets/Tiny-Treats-Pretty-Park-1.0@main/addons/tiny_treats_pretty_park_set/Assets/gltf/';
+const KENNEY_BASE = './assets/kenney/';
+const HOUSE_BASE = './assets/house/';
+const PARK_BASE = './assets/park/';
 
 const canvas = document.querySelector('#game');
 const loading = document.querySelector('#loading');
