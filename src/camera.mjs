@@ -1,5 +1,5 @@
 // src/camera.mjs
-import { clamp, lerp, smoothstep } from './logic.mjs';
+import { clamp, lerp } from './logic.mjs';
 
 export function damp(current, target, lambda, dt) {
   return lerp(current, target, 1 - Math.exp(-lambda * dt));
