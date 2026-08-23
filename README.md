@@ -24,7 +24,7 @@ See [`PLAYTEST.md`](PLAYTEST.md) to run it locally and [`docs/PLAYTEST_GUIDE.md`
 
 ### Prototype versus production stack
 
-The early playtest is a dependency-free WebGL2 build so it can be deployed as a single static site and used to validate the experience immediately. It is intentionally not the final engine architecture. Mechanics that survive playtesting can be ported into the planned PlayCanvas/TypeScript production vertical slice.
+The playtest is a static-site build using vendored Three.js (no CDN, no build step, no external runtime dependency — see `docs/superpowers/specs/2026-08-23-merge-v02-into-lost-ball-design.md` for why the original dependency-free WebGL2 renderer was replaced) so it can be deployed as a single static site and used to validate the experience immediately. It is intentionally not the final engine architecture. Mechanics that survive playtesting can be ported into the planned PlayCanvas/TypeScript production vertical slice.
 
 ## Design north star
 
