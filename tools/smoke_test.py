@@ -62,6 +62,8 @@ async def main() -> None:
         await page.wait_for_function("Boolean(window.__SMALL_WORLD__)", timeout=20_000)
         await page.click("#start-button")
         await page.wait_for_timeout(1_000)
+        assert await page.locator("#start-screen").evaluate("node => node.hidden")
+        assert not await page.locator("#hud").evaluate("node => node.hidden")
 
         state = await page.evaluate("window.__SMALL_WORLD__.director.state")
         assert state == "ARRIVE", state
