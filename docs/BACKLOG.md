@@ -114,15 +114,46 @@ All three must eventually reach shared play without a dead end.
 
 Add parent call, repeated call if ignored, belongings check, directional accessibility cue, home return, put-away routine, and final drawing.
 
+## P5.5 — Emotional Lens prototype
+
+### P5.5-01 Emotional state model
+
+Implement continuous `comfort`, `energy`, and `curiosity` values, event-driven deltas, smoothing/decay where appropriate, developer presets, and unit tests. Do not add a player-facing meter.
+
+### P5.5-02 Perception Director
+
+Map emotional state to parameters without owning narrative progression. Initial channels:
+- camera profile;
+- restrained light/color parameters;
+- audio mix;
+- animation-expression hooks;
+- imagination-cue triggers.
+
+### P5.5-03 Three perception studies
+
+Prototype and A/B compare:
+1. curious/secure trip toward playground;
+2. lonely/uncertain observation of the group;
+3. anxious/seeking-safety dusk return.
+
+Acceptance:
+- neutral and emotional versions can be toggled instantly in debug mode;
+- basic movement/camera remain predictable;
+- no objective relies only on emotional effects;
+- emotion state is visible only in developer tools;
+- imagination cues do not alter collision or required navigation.
+
 ## P6 — Art and animation
 
 Only after the greybox slice is playable end-to-end:
 - one shared child skeleton;
 - modular hair/material variants;
-- simple matte stylized environment;
+- minimal, child-scale environment following `ART_DIRECTION.md`;
+- lighting/composition matched against the approved concept-art references;
 - animation blending;
 - ambient audio and footsteps;
-- no photorealistic asset direction.
+- restrained tactile materials;
+- no photorealistic or clutter-heavy asset direction.
 
 ## P7 — Performance and accessibility
 
