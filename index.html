@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#d9b97f" />
+    <meta name="description" content="Small World: The Lost Ball — a short child-perspective browser game prototype." />
+    <title>Small World — The Lost Ball</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="sky" aria-hidden="true"><div id="sun"></div></div>
+    <canvas id="game-canvas" tabindex="0" aria-label="Small World 3D game"></canvas>
+    <div id="lens-overlay" aria-hidden="true"></div>
+
+    <section id="start-screen" class="panel panel--full" aria-labelledby="game-title">
+      <div class="start-card">
+        <p class="eyebrow">Small World · Playtest Episode</p>
+        <h1 id="game-title">The Lost Ball</h1>
+        <p class="lede">
+          You know the playground now. The other children know your face. But you are not quite
+          part of their game—yet.
+        </p>
+        <button id="start-button" class="primary-button" type="button">Begin the afternoon</button>
+        <p class="controls-summary">
+          Move: <kbd>WASD</kbd> / arrows · Look: drag mouse · Interact: <kbd>E</kbd> or
+          <kbd>Space</kbd> · Run: <kbd>Shift</kbd>
+        </p>
+        <p class="prototype-note">No account, no save upload, and no telemetry.</p>
+      </div>
+    </section>
+
+    <main id="hud" class="hud" hidden>
+      <div class="hud__top">
+        <div class="objective-card" aria-live="polite">
+          <span class="objective-card__label">Right now</span>
+          <strong id="objective-text">Look around.</strong>
+        </div>
+        <div class="hud__buttons">
+          <button id="mute-button" class="icon-button" type="button" aria-pressed="false">Sound on</button>
+          <button id="motion-button" class="icon-button" type="button" aria-pressed="false">Reduce motion</button>
+        </div>
+      </div>
+
+      <div id="dialogue-card" class="dialogue-card" aria-live="polite" hidden>
+        <span id="dialogue-speaker" class="dialogue-card__speaker"></span>
+        <p id="dialogue-text"></p>
+      </div>
+
+      <div id="prompt" class="interaction-prompt" hidden>
+        <kbd>E</kbd><span id="prompt-text">Interact</span>
+      </div>
+
+      <div class="reticle" aria-hidden="true"></div>
+      <div id="debug-panel" class="debug-panel" hidden></div>
+    </main>
+
+    <section id="end-screen" class="panel panel--full" hidden aria-labelledby="end-title">
+      <div class="end-card">
+        <p class="eyebrow">Episode complete</p>
+        <h2 id="end-title">You brought it back.</h2>
+        <p id="end-summary" class="lede"></p>
+
+        <form id="feedback-form" class="feedback-form">
+          <fieldset>
+            <legend>Did the world feel large from the child’s height?</legend>
+            <label><input type="radio" name="scale" value="yes" /> Yes</label>
+            <label><input type="radio" name="scale" value="partly" /> Partly</label>
+            <label><input type="radio" name="scale" value="no" /> No</label>
+          </fieldset>
+          <fieldset>
+            <legend>How noticeable was the emotional shift?</legend>
+            <label><input type="radio" name="emotion" value="too subtle" /> Too subtle</label>
+            <label><input type="radio" name="emotion" value="about right" /> About right</label>
+            <label><input type="radio" name="emotion" value="too strong" /> Too strong</label>
+          </fieldset>
+          <fieldset>
+            <legend>Would you play another afternoon?</legend>
+            <label><input type="radio" name="continue" value="yes" /> Yes</label>
+            <label><input type="radio" name="continue" value="maybe" /> Maybe</label>
+            <label><input type="radio" name="continue" value="no" /> No</label>
+          </fieldset>
+          <label class="feedback-form__notes">
+            What did you notice or feel?
+            <textarea id="feedback-notes" rows="4" maxlength="1200"></textarea>
+          </label>
+        </form>
+
+        <div class="end-actions">
+          <button id="copy-feedback" class="primary-button" type="button">Copy playtest notes</button>
+          <button id="restart-button" class="secondary-button" type="button">Play again</button>
+        </div>
+        <p id="copy-status" class="copy-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <div id="unsupported" class="panel panel--full" hidden>
+      <div class="start-card">
+        <h1>This browser cannot start the prototype.</h1>
+        <p>Please try a recent version of Chrome, Edge, Firefox, or Safari with WebGL2 enabled.</p>
+      </div>
+    </div>
+
+    <script type="module" src="./src/game.mjs"></script>
+  </body>
+</html>
