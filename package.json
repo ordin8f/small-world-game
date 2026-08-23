@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node tools/check-files.mjs && node --check src/game.mjs && node --check src/renderer.mjs && node --check src/world.mjs && node --check src/logic.mjs && node --check src/audio.mjs",
+    "check": "node tools/check-files.mjs && node --check src/game.mjs && node --check src/world.mjs && node --check src/logic.mjs && node --check src/audio.mjs && node --check src/camera.mjs && node --check src/characters.mjs && node --check src/scene.mjs",
     "verify": "npm run check && npm test && npm run build:site",
     "serve": "python3 -m http.server 8080",
     "build:site": "node tools/package-site.mjs"
