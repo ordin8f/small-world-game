@@ -28,7 +28,8 @@ The first playable release contains:
 - a few story flags that alter reactions and details without producing separate campaigns;
 - one carried item at a time;
 - no visible inventory grid;
-- no visible friendship meter.
+- no visible friendship meter;
+- no visible emotion meter.
 
 It does **not** initially contain:
 
@@ -78,6 +79,22 @@ type StoryFlags = {
 ```
 
 These flags may change dialogue, animation, the goodbye, or the final drawing. They should not create a branching-content explosion.
+
+## Emotional perception
+
+The physical world remains consistent, but the child may perceive it differently depending on emotional state. The system is defined in [`EMOTIONAL_LENS.md`](EMOTIONAL_LENS.md).
+
+Non-negotiable rules:
+
+- emotional state is not displayed as a player-facing percentage, bar, or score;
+- the internal prototype model uses `comfort`, `energy`, and `curiosity`;
+- emotions are not moralized and there is no reward for maximizing happiness;
+- fear, anxiety, boredom, loneliness, frustration, happiness, excitement, and curiosity can all reveal different details or possibilities;
+- perception may influence camera, light/color, sound, animation expression, and brief imagination cues;
+- basic controls remain reliable in every emotional state;
+- essential information cannot depend only on color, subtle sound, or an imagination effect;
+- imagination does not alter physical collision or create deceptive navigation;
+- the first vertical slice proves only three contrasting lenses: curious/secure, lonely/uncertain, and anxious/seeking-safety.
 
 ## Initial performance targets
 
