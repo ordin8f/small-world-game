@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#c9ad79" />
+    <meta name="description" content="Small World v0.2 — a child-scale character, movement, and camera study." />
+    <title>Small World — v0.2 Character + Camera</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="sky" aria-hidden="true"></div>
+    <canvas id="game" aria-label="Small World 3D character and camera prototype"></canvas>
+
+    <section id="loading" class="loading" aria-live="polite">
+      <p class="eyebrow">Small World · visual prototype v0.2</p>
+      <h1>A short walk.</h1>
+      <p id="loading-status">Building the afternoon…</p>
+      <div class="loading-bar"><span id="loading-fill"></span></div>
+      <button id="start" type="button" hidden>Step outside</button>
+    </section>
+
+    <aside id="hud" class="hud" hidden>
+      <div>
+        <p class="eyebrow">Camera + character study</p>
+        <p id="moment">Walk toward the playground.</p>
+      </div>
+      <div class="controls">WASD · drag to glance · Shift to run</div>
+    </aside>
+
+    <div id="toast" class="toast" hidden aria-live="polite"></div>
+
+    <section id="error" class="error" hidden>
+      <strong>The visual prototype could not load.</strong>
+      <span id="error-message"></span>
+      <p>This study currently needs an internet connection because the CC0 prototype assets are streamed from public repositories.</p>
+    </section>
+
+    <script>
+      window.addEventListener('load', () => {
+        window.setTimeout(() => {
+          if (window.__SMALL_WORLD_V02__) return;
+          const panel = document.querySelector('#error');
+          const message = document.querySelector('#error-message');
+          const loading = document.querySelector('#loading');
+          if (message) message.textContent = 'The Three.js module or prototype script did not initialize.';
+          if (panel) panel.hidden = false;
+          if (loading) loading.hidden = true;
+        }, 12000);
+      });
+    </script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
