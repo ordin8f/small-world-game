@@ -1,3 +1,11 @@
-[gd_scene load_steps=1 format=3]
+[gd_scene format=3]
 
-[node name="Main" type="Node3D"]
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_o5qli"]
+
+[node name="Main" type="Node3D" unique_id=83963290]
+
+[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_o5qli")]
+
+[node name="TempOverviewCamera" type="Camera3D" parent="." unique_id=388713760]
+transform = Transform3D(0.9883717, -0.10891148, 0.10611161, 0, 0.6978402, 0.71625346, -0.15205717, -0.7079246, 0.6897255, 2, 14, 10)
+fov = 60.0
