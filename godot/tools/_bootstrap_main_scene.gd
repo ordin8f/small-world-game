@@ -15,6 +15,19 @@ func _init() -> void:
 	root.add_child(courtyard)
 	courtyard.owner = root
 
+	# M1.3: the real player, positioned at the courtyard's "Start" key point
+	# (game.mjs line 80's player.position = [0, 0, 6.5]). Not script-loaded
+	# via load() here -- same reason as player.tscn's own generator: `Game`
+	# autoload isn't registered this early in a bare --script run. Since
+	# player.tscn already carries its own script reference (attached as a
+	# plain ExtResource text edit after generation), instantiating the
+	# PackedScene picks that up without needing to load the script here too.
+	var player_packed: PackedScene = load("res://scenes/player.tscn")
+	var player: Node3D = player_packed.instantiate()
+	root.add_child(player)
+	player.owner = root
+	player.position = Vector3(0.0, 0.0, 6.5)
+
 	# TEMPORARY overview camera (M1.4 replaces this with the real SpringArm3D
 	# rig driven by CameraProfile). High and pulled back so the whole
 	# courtyard -- shell, playground, garden-wall gap, home threshold -- is
