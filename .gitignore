@@ -9,3 +9,9 @@ test-results/
 .env.*
 !.env.example
 src/game.bundle.js
+
+# Godot (godot/lost-ball-port)
+godot/.godot/
+godot/build/
+godot/reports/
+
