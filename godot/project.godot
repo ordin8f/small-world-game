@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 Game="*res://scripts/game.gd"
 DebugBridge="*res://scripts/debug_bridge.gd"
+DebugOverlay="*res://scripts/debug_overlay.gd"
 
 [editor_plugins]
 
