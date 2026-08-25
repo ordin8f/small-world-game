@@ -1,19 +1,21 @@
-name: Deploy playtest to GitHub Pages
+name: Godot verify
+
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    branches: [main, 'godot/**']
+  pull_request:
+    paths:
+      - 'godot/**'
+      - '.github/workflows/godot.yml'
+
 permissions:
   contents: read
-  pages: write
-  id-token: write
-concurrency:
-  group: pages
-  cancel-in-progress: true
+
 env:
   GODOT_TAG: 4.7-stable
   GODOT_VERSION_DIR: 4.7.stable
   GODOT_BIN: /opt/godot/godot
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -50,22 +52,14 @@ jobs:
           unzip -q /tmp/templates.tpz -d /tmp/templates_extract
           mv /tmp/templates_extract/templates "$HOME/.local/share/godot/export_templates/${GODOT_VERSION_DIR}"
 
+      - name: Sanity-check Godot install
+        run: "${GODOT_BIN} --headless --version"
+
       - name: godot/tools/verify.sh (import -> test -> export)
         run: godot/tools/verify.sh
 
-      - uses: actions/setup-node@v4
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: 22
-      - run: npm run verify
-      - uses: actions/upload-pages-artifact@v4
-        with:
-          path: dist
-  deploy:
-    needs: verify
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deployment
+          name: godot-web-build
+          path: godot/build/web
+          if-no-files-found: error
