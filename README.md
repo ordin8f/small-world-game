@@ -59,6 +59,8 @@ The playtest is a static-site build using vendored Three.js (no CDN, no build st
 - [`docs/BACKLOG.md`](docs/BACKLOG.md) — ordered implementation tickets
 - [`docs/concept-art/`](docs/concept-art/) — refined visual references
 - [`AGENTS.md`](AGENTS.md) — guardrails for local coding agents
+- [`ASSET_CREDITS.md`](ASSET_CREDITS.md) — sources and licenses for every vendored asset and library
+- [`GODOT_REBUILD_PLAN.md`](GODOT_REBUILD_PLAN.md) — the in-progress Godot 4.7 rebuild (`godot/lost-ball-port` branch)
 
 ## Core principle
 
