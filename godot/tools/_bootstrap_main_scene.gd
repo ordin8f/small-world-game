@@ -1,7 +1,6 @@
 extends SceneTree
-## One-shot generator: wires scenes/courtyard.tscn, scenes/player.tscn, and
-## scenes/camera_rig.tscn into scenes/main.tscn -- the real M1.4 play
-## camera, replacing the M1.2/M1.3 temporary static overview Camera3D.
+## One-shot generator: wires courtyard, player, camera rig, interaction
+## zones, ball, NPC placeholders, UI, and perception into scenes/main.tscn.
 ##
 ## Run with: godot --headless --path godot --script res://tools/_bootstrap_main_scene.gd
 
@@ -75,10 +74,19 @@ func _init() -> void:
 	# M2.4: UI -- CanvasLayer overlays, independent of Main's 3D transform.
 	# Not script-loaded via load() here, same reason as player/camera_rig/
 	# interaction_zone above.
-	_instance_ui(root, "res://scenes/ui/vignette.tscn")
-	_instance_ui(root, "res://scenes/ui/hud.tscn")
-	_instance_ui(root, "res://scenes/ui/title_card.tscn")
-	_instance_ui(root, "res://scenes/ui/end_card.tscn")
+	_instance_child(root, "res://scenes/ui/vignette.tscn")
+	_instance_child(root, "res://scenes/ui/hud.tscn")
+	_instance_child(root, "res://scenes/ui/title_card.tscn")
+	_instance_child(root, "res://scenes/ui/end_card.tscn")
+
+	# M2.5: perception -- fog/light/color driven by the emotional lens
+	# (also the only thing that ever calls lens.set_target()/update(), so
+	# without this comfort/energy/curiosity never move at all), plus the
+	# fireflies (FIND_BALL) and home glow (GO_HOME/COMPLETE) visual
+	# reactions to state.
+	_instance_child(root, "res://scenes/perception.tscn")
+	_instance_child(root, "res://scenes/fireflies.tscn")
+	_instance_child(root, "res://scenes/home_glow.tscn")
 
 	var packed := PackedScene.new()
 	packed.pack(root)
@@ -87,11 +95,11 @@ func _init() -> void:
 		printerr("Failed to save main.tscn: ", err)
 		quit(1)
 		return
-	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones + ball + NPCs")
+	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones + ball + NPCs + UI + perception")
 	quit()
 
 
-func _instance_ui(scene_root: Node, path: String) -> void:
+func _instance_child(scene_root: Node, path: String) -> void:
 	var packed: PackedScene = load(path)
 	var node: Node = packed.instantiate()
 	scene_root.add_child(node)

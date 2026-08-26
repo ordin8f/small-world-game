@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/perception.gd" id="1_perception_script"]
+
+[node name="Perception" type="Node" unique_id=510694259]
+script = ExtResource("1_perception_script")
