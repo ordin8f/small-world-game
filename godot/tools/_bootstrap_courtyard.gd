@@ -230,13 +230,18 @@ func _add_tree(root: Node3D, x: float, z: float, s: float) -> void:
 ## extracted from the source, since nothing in scene.mjs positions a
 ## street lantern or a house:
 ## - street_lantern.gltf: beside the path approaching the home threshold,
-##   an unclaimed spot that reads as "lighting the way home."
+##   an unclaimed spot that reads as "lighting the way home." Moved off
+##   to the path's edge (M3.4): its original x=2.2 sat almost exactly
+##   where CameraProfile's authored z clamp (game.mjs:399-400) rests the
+##   camera for the watch/circle beats (x~0.6-1.3, z~11.05), so the lamp
+##   loomed in the immediate foreground instead of reading as scenery --
+##   found shooting M3.4's "watch" reference frame.
 ## - house.gltf: ASSET_CREDITS.md's own "one distant house model" -- placed
 ##   just beyond the home threshold's z=12 wall (WorldBounds' z<=12 bound
 ##   means the player can never reach it), glimpsed through the doorway
 ##   gap rather than standing inside the walkable courtyard.
 func _add_props(root: Node3D) -> void:
-	_prop(root, "res://assets/park/street_lantern.gltf", Vector3(2.2, 0.0, 9.5))
+	_prop(root, "res://assets/park/street_lantern.gltf", Vector3(4.5, 0.0, 9.2))
 	_prop(root, "res://assets/house/house.gltf", Vector3(0.0, 0.0, 16.0))
 
 
@@ -272,21 +277,44 @@ func _add_wall_colliders(root: Node3D) -> void:
 	root.add_child(walls)
 	walls.owner = root
 
-	for box in WorldBounds.COLLIDERS:
-		_wall_collider(walls, box["x"], box["z"], box["half_x"], box["half_z"])
+	# WorldBounds.COLLIDERS' first 3 entries are the courtyard's actual
+	# perimeter (left wall, right wall, back wall) -- the boundary
+	# M1.4's camera rig exists to guard (GODOT_REBUILD_PLAN.md: "the exact
+	# regression guard for Saturday Afternoon's follow camera ending up
+	# outside the starting room's walls"). Everything after that is a
+	# small in-courtyard obstacle (garden wall nub, tree trunk, bench
+	# footprint) sized only for player movement -- see below.
+	for i in range(WorldBounds.COLLIDERS.size()):
+		var box: Dictionary = WorldBounds.COLLIDERS[i]
+		_wall_collider(walls, box["x"], box["z"], box["half_x"], box["half_z"], i < 3)
 
 	# Plan 1.2: "plus an invisible bound at z=12.3" -- the upper z bound
 	# (can_move_to rejects z > 12) as a real thin wall so the camera/player
-	# can't clip past the home threshold's z edge.
-	_wall_collider(walls, 0.0, 12.3, 11.5, 0.05)
+	# can't clip past the home threshold's z edge. Also a perimeter bound.
+	_wall_collider(walls, 0.0, 12.3, 11.5, 0.05, true)
 
 
-func _wall_collider(parent: Node3D, x: float, z: float, half_x: float, half_z: float) -> void:
+## M3.4: `camera_blocks` puts a wall on a second physics layer (bit 2) that
+## camera_rig.tscn's SpringArm3D exclusively watches, in addition to the
+## default layer 1 every wall stays on for player movement. Without this
+## split, the spring arm collided with EVERY WorldBounds box, including
+## small in-courtyard obstacles never meant to represent a camera-height
+## wall (e.g. the {x:8.1,z:-0.8} garden wall is 1.2m tall in the source,
+## scene.mjs:74, but every collider here uses a uniform 2.4m height --
+## intentionally simpler than render geometry, per ART_DIRECTION.md, and
+## fine for player movement, but tall enough to collapse the spring arm
+## in the REVEAL zone). Found while shooting M3.4's "gap"/"ball" frames:
+## the camera was landing ~1.3m from the pivot instead of the ~14-16m
+## CameraProfile authored, because SpringArm3D was shortening against
+## this collider on every frame, not just transiently.
+func _wall_collider(parent: Node3D, x: float, z: float, half_x: float, half_z: float, camera_blocks: bool = false) -> void:
 	const HEIGHT := 2.4
 	var body := StaticBody3D.new()
 	parent.add_child(body)
 	body.owner = parent.owner if parent.owner else parent
 	body.position = Vector3(x, HEIGHT * 0.5, z)
+	if camera_blocks:
+		body.collision_layer = 0b11  # layer 1 (movement) + layer 2 (camera)
 
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()

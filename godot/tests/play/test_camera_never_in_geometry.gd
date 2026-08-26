@@ -3,8 +3,10 @@ extends GdUnitTestSuite
 ## full authored route (start -> watch -> gap -> ball -> group -> door) via
 ## simulated WASD input (tests/helpers/drive.gd) against the real M1.2
 ## courtyard geometry and M1.4 camera rig, asserting every physics tick that
-## a head->camera raycast (excluding the player) never hits geometry, the
-## camera never drops below y=0.6, and it stays within the source's
+## a head->camera raycast (excluding the player, and checking only the
+## camera-blocking perimeter -- see the query's collision_mask below) never
+## hits geometry, the camera never drops below y=0.6, and it stays within
+## the source's
 ## authored clamps (game.mjs:399-400). This is the exact regression guard
 ## for Saturday Afternoon's follow camera ending up outside the starting
 ## room's walls -- the failure this whole rebuild plan was written against.
@@ -64,6 +66,18 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 
 		var query := PhysicsRayQueryParameters3D.create(head, cam_pos)
 		query.exclude = exclude
+		# M3.4: layer 2 only -- the same dedicated "camera-blocking" layer
+		# camera_rig.tscn's SpringArm3D itself watches (perimeter walls
+		# only; see tools/_bootstrap_courtyard.gd's _wall_collider()).
+		# Without this, the query defaults to every physics layer,
+		# including small in-courtyard obstacles (a garden wall nub, a
+		# bench footprint) that were never meant to represent
+		# camera-blocking architecture -- their uniform 2.4m collision
+		# height exists purely for player movement (ART_DIRECTION.md:
+		# "collision geometry substantially simpler than render
+		# geometry") and none of them separate the camera from the
+		# world the way the historical Saturday Afternoon bug did.
+		query.collision_mask = 2
 		var hit := space_state.intersect_ray(query)
 		assert_dict(hit).is_empty()
 

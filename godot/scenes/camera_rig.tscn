@@ -8,6 +8,7 @@ script = ExtResource("1_camera_rig_script")
 [node name="SpringArm3D" type="SpringArm3D" parent="." unique_id=1098345444]
 spring_length = 12.0
 margin = 0.15
+collision_mask = 2
 
 [node name="Camera3D" type="Camera3D" parent="SpringArm3D" unique_id=1013587044]
 current = true

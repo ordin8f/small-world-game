@@ -15,6 +15,15 @@ extends CharacterBody3D
 @export var run_speed: float = 4.1
 @export var locked_y: float = 0.0
 
+## game.mjs:80's authored start (also resetGame()'s player.position, lines
+## 242-263) -- the doorway threshold, not the world origin. Missed in the
+## original M1.3/M2.2 port: nothing set the player's x/z, so it defaulted
+## to (0, 0, 0), which CameraProfile.profile() treats as already fully
+## APPROACH-zoned (the z=7..3 threshold->approach blend saturates at
+## z<=3), skipping the authored THRESHOLD opening shot entirely. Found
+## while shooting M3.4's "threshold" reference frame.
+const START_POSITION := Vector3(0.0, 0.0, 6.5)
+
 ## Set true only while an actual movement key is held -- mirrors
 ## player.moving in the source, which gates heading/walk-cycle updates too
 ## (heading holds its last value when idle, it doesn't snap to zero).
@@ -28,7 +37,25 @@ var walk_cycle: float = 0.0
 
 func _ready() -> void:
 	Game.player = self
+	_reset_to_start()
+	Game.state_changed.connect(_on_state_changed)
+
+
+func _on_state_changed(new_state: String) -> void:
+	# Matches ball.gd's own ARRIVE handler -- both run on every
+	# start_episode(), including "Play again", so a replay restarts the
+	# player at the doorway threshold same as a fresh page load.
+	if new_state == EpisodeDirector.State.ARRIVE:
+		_reset_to_start()
+
+
+func _reset_to_start() -> void:
+	global_position = START_POSITION
 	global_position.y = locked_y
+	heading = 0.0
+	walk_cycle = 0.0
+	moving = false
+	rotation.y = heading
 
 
 func _physics_process(delta: float) -> void:
