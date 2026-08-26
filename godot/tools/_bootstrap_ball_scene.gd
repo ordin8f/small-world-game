@@ -23,7 +23,12 @@ func _init() -> void:
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = BALL_COLOR
-	mat.roughness = 0.7
+	# game.mjs's own ball material (scene.mjs:185): roughness 0.6, distinct
+	# from -- and intentionally shinier than -- the >=0.78 matte floor
+	# M3.3 applies to world_bounds.gd's PALETTE-driven environment
+	# geometry. Noticed and fixed while auditing for M3.3 (was 0.7, an
+	# approximation from before this exact source value was checked).
+	mat.roughness = 0.6
 	mat.emission_enabled = true
 	mat.emission = BALL_COLOR
 	mat.emission_energy_multiplier = 0.0

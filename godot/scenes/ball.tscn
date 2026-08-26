@@ -8,14 +8,14 @@ height = 0.84
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7s4qf"]
 albedo_color = Color(0.83, 0.53, 0.18, 1)
-roughness = 0.7
+roughness = 0.6
 emission_enabled = true
 emission = Color(0.83, 0.53, 0.18, 1)
 emission_energy_multiplier = 0.0
 
-[node name="Ball" type="Node3D" unique_id=1995740494]
+[node name="Ball" type="Node3D" unique_id=211406976]
 script = ExtResource("1_ball_script")
 
-[node name="Mesh" type="MeshInstance3D" parent="." unique_id=274437414]
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1642435463]
 mesh = SubResource("SphereMesh_n1dj2")
 surface_material_override/0 = SubResource("StandardMaterial3D_7s4qf")

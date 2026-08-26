@@ -250,6 +250,18 @@ func _prop(root: Node3D, path: String, position: Vector3, scale: float = 1.0, ro
 	inst.position = position
 	inst.scale = Vector3.ONE * scale
 	inst.rotation.y = rotation_y
+	# M3.3: the Tiny Treats glTF props ship with roughness 0.5, shinier
+	# than the >=0.78 matte floor the rest of the environment holds to.
+	# NOT fixed here -- reassigning a nested instance child's owner to
+	# `root` so PackedScene.pack() would keep the override (the same
+	# trick M1.2/M3.1 needed for other nested-instance overrides) makes
+	# these specific nodes come back as orphans on every instantiate(),
+	# and that leak reliably hangs gdUnit4's SceneRunner on the very next
+	# suite after a long-running one (confirmed by bisection: reverting
+	# just this override made the hang disappear). Applied instead at
+	# runtime by prop_material_tuner.gd, attached to this scene's root --
+	# the same live-tree approach character_visual.gd already uses
+	# successfully for the same >=0.78 floor.
 
 
 # ------------------------------------------------------------ wall colliders --
