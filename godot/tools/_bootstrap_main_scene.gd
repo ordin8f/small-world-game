@@ -72,6 +72,14 @@ func _init() -> void:
 	_npc(npcs_container, root, "Arun", 0.35, -4.25, -0.1, Color(0.918, 0.851, 0.761))
 	_npc(npcs_container, root, "Third", 1.45, -3.55, -0.4, Color(0.788, 0.827, 0.878))
 
+	# M2.4: UI -- CanvasLayer overlays, independent of Main's 3D transform.
+	# Not script-loaded via load() here, same reason as player/camera_rig/
+	# interaction_zone above.
+	_instance_ui(root, "res://scenes/ui/vignette.tscn")
+	_instance_ui(root, "res://scenes/ui/hud.tscn")
+	_instance_ui(root, "res://scenes/ui/title_card.tscn")
+	_instance_ui(root, "res://scenes/ui/end_card.tscn")
+
 	var packed := PackedScene.new()
 	packed.pack(root)
 	var err := ResourceSaver.save(packed, "res://scenes/main.tscn")
@@ -81,6 +89,13 @@ func _init() -> void:
 		return
 	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones + ball + NPCs")
 	quit()
+
+
+func _instance_ui(scene_root: Node, path: String) -> void:
+	var packed: PackedScene = load(path)
+	var node: Node = packed.instantiate()
+	scene_root.add_child(node)
+	node.owner = scene_root
 
 
 func _interaction_zone(zone_packed: PackedScene, parent: Node3D, scene_root: Node, zone_name: String, x: float, z: float) -> void:

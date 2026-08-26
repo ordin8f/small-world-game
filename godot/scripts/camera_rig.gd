@@ -11,8 +11,6 @@ extends Node3D
 ## left outside the starting room's walls). No orbit/mouse-look in this
 ## pass -- same simplification as player.gd, see its doc comment.
 
-@export var reduced_motion: bool = false
-
 @onready var spring_arm: SpringArm3D = $SpringArm3D
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
 
@@ -72,7 +70,7 @@ func _physics_process(delta: float) -> void:
 		_smoothed_desired = desired
 		_initialized = true
 	else:
-		var alpha := 1.0 - exp(-delta * (16.0 if reduced_motion else 7.3))
+		var alpha := 1.0 - exp(-delta * (16.0 if Game.reduced_motion else 7.3))
 		_smoothed_desired = _smoothed_desired.lerp(desired, alpha)
 
 	global_position = target

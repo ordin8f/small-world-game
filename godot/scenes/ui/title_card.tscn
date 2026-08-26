@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/title_card.gd" id="1_title_card_script"]
+
+[node name="TitleCard" type="CanvasLayer" unique_id=1520156969]
+layer = 10
+script = ExtResource("1_title_card_script")
+
+[node name="Root" type="CenterContainer" parent="." unique_id=1797059288]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Card" type="VBoxContainer" parent="Root" unique_id=896773346]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Eyebrow" type="Label" parent="Root/Card" unique_id=1132326]
+layout_mode = 2
+text = "Small World · Playtest Episode"
+
+[node name="Title" type="Label" parent="Root/Card" unique_id=241049295]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "The Lost Ball"
+
+[node name="Lede" type="Label" parent="Root/Card" unique_id=1979446577]
+layout_mode = 2
+text = "You know the playground now. The other children know your face. But you are not quite part of their game—yet."
+autowrap_mode = 3
+
+[node name="BeginButton" type="Button" parent="Root/Card" unique_id=1708096970]
+layout_mode = 2
+text = "Begin the afternoon"
+
+[node name="ControlsSummary" type="Label" parent="Root/Card" unique_id=933605933]
+layout_mode = 2
+text = "Move: WASD / arrows · Interact: E or Space · Run: Shift"
+autowrap_mode = 3

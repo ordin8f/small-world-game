@@ -38,6 +38,12 @@ var run_id: int = 0
 var zones: Array = []
 var active_zone: Node = null
 
+## UI-facing toggles (hud.gd's Sound/Reduce-motion buttons). reduced_motion
+## is consumed directly by camera_rig.gd; muted is a flag ready for M2.5's
+## audio to read once it exists (game.mjs's audio.setMuted mirror).
+var reduced_motion: bool = false
+var muted: bool = false
+
 
 func _ready() -> void:
 	pass

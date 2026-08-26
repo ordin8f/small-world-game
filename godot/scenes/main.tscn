@@ -1,85 +1,101 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_tbgi4"]
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_tefeu"]
-[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_o6xl0"]
-[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="4_tipki"]
-[ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="5_85g3d"]
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_85g3d"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_choun"]
+[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_ya4ey"]
+[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="4_eb6dy"]
+[ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="5_trceg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/vignette.tscn" id="6_a8y0u"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="7_jkv2x"]
+[ext_resource type="PackedScene" path="res://scenes/ui/title_card.tscn" id="8_jbj1t"]
+[ext_resource type="PackedScene" path="res://scenes/ui/end_card.tscn" id="9_muem4"]
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_choun"]
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_dp3eg"]
 radius = 0.28
 height = 1.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ya4ey"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0ld40"]
 albedo_color = Color(0.945, 0.918, 0.863, 1)
 roughness = 0.75
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_eb6dy"]
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_gqmmt"]
 radius = 0.28
 height = 1.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_trceg"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yc10j"]
 albedo_color = Color(0.918, 0.851, 0.761, 1)
 roughness = 0.75
 
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_a8y0u"]
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_jscy8"]
 radius = 0.28
 height = 1.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jkv2x"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pm3ni"]
 albedo_color = Color(0.788, 0.827, 0.878, 1)
 roughness = 0.75
 
-[node name="Main" type="Node3D" unique_id=965411728]
+[node name="Main" type="Node3D" unique_id=491844144]
 
-[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_tbgi4")]
+[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_85g3d")]
 
-[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_tefeu")]
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_choun")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
 
-[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_o6xl0")]
+[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_ya4ey")]
 
-[node name="InteractionZones" type="Node3D" parent="." unique_id=1066530831]
+[node name="InteractionZones" type="Node3D" parent="." unique_id=704520765]
 
-[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_tipki")]
+[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_eb6dy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
 
-[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=660192622 instance=ExtResource("4_tipki")]
+[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=269903586 instance=ExtResource("4_eb6dy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 0, -6.6)
 
-[node name="Return" type="Node3D" parent="InteractionZones" unique_id=584312664 instance=ExtResource("4_tipki")]
+[node name="Return" type="Node3D" parent="InteractionZones" unique_id=153630846 instance=ExtResource("4_eb6dy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.8)
 
-[node name="Join" type="Node3D" parent="InteractionZones" unique_id=563133993 instance=ExtResource("4_tipki")]
+[node name="Join" type="Node3D" parent="InteractionZones" unique_id=935932431 instance=ExtResource("4_eb6dy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.1)
 
-[node name="Door" type="Node3D" parent="InteractionZones" unique_id=947747055 instance=ExtResource("4_tipki")]
+[node name="Door" type="Node3D" parent="InteractionZones" unique_id=1868769682 instance=ExtResource("4_eb6dy")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.8)
 
-[node name="Ball" type="Node3D" parent="." unique_id=1995740494 instance=ExtResource("5_85g3d")]
+[node name="Ball" type="Node3D" parent="." unique_id=1995740494 instance=ExtResource("5_trceg")]
 
-[node name="NPCs" type="Node3D" parent="." unique_id=428881265]
+[node name="NPCs" type="Node3D" parent="." unique_id=1826655072]
 
-[node name="Mina" type="Node3D" parent="NPCs" unique_id=120183108]
+[node name="Mina" type="Node3D" parent="NPCs" unique_id=2090837450]
 transform = Transform3D(-0.9800666, 0, -0.19866922, 0, 1, 0, 0.19866922, 0, -0.9800666, -0.95, 0, -3.8)
 
-[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Mina" unique_id=675769875]
+[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Mina" unique_id=1877409046]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-mesh = SubResource("CapsuleMesh_choun")
-surface_material_override/0 = SubResource("StandardMaterial3D_ya4ey")
+mesh = SubResource("CapsuleMesh_dp3eg")
+surface_material_override/0 = SubResource("StandardMaterial3D_0ld40")
 
-[node name="Arun" type="Node3D" parent="NPCs" unique_id=1484342810]
+[node name="Arun" type="Node3D" parent="NPCs" unique_id=827406577]
 transform = Transform3D(-0.9950042, 0, 0.09983347, 0, 1, 0, -0.09983347, 0, -0.9950042, 0.35, 0, -4.25)
 
-[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Arun" unique_id=2105469473]
+[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Arun" unique_id=1071596491]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-mesh = SubResource("CapsuleMesh_eb6dy")
-surface_material_override/0 = SubResource("StandardMaterial3D_trceg")
+mesh = SubResource("CapsuleMesh_gqmmt")
+surface_material_override/0 = SubResource("StandardMaterial3D_yc10j")
 
-[node name="Third" type="Node3D" parent="NPCs" unique_id=829296438]
+[node name="Third" type="Node3D" parent="NPCs" unique_id=1106367578]
 transform = Transform3D(-0.921061, 0, 0.38941836, 0, 1, 0, -0.38941836, 0, -0.921061, 1.45, 0, -3.55)
 
-[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Third" unique_id=1501239161]
+[node name="PlaceholderMesh" type="MeshInstance3D" parent="NPCs/Third" unique_id=1495055733]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-mesh = SubResource("CapsuleMesh_a8y0u")
-surface_material_override/0 = SubResource("StandardMaterial3D_jkv2x")
+mesh = SubResource("CapsuleMesh_jscy8")
+surface_material_override/0 = SubResource("StandardMaterial3D_pm3ni")
+
+[node name="Vignette" type="CanvasLayer" parent="." unique_id=835548136 instance=ExtResource("6_a8y0u")]
+layer = 8
+
+[node name="Hud" type="CanvasLayer" parent="." unique_id=550031470 instance=ExtResource("7_jkv2x")]
+layer = 5
+
+[node name="TitleCard" type="CanvasLayer" parent="." unique_id=1520156969 instance=ExtResource("8_jbj1t")]
+layer = 10
+
+[node name="EndCard" type="CanvasLayer" parent="." unique_id=1572770631 instance=ExtResource("9_muem4")]
+layer = 10
