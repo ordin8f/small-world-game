@@ -29,6 +29,7 @@ const DIALOGUES := {
 
 var player: Node3D = null
 var camera: Camera3D = null
+var ball: Node3D = null
 
 var director: EpisodeDirector = EpisodeDirector.new()
 var lens: EmotionalLens = EmotionalLens.new()
@@ -133,6 +134,11 @@ func debug_state() -> Dictionary:
 		var c := camera.global_position
 		camera_pos = {"x": c.x, "y": c.y, "z": c.z}
 
+	var ball_pos = null
+	if is_instance_valid(ball):
+		var b := ball.global_position
+		ball_pos = {"x": b.x, "y": b.y, "z": b.z}
+
 	return {
 		"state": director.state,
 		"beat_index": director.history.size() - 1,
@@ -142,6 +148,7 @@ func debug_state() -> Dictionary:
 		"curiosity": lens.value["curiosity"],
 		"dominant_emotion": EmotionalLens.dominant_emotion(lens.value),
 		"camera_pos": camera_pos,
+		"ball_pos": ball_pos,
 	}
 
 

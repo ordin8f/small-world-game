@@ -53,6 +53,25 @@ func _init() -> void:
 	_interaction_zone(zone_packed, zones_container, root, "Join", 0.0, -3.1)
 	_interaction_zone(zone_packed, zones_container, root, "Door", 0.0, 10.8)
 
+	# M2.3: the real ball -- starts at ballStart (game.mjs:115), flies to
+	# ballEnd on BALL_IN_FLIGHT, carried/rest-positioned by state changes.
+	var ball_packed: PackedScene = load("res://scenes/ball.tscn")
+	var ball: Node3D = ball_packed.instantiate()
+	root.add_child(ball)
+	ball.owner = root
+
+	# M2.3: three placeholder NPC capsules at game.mjs:89-93's NPC_DEFS
+	# positions/headings/tints. Real Kenney character assets + AnimationTree
+	# land in M3.1; these are pure static geometry for now, no script.
+	var npcs_container := Node3D.new()
+	npcs_container.name = "NPCs"
+	root.add_child(npcs_container)
+	npcs_container.owner = root
+
+	_npc(npcs_container, root, "Mina", -0.95, -3.8, 0.2, Color(0.945, 0.918, 0.863))
+	_npc(npcs_container, root, "Arun", 0.35, -4.25, -0.1, Color(0.918, 0.851, 0.761))
+	_npc(npcs_container, root, "Third", 1.45, -3.55, -0.4, Color(0.788, 0.827, 0.878))
+
 	var packed := PackedScene.new()
 	packed.pack(root)
 	var err := ResourceSaver.save(packed, "res://scenes/main.tscn")
@@ -60,7 +79,7 @@ func _init() -> void:
 		printerr("Failed to save main.tscn: ", err)
 		quit(1)
 		return
-	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones")
+	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones + ball + NPCs")
 	quit()
 
 
@@ -70,3 +89,31 @@ func _interaction_zone(zone_packed: PackedScene, parent: Node3D, scene_root: Nod
 	parent.add_child(zone)
 	zone.owner = scene_root
 	zone.position = Vector3(x, 0.0, z)
+
+
+func _npc(parent: Node3D, scene_root: Node, npc_name: String, x: float, z: float, heading: float, tint: Color) -> void:
+	const NPC_HEIGHT := 1.0
+	const NPC_RADIUS := 0.28
+
+	var body := Node3D.new()
+	body.name = npc_name
+	parent.add_child(body)
+	body.owner = scene_root
+	body.position = Vector3(x, 0.0, z)
+	body.rotation.y = heading + PI  # characters.mjs:126 -- kenney rig faces +Z, flipped to face -Z like the player
+
+	var capsule := CapsuleMesh.new()
+	capsule.radius = NPC_RADIUS
+	capsule.height = NPC_HEIGHT
+
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = tint
+	mat.roughness = 0.75
+
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = "PlaceholderMesh"
+	mesh_instance.mesh = capsule
+	mesh_instance.set_surface_override_material(0, mat)
+	mesh_instance.position = Vector3(0.0, NPC_HEIGHT * 0.5, 0.0)
+	body.add_child(mesh_instance)
+	mesh_instance.owner = scene_root
