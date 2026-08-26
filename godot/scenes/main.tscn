@@ -1,14 +1,32 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_sugp2"]
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_jyhfs"]
-[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_tbgi4"]
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_jyhfs"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_tbgi4"]
+[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_tefeu"]
+[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="4_o6xl0"]
 
-[node name="Main" type="Node3D" unique_id=2068342452]
+[node name="Main" type="Node3D" unique_id=2099567087]
 
-[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_sugp2")]
+[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_jyhfs")]
 
-[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_jyhfs")]
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_tbgi4")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
 
-[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_tbgi4")]
+[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_tefeu")]
+
+[node name="InteractionZones" type="Node3D" parent="." unique_id=1282236424]
+
+[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_o6xl0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+
+[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=600055300 instance=ExtResource("4_o6xl0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 0, -6.6)
+
+[node name="Return" type="Node3D" parent="InteractionZones" unique_id=1703879742 instance=ExtResource("4_o6xl0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.8)
+
+[node name="Join" type="Node3D" parent="InteractionZones" unique_id=1720625964 instance=ExtResource("4_o6xl0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.1)
+
+[node name="Door" type="Node3D" parent="InteractionZones" unique_id=639265952 instance=ExtResource("4_o6xl0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.8)

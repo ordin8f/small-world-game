@@ -35,6 +35,24 @@ func _init() -> void:
 	root.add_child(camera_rig)
 	camera_rig.owner = root
 
+	# M2.2: interaction zones, one per game.mjs:170-188 trigger. Positions
+	# match courtyard.tscn's own Marker3D key points exactly (see
+	# _bootstrap_courtyard.gd); radii live in interaction_zone.gd's
+	# ZONE_DATA, keyed by node .name -- same --script-mode script-compile
+	# limitation as player/camera_rig above (see interaction_zone.gd's doc
+	# comment for why this is a plain distance check, not an Area3D).
+	var zones_container := Node3D.new()
+	zones_container.name = "InteractionZones"
+	root.add_child(zones_container)
+	zones_container.owner = root
+
+	var zone_packed: PackedScene = load("res://scenes/interaction_zone.tscn")
+	_interaction_zone(zone_packed, zones_container, root, "Watch", 0.0, -1.2)
+	_interaction_zone(zone_packed, zones_container, root, "BallEnd", 8.6, -6.6)
+	_interaction_zone(zone_packed, zones_container, root, "Return", 0.0, -3.8)
+	_interaction_zone(zone_packed, zones_container, root, "Join", 0.0, -3.1)
+	_interaction_zone(zone_packed, zones_container, root, "Door", 0.0, 10.8)
+
 	var packed := PackedScene.new()
 	packed.pack(root)
 	var err := ResourceSaver.save(packed, "res://scenes/main.tscn")
@@ -42,5 +60,13 @@ func _init() -> void:
 		printerr("Failed to save main.tscn: ", err)
 		quit(1)
 		return
-	print("Wrote scenes/main.tscn with courtyard + temp overview camera")
+	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones")
 	quit()
+
+
+func _interaction_zone(zone_packed: PackedScene, parent: Node3D, scene_root: Node, zone_name: String, x: float, z: float) -> void:
+	var zone: Node3D = zone_packed.instantiate()
+	zone.name = zone_name
+	parent.add_child(zone)
+	zone.owner = scene_root
+	zone.position = Vector3(x, 0.0, z)
