@@ -32,17 +32,29 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
 
 - Official repository: https://github.com/TinyTreats-Game-Assets/Tiny-Treats-Homely-House-1.0
 - License: CC0 1.0 Universal
-- Use: one distant house model
+- Use: one distant house model. Not wired into the Three.js prototype (
+  buildStaticWorld() is entirely procedural primitives); placed in the
+  Godot port (M3.2), just beyond the home threshold's z<=12 walkable
+  bound
 - Runtime files: `src/assets/house/house.gltf`, `house.bin`,
-  `tiny_treats_texture_1.png`
+  `tiny_treats_texture_1.png` (vendored, unused by src/); copied verbatim
+  to `godot/assets/house/` (Godot, in use)
 
 ### Tiny Treats — Pretty Park 1.0
 
 - Official repository: https://github.com/TinyTreats-Game-Assets/Tiny-Treats-Pretty-Park-1.0
 - License: CC0 1.0 Universal
-- Use: two trees, one bush, a bench, and a street lantern
+- Use: two trees, one bush, a bench, and a street lantern. Not wired into
+  the Three.js prototype (buildStaticWorld() is entirely procedural
+  primitives); placed in the Godot port (M3.2) -- tree_large.gltf
+  replaces the three procedural trunk+foliage trees at their same
+  positions, bench.gltf replaces the procedural bench, bush_large.gltf
+  replaces one of six procedural foliage spheres (the other five stay
+  procedural, generic scattered shrubbery), street_lantern.gltf is new
+  along the path near the home threshold
 - Runtime files: `src/assets/park/tree_large.*`, `bush_large.*`, `bench.*`,
-  `street_lantern.*`, shared `tiny_treats_texture_1.png`
+  `street_lantern.*`, shared `tiny_treats_texture_1.png` (vendored, unused
+  by src/); copied verbatim to `godot/assets/park/` (Godot, in use)
 
 ## Reference material (not runtime assets — comparison references only)
 

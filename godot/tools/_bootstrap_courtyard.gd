@@ -22,6 +22,7 @@ func _init() -> void:
 	_build_static_world(root)
 	_add_wall_colliders(root)
 	_add_key_point_markers(root)
+	_add_props(root)
 
 	var packed := PackedScene.new()
 	packed.pack(root)
@@ -184,15 +185,21 @@ func _build_static_world(root: Node3D) -> void:
 	for stone in [[6.1, -2.5, 0.45], [6.9, -3.2, 0.52], [7.7, -3.9, 0.48], [8.4, -4.7, 0.55]]:
 		var s: float = stone[2]
 		_mesh(root, "sphere", Vector3(stone[0], 0.05, stone[1]), Vector3(s, 0.14, s * 0.85), PATH)
-	_mesh(root, "cube", Vector3(-7.4, 0.7, -0.8), Vector3(3.1, 0.25, 0.8), WOOD_LIGHT)
-	_mesh(root, "cube", Vector3(-8.5, 0.35, -0.8), Vector3(0.18, 1.2, 0.65), WOOD)
-	_mesh(root, "cube", Vector3(-6.3, 0.35, -0.8), Vector3(0.18, 1.2, 0.65), WOOD)
+	# M3.2: real bench.gltf at the procedural bench's own position/footprint
+	# (the primitive cube trio it replaces was itself at this spot).
+	_prop(root, "res://assets/park/bench.gltf", Vector3(-7.4, 0.0, -0.8))
 
 	_add_tree(root, -7.6, 1.7, 1.05)
 	_add_tree(root, 8.3, -8.2, 1.25)
 	_add_tree(root, 7.9, 6.2, 0.9)
 
-	for bush in [[8.2, -6.1, 1.0], [7.0, -7.3, 0.8], [9.1, -3.2, 0.85], [-8.7, -6.5, 0.9], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9]]:
+	# M3.2: ASSET_CREDITS.md's one featured bush_large.gltf, at the
+	# procedural bush-sphere spot nearest the bench/tree cluster (the other
+	# 5 procedural spheres stay as generic scattered shrubbery -- the credit
+	# describes one specific bush, not six).
+	_prop(root, "res://assets/park/bush_large.gltf", Vector3(-8.7, 0.0, -6.5))
+
+	for bush in [[8.2, -6.1, 1.0], [7.0, -7.3, 0.8], [9.1, -3.2, 0.85], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9]]:
 		var s: float = bush[2]
 		_mesh(root, "sphere", Vector3(bush[0], 0.55 * s, bush[1]), Vector3(1.3 * s, 1.0 * s, 1.1 * s), FOLIAGE)
 
@@ -211,10 +218,38 @@ func _build_static_world(root: Node3D) -> void:
 		_mesh(root, "cone", Vector3(x, height * 0.48, z), Vector3(0.12, height, 0.12), blade_color)
 
 
+## M3.2: real tree_large.gltf, replacing the 3-primitive trunk+foliage
+## composition -- same positions and the same per-tree scale factors
+## (1.05/1.25/0.9) game.mjs's addTree() used for size variety.
 func _add_tree(root: Node3D, x: float, z: float, s: float) -> void:
-	_mesh(root, "cylinder", Vector3(x, 1.25 * s, z), Vector3(0.42 * s, 2.5 * s, 0.42 * s), WOOD)
-	_mesh(root, "sphere", Vector3(x, 3.15 * s, z), Vector3(2.4 * s, 2.1 * s, 2.3 * s), FOLIAGE)
-	_mesh(root, "sphere", Vector3(x - 0.8 * s, 3.4 * s, z + 0.2 * s), Vector3(1.5 * s, 1.3 * s, 1.5 * s), FOLIAGE_LIGHT)
+	_prop(root, "res://assets/park/tree_large.gltf", Vector3(x, 0.0, z), s)
+
+
+## M3.2: the two ASSET_CREDITS.md props with no equivalent in game.mjs's
+## (entirely-procedural) buildStaticWorld() -- placements chosen here, not
+## extracted from the source, since nothing in scene.mjs positions a
+## street lantern or a house:
+## - street_lantern.gltf: beside the path approaching the home threshold,
+##   an unclaimed spot that reads as "lighting the way home."
+## - house.gltf: ASSET_CREDITS.md's own "one distant house model" -- placed
+##   just beyond the home threshold's z=12 wall (WorldBounds' z<=12 bound
+##   means the player can never reach it), glimpsed through the doorway
+##   gap rather than standing inside the walkable courtyard.
+func _add_props(root: Node3D) -> void:
+	_prop(root, "res://assets/park/street_lantern.gltf", Vector3(2.2, 0.0, 9.5))
+	_prop(root, "res://assets/house/house.gltf", Vector3(0.0, 0.0, 16.0))
+
+
+## Instances a glTF PackedScene as a purely visual prop -- WorldBounds'
+## own box colliders remain the sole source of collision, untouched here.
+func _prop(root: Node3D, path: String, position: Vector3, scale: float = 1.0, rotation_y: float = 0.0) -> void:
+	var packed: PackedScene = load(path)
+	var inst: Node3D = packed.instantiate()
+	root.add_child(inst)
+	inst.owner = root
+	inst.position = position
+	inst.scale = Vector3.ONE * scale
+	inst.rotation.y = rotation_y
 
 
 # ------------------------------------------------------------ wall colliders --
