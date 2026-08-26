@@ -1,15 +1,14 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_0wfyh"]
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_sugp2"]
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_sugp2"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_jyhfs"]
+[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_tbgi4"]
 
-[node name="Main" type="Node3D" unique_id=2124858956]
+[node name="Main" type="Node3D" unique_id=2068342452]
 
-[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_0wfyh")]
+[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_sugp2")]
 
-[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_sugp2")]
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1091785205 instance=ExtResource("2_jyhfs")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
 
-[node name="TempOverviewCamera" type="Camera3D" parent="." unique_id=1101306215]
-transform = Transform3D(0.9883717, -0.10891148, 0.10611161, 0, 0.6978402, 0.71625346, -0.15205717, -0.7079246, 0.6897255, 2, 14, 10)
-fov = 60.0
+[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_tbgi4")]

@@ -6,9 +6,11 @@ extends Node
 ## emotional_lens.gd) replaces the placeholders with real state -- the shape
 ## (keys below) is deliberately final now so M0's bridge/overlay work does
 ## not need to change later. Player position mirrors whatever node the game
-## currently considers "the player" (null until M1.3).
+## currently considers "the player" (null until M1.3). Camera likewise
+## mirrors the active play camera (null until M1.4).
 
 var player: Node3D = null
+var camera: Camera3D = null
 
 
 func _ready() -> void:
@@ -20,6 +22,11 @@ func debug_state() -> Dictionary:
 	if is_instance_valid(player):
 		player_pos = player.global_position
 
+	var camera_pos = null
+	if is_instance_valid(camera):
+		var c := camera.global_position
+		camera_pos = {"x": c.x, "y": c.y, "z": c.z}
+
 	return {
 		"state": "N/A (M0 stub)",
 		"beat_index": -1,
@@ -28,5 +35,5 @@ func debug_state() -> Dictionary:
 		"energy": null,
 		"curiosity": null,
 		"dominant_emotion": "N/A (M0 stub)",
-		"camera_pos": null,
+		"camera_pos": camera_pos,
 	}

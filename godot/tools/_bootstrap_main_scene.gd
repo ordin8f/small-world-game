@@ -1,8 +1,7 @@
 extends SceneTree
-## One-shot generator: wires scenes/courtyard.tscn into scenes/main.tscn with
-## a temporary static overview Camera3D, purely so M1.2's geometry can be
-## screenshotted and visually sanity-checked before the real SpringArm3D
-## camera rig lands in M1.4 (which will replace this temporary camera).
+## One-shot generator: wires scenes/courtyard.tscn, scenes/player.tscn, and
+## scenes/camera_rig.tscn into scenes/main.tscn -- the real M1.4 play
+## camera, replacing the M1.2/M1.3 temporary static overview Camera3D.
 ##
 ## Run with: godot --headless --path godot --script res://tools/_bootstrap_main_scene.gd
 
@@ -28,17 +27,13 @@ func _init() -> void:
 	player.owner = root
 	player.position = Vector3(0.0, 0.0, 6.5)
 
-	# TEMPORARY overview camera (M1.4 replaces this with the real SpringArm3D
-	# rig driven by CameraProfile). High and pulled back so the whole
-	# courtyard -- shell, playground, garden-wall gap, home threshold -- is
-	# visible in one shot for a human sanity check.
-	var cam := Camera3D.new()
-	cam.name = "TempOverviewCamera"
-	cam.transform = Transform3D.IDENTITY
-	cam.look_at_from_position(Vector3(2.0, 14.0, 10.0), Vector3(0.0, 0.5, -3.0), Vector3.UP)
-	cam.fov = 60.0
-	root.add_child(cam)
-	cam.owner = root
+	# M1.4: the real play camera -- pivot -> SpringArm3D -> Camera3D, driven
+	# every physics tick by CameraProfile.profile(player.z). Not script-
+	# loaded via load() here, same reason as player.tscn's generator.
+	var camera_rig_packed: PackedScene = load("res://scenes/camera_rig.tscn")
+	var camera_rig: Node3D = camera_rig_packed.instantiate()
+	root.add_child(camera_rig)
+	camera_rig.owner = root
 
 	var packed := PackedScene.new()
 	packed.pack(root)
