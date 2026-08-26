@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Game="*res://scripts/game.gd"
+AudioDirector="*res://scripts/audio_director.gd"
 DebugBridge="*res://scripts/debug_bridge.gd"
 DebugOverlay="*res://scripts/debug_overlay.gd"
 

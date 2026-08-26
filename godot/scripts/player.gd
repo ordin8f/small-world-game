@@ -90,6 +90,7 @@ func _physics_process(delta: float) -> void:
 	rotation.y = heading
 
 	walk_cycle += delta * (10.0 if running else 7.0)
+	AudioDirector.play_step(running)  # game.mjs:357
 
 
 static func _angle_delta(target: float, current: float) -> float:

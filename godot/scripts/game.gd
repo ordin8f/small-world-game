@@ -63,6 +63,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## `now < 0` (the default) means "use the real clock"; tests pass an
 ## explicit value the same way the ported JS tests pass one to start(0).
 func start_episode(now: float = -1.0) -> void:
+	AudioDirector.start()
 	run_id += 1
 	director = EpisodeDirector.new()
 	director.start(now if now >= 0.0 else _now_seconds())
@@ -93,6 +94,15 @@ func dispatch(event_name: String) -> bool:
 	if not director.dispatch(event_name, _now_seconds()):
 		return false
 	state_changed.emit(director.state)
+
+	# game.mjs:195-201 -- keyed on the event that fired, not the state
+	# reached.
+	var chime_kind := "soft"
+	if event_name == "ball_kicked":
+		chime_kind = "uneasy"
+	elif event_name == "ball_returned" or event_name == "entered_home":
+		chime_kind = "warm"
+	AudioDirector.play_chime(chime_kind)
 
 	match director.state:
 		EpisodeDirector.State.OBSERVED:

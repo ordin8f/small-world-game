@@ -25,6 +25,7 @@ func _physics_process(delta: float) -> void:
 	var distance_from_group := Vector2(p.x - GROUP_POSITION.x, p.z - GROUP_POSITION.y).length()
 	Game.lens.set_target(Game.director.emotional_target(distance_from_group))
 	Game.lens.update(delta)
+	AudioDirector.set_mood(Game.lens.value)
 
 	_apply_environment(Game.lens.get_visuals())
 
