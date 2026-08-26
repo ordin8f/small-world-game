@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/character_visual.gd" id="1_character_visual_script"]
+
+[node name="CharacterVisual" type="Node3D" unique_id=2137871954]
+script = ExtResource("1_character_visual_script")

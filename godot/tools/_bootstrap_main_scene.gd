@@ -59,17 +59,18 @@ func _init() -> void:
 	root.add_child(ball)
 	ball.owner = root
 
-	# M2.3: three placeholder NPC capsules at game.mjs:89-93's NPC_DEFS
-	# positions/headings/tints. Real Kenney character assets + AnimationTree
-	# land in M3.1; these are pure static geometry for now, no script.
+	# M3.1: three NPCs (real Kenney character models) at game.mjs:89-93's
+	# NPC_DEFS positions/headings; glb path/tint/reaction data live in
+	# character_visual.gd's CHARACTER_DATA, keyed by node .name.
 	var npcs_container := Node3D.new()
 	npcs_container.name = "NPCs"
 	root.add_child(npcs_container)
 	npcs_container.owner = root
 
-	_npc(npcs_container, root, "Mina", -0.95, -3.8, 0.2, Color(0.945, 0.918, 0.863))
-	_npc(npcs_container, root, "Arun", 0.35, -4.25, -0.1, Color(0.918, 0.851, 0.761))
-	_npc(npcs_container, root, "Third", 1.45, -3.55, -0.4, Color(0.788, 0.827, 0.878))
+	var character_visual_packed: PackedScene = load("res://scenes/character_visual.tscn")
+	_npc(npcs_container, root, character_visual_packed, "Mina", -0.95, -3.8, 0.2)
+	_npc(npcs_container, root, character_visual_packed, "Arun", 0.35, -4.25, -0.1)
+	_npc(npcs_container, root, character_visual_packed, "Third", 1.45, -3.55, -0.4)
 
 	# M2.4: UI -- CanvasLayer overlays, independent of Main's 3D transform.
 	# Not script-loaded via load() here, same reason as player/camera_rig/
@@ -114,29 +115,17 @@ func _interaction_zone(zone_packed: PackedScene, parent: Node3D, scene_root: Nod
 	zone.position = Vector3(x, 0.0, z)
 
 
-func _npc(parent: Node3D, scene_root: Node, npc_name: String, x: float, z: float, heading: float, tint: Color) -> void:
-	const NPC_HEIGHT := 1.0
-	const NPC_RADIUS := 0.28
-
-	var body := Node3D.new()
-	body.name = npc_name
-	parent.add_child(body)
-	body.owner = scene_root
-	body.position = Vector3(x, 0.0, z)
-	body.rotation.y = heading + PI  # characters.mjs:126 -- kenney rig faces +Z, flipped to face -Z like the player
-
-	var capsule := CapsuleMesh.new()
-	capsule.radius = NPC_RADIUS
-	capsule.height = NPC_HEIGHT
-
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = tint
-	mat.roughness = 0.75
-
-	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.name = "PlaceholderMesh"
-	mesh_instance.mesh = capsule
-	mesh_instance.set_surface_override_material(0, mat)
-	mesh_instance.position = Vector3(0.0, NPC_HEIGHT * 0.5, 0.0)
-	body.add_child(mesh_instance)
-	mesh_instance.owner = scene_root
+func _npc(parent: Node3D, scene_root: Node, character_visual_packed: PackedScene, npc_name: String, x: float, z: float, heading: float) -> void:
+	# character_visual.gd applies its own +PI flip to the loaded model
+	# internally (characters.mjs:126), so this only needs the NPC's own
+	# authored heading -- not heading + PI (matches game.mjs:106's
+	# `character.root.rotation.y = def.heading + Math.PI`, which
+	# OVERWRITES loadCharacter's own PI rotation with this single combined
+	# value; the two-node split here (this transform + the model's own
+	# internal PI) composes to the same net rotation instead).
+	var visual: Node3D = character_visual_packed.instantiate()
+	visual.name = npc_name
+	parent.add_child(visual)
+	visual.owner = scene_root
+	visual.position = Vector3(x, 0.0, z)
+	visual.rotation.y = heading

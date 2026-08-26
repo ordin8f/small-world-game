@@ -11,11 +11,13 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
 
 - Original source: https://kenney.nl/assets/mini-characters
 - License: CC0 1.0 Universal
-- Use: animated player plus two playground NPCs (Three.js prototype); source
-  for the Godot port's player/NPC models
+- Use: animated player plus two playground NPCs (Three.js prototype); also
+  the Godot port's player/NPC models (M3.1)
 - Runtime files: `src/assets/kenney/character-male-a.glb`,
   `character-female-b.glb`, `character-male-c.glb`,
-  `src/assets/kenney/Textures/colormap.png`
+  `src/assets/kenney/Textures/colormap.png` (Three.js), copied verbatim to
+  `godot/assets/kenney/` (Godot; same three .glb files plus
+  `Textures/colormap.png`, unmodified)
 - Original mirror used to source these files: `mengfoong-dev/codex-candidate-assesment-system`
   on GitHub, delivered through jsDelivr. The files are vendored locally and
   no longer fetched at runtime. The mirror repository includes the original

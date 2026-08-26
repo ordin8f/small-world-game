@@ -23,6 +23,8 @@ var running: bool = false
 var heading: float = 0.0
 var walk_cycle: float = 0.0
 
+@onready var character_visual: CharacterVisual = $Player
+
 
 func _ready() -> void:
 	Game.player = self
@@ -35,6 +37,9 @@ func _physics_process(delta: float) -> void:
 	var magnitude := Vector2(input_x, input_z).length()
 	moving = magnitude > 0.01
 	running = Input.is_action_pressed("run")
+	# game.mjs:435-437 -- switchAction() runs every frame regardless of
+	# whether the player is currently moving.
+	character_visual.set_motion(moving, running)
 
 	if not moving:
 		velocity = Vector3.ZERO
