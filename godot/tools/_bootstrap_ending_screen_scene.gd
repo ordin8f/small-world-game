@@ -15,9 +15,12 @@ extends SceneTree
 ##
 ## Run with: godot --headless --path godot --script res://tools/_bootstrap_ending_screen_scene.gd
 
-const PANE_LEFT := 0.125
-const PANE_RIGHT := 0.875
-const PANE_TOP := 0.125
+## Narrower and taller than a letterbox: a window is a portrait-ish hole in a
+## wall. At 0.125/0.875 the opening was wider than it was tall and read as a
+## cinematic bar with lines drawn on it rather than as something to look through.
+const PANE_LEFT := 0.225
+const PANE_RIGHT := 0.775
+const PANE_TOP := 0.115
 const PANE_BOTTOM := 0.7083  # 1 - 210px sill band / 720px
 
 
@@ -33,9 +36,9 @@ func _init() -> void:
 	var frame_box := StyleBoxFlat.new()
 	frame_box.bg_color = Color(0, 0, 0, 0)
 	frame_box.border_color = Color(0.02, 0.02, 0.02, 0.97)
-	frame_box.border_width_left = 160
-	frame_box.border_width_right = 160
-	frame_box.border_width_top = 90
+	frame_box.border_width_left = 288
+	frame_box.border_width_right = 288
+	frame_box.border_width_top = 83
 	frame_box.border_width_bottom = 0
 	frame.add_theme_stylebox_override("panel", frame_box)
 	root.add_child(frame)
@@ -84,41 +87,23 @@ func _init() -> void:
 		icons.add_child(icon)
 		icon.owner = root
 
-	var mullion_v := Panel.new()
-	mullion_v.name = "MullionV"
-	mullion_v.anchor_left = 0.5
-	mullion_v.anchor_right = 0.5
-	mullion_v.anchor_top = PANE_TOP
-	mullion_v.anchor_bottom = PANE_BOTTOM
-	mullion_v.offset_left = -3
-	mullion_v.offset_right = 3
-	mullion_v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mullion_box := StyleBoxFlat.new()
-	mullion_box.bg_color = Color(0.02, 0.02, 0.02, 0.95)
-	mullion_v.add_theme_stylebox_override("panel", mullion_box)
-	root.add_child(mullion_v)
-	mullion_v.owner = root
-
-	var mullion_h := Panel.new()
-	mullion_h.name = "MullionH"
-	var mid := (PANE_TOP + PANE_BOTTOM) / 2.0
-	mullion_h.anchor_left = PANE_LEFT
-	mullion_h.anchor_right = PANE_RIGHT
-	mullion_h.anchor_top = mid
-	mullion_h.anchor_bottom = mid
-	mullion_h.offset_top = -3
-	mullion_h.offset_bottom = 3
-	mullion_h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mullion_h.add_theme_stylebox_override("panel", mullion_box)
-	root.add_child(mullion_h)
-	mullion_h.owner = root
+	# NO MULLIONS. A cross of bars over a live 3D frame does not read as a
+	# window -- it reads as a UI overlay on a gameplay screenshot, because the
+	# bars cut through the scene instead of framing it. A single clean aperture
+	# in a dark wall does the job, which is also what concept_08 shows.
 
 	var text_area := CenterContainer.new()
 	text_area.name = "TextArea"
-	text_area.anchor_left = PANE_LEFT
-	text_area.anchor_right = PANE_RIGHT
-	text_area.anchor_top = PANE_TOP
+	# BELOW the aperture, not over it. Centred inside the window the line
+	# competed with the image it was supposed to caption -- and this shot is
+	# meant to be an image first. It now sits on the dark sill band, which is
+	# also where a caption belongs.
+	text_area.anchor_left = 0.0
+	text_area.anchor_right = 1.0
+	text_area.anchor_top = PANE_BOTTOM
 	text_area.anchor_bottom = PANE_BOTTOM
+	text_area.offset_top = 26
+	text_area.offset_bottom = 96
 	text_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(text_area)
 	text_area.owner = root

@@ -25,8 +25,6 @@ extends CanvasLayer
 
 @onready var frame: Panel = $Frame
 @onready var sill: Panel = $Sill
-@onready var mullion_v: Panel = $MullionV
-@onready var mullion_h: Panel = $MullionH
 @onready var text_area: CenterContainer = $TextArea
 @onready var line_text: Label = $TextArea/LineText
 @onready var fade_to_black: ColorRect = $FadeToBlack
@@ -61,16 +59,20 @@ func _on_episode_complete() -> void:
 	if is_instance_valid(Game.title_camera):
 		Game.title_camera.show_title()
 
+	# Hide the child. The whole conceit of this shot is that you are INSIDE
+	# looking out at the others still playing -- and the title camera's anchor
+	# stands in the courtyard, so leaving the player visible put you in the
+	# middle of your own ending, outside, looking at yourself. Nothing else
+	# needs to move: the anchor already frames the three NPCs.
+	if is_instance_valid(Game.player):
+		Game.player.visible = false
+
 	frame.modulate.a = 0.0
 	sill.modulate.a = 0.0
-	mullion_v.modulate.a = 0.0
-	mullion_h.modulate.a = 0.0
 	line_text.modulate.a = 0.0
 
 	UiMotion.fade_in(frame, 0.4)
 	UiMotion.fade_in(sill, 0.4)
-	UiMotion.fade_in(mullion_v, 0.4)
-	UiMotion.fade_in(mullion_h, 0.4)
 	await get_tree().create_timer(0.5).timeout
 	await _reveal_sill_icons()
 	await get_tree().create_timer(0.4).timeout
