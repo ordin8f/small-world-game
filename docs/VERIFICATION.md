@@ -42,7 +42,7 @@ Captures screenshots at the fixed route positions used as milestone evidence (si
 
 ### Known limitations
 
-- web export currently fails in CI (SIGABRT immediately after `savepack`, 15/15 runs as of 2026-08-28 — `DEMO_PLAN.md` section 1); the Windows desktop build is the verified target, and web export failure is explicitly not a gate;
+- web export **was** failing in CI — SIGABRT immediately after `savepack`, 15/15 consecutive runs — because the enabled gdUnit4 editor plugin was being packed into the release. Fixed on 2026-08-28 by excluding `addons/gdUnit4/*`, `tests/*`, `tools/*` and `build/*` from both presets; independently reproduced causally (re-including the addon in a clean checkout brings the crash back). Windows desktop remains the verified target and web is still not a gate, but it is no longer broken (`DEMO_PLAN.md` section 1);
 - `verify.ps1` and `shots.ps1` confirm the build runs and produces images, not that the images look right — a human still has to look at them before a milestone is called done (`DEMO_PLAN.md` section 8, rule 6).
 
 ## What is not covered
