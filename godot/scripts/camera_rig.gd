@@ -1,6 +1,8 @@
 extends Node3D
-## Verbatim port of src/game.mjs's updateCamera() (lines 384-411) onto a
-## pivot (this node) -> SpringArm3D -> Camera3D chain.
+## Port of src/game.mjs's updateCamera() (lines 384-411) onto a pivot (this
+## node) -> SpringArm3D -> Camera3D chain. Verbatim except for the doorway
+## fix inside _physics_process's `desired_x`/`desired_z` block below -- see
+## its comment; game.mjs's own per-axis clamp is still the common path.
 ##
 ## The pivot sits at the look-at target (matching the source's
 ## threeCamera.lookAt(target)); the SpringArm3D is oriented from the pivot
@@ -52,14 +54,67 @@ func _physics_process(delta: float) -> void:
 	var s := sin(yaw)
 	var c := cos(yaw)
 
-	# game.mjs:394-400 -- desired camera position, clamped.
-	var desired := Vector3(
-		p.x + s * distance + c * lateral,
-		height,
-		p.z + c * distance - s * lateral
-	)
-	desired.x = clampf(desired.x, -9.65, 9.65)
-	desired.z = clampf(desired.z, -12.55, 11.05)
+	# game.mjs:394-400 -- desired camera position. `distance` and `lateral`
+	# are offsets along two orthonormal directions relative to the player:
+	# `back` (unit vector; game.mjs's own (sin yaw, cos yaw)) and `lat`
+	# (unit vector, perpendicular to `back`; game.mjs's (cos yaw, -sin yaw)).
+	# Kept as explicit Vector3s, rather than inlined the way game.mjs writes
+	# desired.x/desired.z directly, because the doorway fix just below
+	# reuses both directions.
+	var back := Vector3(s, 0.0, c)
+	var lat := Vector3(c, 0.0, -s)
+	var raw_offset := back * distance + lat * lateral
+	var raw_x := p.x + raw_offset.x
+	var raw_z := p.z + raw_offset.z
+
+	# game.mjs:399-400's own authored world-space clamp (the courtyard's
+	# actual x/z extents) -- test_camera_never_in_geometry.gd asserts the
+	# FINAL camera position never exceeds these, so they stay the hard
+	# outer bound no matter what happens below.
+	var desired_z := clampf(raw_z, -12.55, 11.05)
+	var desired_x: float
+	if desired_z == raw_z:
+		# Common case, and exactly game.mjs:399-400: the courtyard has room
+		# for the full authored shot in its intended direction.
+		desired_x = clampf(raw_x, -9.65, 9.65)
+	else:
+		# Doorway collapse fix (Gate 1 camera item; 780c690's commit
+		# message: "at the home doorway the SpringArm3D camera collapses
+		# into the player"). Diagnosed with a throwaway probe script
+		# (godot/tools/_probe_camera_debug.gd, deleted after use, not
+		# committed): SpringArm3D's own shapecast never fires here --
+		# measured collision shrink was 0.0000 at every route beat,
+		# including the door beat. The collapse is entirely this clamp:
+		# near the home threshold the player is already only ~1m from the
+		# z=12.3 wall this zone's camera formula wants to sit *beyond* (by
+		# `distance`, THRESHOLD's own 5.5 authored below), so clamping
+		# desired.z alone silently threw away nearly all of the horizontal reach
+		# while `height` stayed at its full authored value -- the spring
+		# arm's horizontal leg collapsed to a handful of centimeters while
+		# its vertical leg stayed meters tall, producing a near-vertical
+		# look-down that fills the frame with the back of the player's
+		# head. (Confirmed: even after Task 2's much lower height numbers
+		# below, the *unfixed* clamp still collapses the arm to well under
+		# 1m at the door beat -- a low camera alone doesn't fix this, it
+		# just changes a steep collapse into a point-blank one.)
+		#
+		# Fix: preserve the authored shot *radius* (the XZ-plane distance
+		# this zone was tuned for) and let the shortfall the wall imposes
+		# swing sideways along `lat` instead of vanishing -- the same move
+		# a camera operator backed against a wall makes (side-step, don't
+		# melt into the subject). `horiz_radius` is what the uncapped
+		# formula wanted in the XZ plane; `used_z` is what the wall
+		# actually leaves for depth; `side_mag` is the sideways distance
+		# that keeps the total radius (and so, combined with the
+		# unclamped `height` above, roughly the total spring-arm length)
+		# equal to what was authored.
+		var horiz_radius := Vector2(raw_offset.x, raw_offset.z).length()
+		var used_z := desired_z - p.z
+		var side_mag := sqrt(maxf(0.0, horiz_radius * horiz_radius - used_z * used_z))
+		var side_sign := 1.0 if raw_offset.x >= 0.0 else -1.0
+		desired_x = clampf(p.x + side_sign * side_mag, -9.65, 9.65)
+
+	var desired := Vector3(desired_x, height, desired_z)
 
 	# game.mjs:407-409 -- look-at target, ahead of the player by `lead`.
 	var forward := Vector3(-s, 0.0, -c)

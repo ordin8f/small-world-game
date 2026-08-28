@@ -1,23 +1,37 @@
 class_name CameraProfile
 extends RefCounted
-## Verbatim port of src/camera.mjs. Static utility class.
-##
 ## Zones: THRESHOLD (near home) -> APPROACH (mid-courtyard) -> REVEAL
 ## (playground/garden depth), blended by two independent smoothstep bands on
-## the player's world-space z. See GODOT_REBUILD_PLAN.md's source-of-truth
-## table for the exact authored numbers this must match.
-
+## the player's world-space z. GODOT_REBUILD_PLAN.md's source-of-truth table
+## has the original src/camera.mjs numbers this was a verbatim port of.
+##
+## Re-tuned (Gate 1, docs/ART_DIRECTION.md) for a low child-height camera --
+## the previous distance/height numbers (12-16 / 3.2-4.0) were an
+## adult-height third-person diorama camera scaled down with the character,
+## exactly what ART_DIRECTION.md's "Camera as art direction" section says
+## not to build. Reference: docs/concept-art/extended/concept_01 (home
+## threshold), _04 (journey/child-height) and _05 (return/safety) -- in all
+## three the camera sits at roughly the child's own head height, close
+## enough that the character reads as a small, near silhouette against a
+## much taller architectural frame, not as a distant figure in a wide shot.
+## `height`/`target_height` dropped from adult-crane numbers to just above
+## the character's own scale; `distance` came down enough that the low
+## camera doesn't have to work as hard to keep the child in frame; `fov`
+## went up to keep the wide, slightly immersive feel of a close, low lens.
+## Relative ordering (threshold < approach < reveal, tested by
+## test_camera_profile.gd) is unchanged -- the world still opens up as the
+## player moves away from home, just from a much lower vantage.
 const THRESHOLD := {
-	"distance": 12.0, "height": 3.2, "target_height": 1.15, "fov": 46.0,
-	"lateral": 0.55, "lead": 0.5, "authored_yaw": -0.045,
+	"distance": 5.5, "height": 1.2, "target_height": 0.95, "fov": 50.0,
+	"lateral": 0.4, "lead": 0.45, "authored_yaw": -0.045,
 }
 const APPROACH := {
-	"distance": 14.0, "height": 3.6, "target_height": 1.2, "fov": 48.0,
-	"lateral": 0.85, "lead": 1.2, "authored_yaw": 0.035,
+	"distance": 7.0, "height": 1.5, "target_height": 1.0, "fov": 54.0,
+	"lateral": 0.55, "lead": 0.9, "authored_yaw": 0.035,
 }
 const REVEAL := {
-	"distance": 16.0, "height": 4.0, "target_height": 1.25, "fov": 50.0,
-	"lateral": 1.25, "lead": 2.1, "authored_yaw": -0.07,
+	"distance": 10.5, "height": 2.6, "target_height": 1.1, "fov": 58.0,
+	"lateral": 0.45, "lead": 1.2, "authored_yaw": -0.07,
 }
 
 
