@@ -256,3 +256,48 @@ gives it nothing, which is why the haze is currently doing so little.
 the walkable space is already tuned. This is a change to *visual* geometry and to
 wall **height**, plus one arch cut. Physics layers may change; collider footprints
 may not.
+
+
+### 2026-08-28 (later) — Gate 1 largely done, Gate 2 done, Gate 4 started
+
+**Landed since the morning entry:**
+
+- **Camera fixed and re-tuned.** The doorway collapse was `camera_rig.gd`'s
+  per-axis z clamp, not SpringArm collision — measured collision shrink was
+  0.0000 at every beat. Clamping z alone discarded the horizontal reach while
+  height kept its authored value, producing a near-vertical look-down. The fix
+  spends the reach the wall won't give it sideways. Zones re-tuned to child
+  height (12/14/16 at 3.2–4.0 → 5.5/7/10.5 at 1.2–2.6). Every beat now within
+  ~3% of its authored distance; the doorway went from 18% to 103%.
+- **Four play verbs**, all on geometry that already existed and did nothing:
+  ride the slide, balance the garden wall, stepping stones that briefly transform
+  how the world looks, splashing puddles. The stones are
+  `docs/EMOTIONAL_LENS.md`'s "imagination appears as brief perceptual
+  transformations" — specified since day one, never built until now.
+- **Geometry**: the garden opening is an arch, the home threshold is a passage,
+  a practical light makes the ball findable, bushes cleared off the ball.
+- **Independent review** (Codex) audited four claims. Confirmed the export fix
+  causally, the lens inversion, and the test suite. Refuted one number of mine
+  and found a real hole: the lens test passed with the defect deliberately
+  reintroduced. Both fixed; the replacement is mutation-verified.
+- Tests **26 → 43**.
+
+**Ordering correction to Gate 1.** This plan sequenced lens → geometry → camera.
+Camera has to come second. Four attempts at framing geometry failed because the
+camera was somewhere unusable — behind the player's head, inside a lintel, behind
+a bush. You cannot compose a frame you cannot see.
+
+**Where the demo actually stands against section 4's nine screens.** The three
+acts exist and now have things to do in them. S0 boot, S1 title over the live
+world, S6 the ending image, S7 credits and S8 pause do not exist yet — the game
+still opens with unstyled text on the character's head and ends with a feedback
+survey. That frame is the current work and it is the largest remaining gap
+between this and something a stranger would call finished.
+
+**Still open:** the courtyard is a wide flat space where the concept art is
+enclosure; the concept_07 framing gateway and the overhead canopy are deferred
+awaiting a human's eye on the fixed camera; `test_camera_never_in_geometry` is
+narrower than its name and passed straight through the doorway collapse, so it
+wants a minimum-separation assertion; and `PRODUCT_CONTRACT.md` excludes
+"extensive climbing/balance systems", which is in mild tension with the wall
+balance now built.
