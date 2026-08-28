@@ -13,6 +13,8 @@
 [ext_resource type="PackedScene" path="res://scenes/perception.tscn" id="11_pm3ni"]
 [ext_resource type="PackedScene" path="res://scenes/fireflies.tscn" id="12_y6deb"]
 [ext_resource type="PackedScene" path="res://scenes/home_glow.tscn" id="13_og1vs"]
+[ext_resource type="PackedScene" path="res://scenes/stepping_stones.tscn" id="14_st0ne"]
+[ext_resource type="PackedScene" path="res://scenes/puddles.tscn" id="15_pdl3s"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
 size = Vector2(2, 3)
@@ -75,3 +77,7 @@ layer = 10
 [node name="HomeGlow" type="MeshInstance3D" parent="." unique_id=546062445 instance=ExtResource("13_og1vs")]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 1.7, 11.82)
 mesh = SubResource("PlaneMesh_dpsxx")
+
+[node name="SteppingStones" type="Node" parent="." unique_id=3021882201 instance=ExtResource("14_st0ne")]
+
+[node name="Puddles" type="Node" parent="." unique_id=3021882202 instance=ExtResource("15_pdl3s")]

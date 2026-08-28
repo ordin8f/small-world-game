@@ -22,13 +22,13 @@ func test_start_episode_initializes_the_drone_and_oneshot_players() -> void:
 	await runner.simulate_frames(2)
 
 	Game.start_episode(0.0)
-	# chime player + step player + 3 drones.
-	assert_int(AudioDirector.get_child_count()).is_equal(5)
+	# chime player + step player + effect player (Gate 0: splash/whoosh) + 3 drones.
+	assert_int(AudioDirector.get_child_count()).is_equal(6)
 
 	# Calling start() again (Game.start_episode() on "Play again") must
 	# stay idempotent, not spawn a second set of players.
 	Game.start_episode(0.0)
-	assert_int(AudioDirector.get_child_count()).is_equal(5)
+	assert_int(AudioDirector.get_child_count()).is_equal(6)
 
 
 func test_dispatch_and_movement_drive_audio_without_error() -> void:
@@ -71,3 +71,23 @@ func test_muted_suppresses_chime_playback() -> void:
 
 	assert_bool(unmuted_playing).is_true()
 	assert_bool(muted_playing).is_false()
+
+
+func test_splash_and_whoosh_play_on_their_own_effect_player() -> void:
+	# Gate 0: puddles.gd/player.gd's two new one-shot sounds. Kept off the
+	# chime player deliberately (see audio_director.gd's _effect_player doc
+	# comment) -- assert that directly, not just "no error".
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	Game.start_episode(0.0)
+	Game.muted = false
+
+	AudioDirector.play_splash()
+	await runner.simulate_frames(2)
+	assert_bool(AudioDirector._effect_player.playing).is_true()
+
+	AudioDirector._effect_player.stop()
+	AudioDirector.play_slide_whoosh()
+	await runner.simulate_frames(2)
+	assert_bool(AudioDirector._effect_player.playing).is_true()
+	assert_bool(AudioDirector._chime_player.playing).is_false()

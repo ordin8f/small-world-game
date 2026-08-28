@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/puddles.gd" id="1_puddles_script"]
+
+[node name="Puddles" type="Node" unique_id=3021882202]
+script = ExtResource("1_puddles_script")

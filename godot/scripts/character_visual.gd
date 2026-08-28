@@ -87,6 +87,24 @@ func set_motion(moving: bool, running: bool) -> void:
 	_anim_player.play(clip, CROSSFADE_SECONDS)
 
 
+## Gate 0: plays an arbitrary clip directly, bypassing set_motion()'s
+## idle/walk/sprint selection -- for scripted beats (player.gd's slide)
+## that want a specific pose the move-state machine doesn't cover. Falls
+## back to idle if the requested clip isn't in this character's animation
+## set (defensive: player.gd doesn't know which .glb is attached to any
+## given CharacterVisual). The next ordinary set_motion() call (player.gd
+## returns to its baseline loop once the scripted beat ends) transitions
+## back out of it the same way any other clip change does.
+func play_pose(clip_name: String) -> void:
+	if _anim_player == null:
+		return
+	var target := clip_name if _anim_player.has_animation(clip_name) else "idle"
+	if target == _current_clip:
+		return
+	_current_clip = target
+	_anim_player.play(target, CROSSFADE_SECONDS)
+
+
 func _on_state_changed(new_state: String) -> void:
 	if new_state != _reaction_state or _anim_player == null or not _anim_player.has_animation(_reaction_clip):
 		return

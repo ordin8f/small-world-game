@@ -41,6 +41,31 @@ const MOOD_EASE := 0.9
 ## pure authored mood. Used by the art-direction acceptance test.
 @export var lens_enabled := true
 
+## Gate 0 -- IMAGINATION CUE: docs/EMOTIONAL_LENS.md's "imagination
+## overlays" ("a puddle briefly reads as a sea... playground towers feel
+## castle-like when excited"), authored from the start but never built
+## until now. This is the clean entry point new gameplay (stepping_stones.gd)
+## calls into, rather than reaching into _apply() or the mood blend itself:
+## a second, independent bounded signal, eased in/out fast ("brief"), that
+## nudges the ALREADY-authored mood exactly the way the lens's own unease
+## does just below -- scalars only (fog reach, saturation, glow), never a
+## colour and never a full-screen overlay. Two signals can be in flight at
+## once (an anxious child crossing the stones) and simply add.
+## Sized against the lens's OWN bounds just above (LENS_FOG_SCALE etc.) --
+## roughly matching them rather than being a barely-there fraction of them.
+## First pass used half these values and, checked side by side at the same
+## camera position with everything else identical, was not reliably
+## noticeable -- too restrained to do the one job this cue has, which is
+## to be seen. Doubled; still bounded, still scalars-only, still nowhere
+## near the lens's own LENS_FOG_SCALE ceiling.
+const IMAGINATION_FOG_SCALE := 0.22
+const IMAGINATION_SATURATION_TRIM := 0.16
+const IMAGINATION_GLOW_BOOST := 0.35
+const IMAGINATION_EASE := 3.0  # fast in/out -- a cue, not a mood change
+
+var _imagination_target := 0.0
+var _imagination_strength := 0.0
+
 @onready var world_environment: WorldEnvironment = _scope().find_child("WorldEnvironment", true, false)
 @onready var sun: DirectionalLight3D = _scope().find_child("Sun", true, false)
 
@@ -76,6 +101,7 @@ func _physics_process(delta: float) -> void:
 	# sits in the correct authored light.
 	_mood_progress = lerpf(_mood_progress, _mood_target(), 1.0 - exp(-maxf(0.0, delta) * MOOD_EASE))
 	_base = _blend_moods(_mood_progress)
+	_imagination_strength = lerpf(_imagination_strength, _imagination_target, 1.0 - exp(-maxf(0.0, delta) * IMAGINATION_EASE))
 
 	var player := Game.player
 	if is_instance_valid(player):
@@ -146,7 +172,11 @@ func _apply(base: Resource, visuals: Dictionary) -> void:
 		saturation_trim = -unease * LENS_SATURATION_TRIM
 		exposure_trim = -unease * LENS_EXPOSURE_TRIM
 
-	var fog_scale := 1.0 - unease * LENS_FOG_SCALE
+	# --- imagination cue, bounded and additive to the lens above ------------
+	saturation_trim -= _imagination_strength * IMAGINATION_SATURATION_TRIM
+	var imagination_glow := _imagination_strength * IMAGINATION_GLOW_BOOST
+
+	var fog_scale := 1.0 - unease * LENS_FOG_SCALE - _imagination_strength * IMAGINATION_FOG_SCALE
 	var volumetric_scale := 1.0 + unease * LENS_VOLUMETRIC_SCALE
 
 	# --- environment --------------------------------------------------------
@@ -168,7 +198,7 @@ func _apply(base: Resource, visuals: Dictionary) -> void:
 
 		env.tonemap_exposure = base.exposure + exposure_trim
 		env.tonemap_white = base.tonemap_white
-		env.glow_intensity = base.glow_intensity
+		env.glow_intensity = base.glow_intensity + imagination_glow
 		env.glow_bloom = base.glow_bloom
 		env.ssao_intensity = base.ssao_intensity
 		env.adjustment_saturation = base.saturation + saturation_trim
@@ -192,3 +222,17 @@ func current_mood() -> Resource:
 
 func mood_progress() -> float:
 	return _mood_progress
+
+
+## The clean entry point Gate 0's imagination-cue gameplay (stepping_stones.gd)
+## calls into. active=true eases the cue in; false eases it back out. Safe to
+## call every physics tick from a poller -- repeated calls with the same
+## value are cheap no-ops (_imagination_target just keeps its value).
+func set_imagination_target(active: bool) -> void:
+	_imagination_target = 1.0 if active else 0.0
+
+
+## 0..1 -- how strongly the current imagination cue is showing right now.
+## Exposed for tests and for anything else that wants to react to it.
+func imagination_strength() -> float:
+	return _imagination_strength

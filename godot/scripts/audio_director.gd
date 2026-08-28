@@ -33,6 +33,12 @@ const CHIME_KINDS := {
 	"soft": {"frequencies": [329.63, 440.0], "triangle": false, "peak": 0.055},
 	"warm": {"frequencies": [392.0, 523.25, 659.25], "triangle": false, "peak": 0.055},
 	"uneasy": {"frequencies": [220.0, 233.08], "triangle": true, "peak": 0.035},
+	# Gate 0: stepping_stones.gd's imagination cue -- a brighter, higher
+	# register than the three dispatch chimes above (which this is
+	# deliberately NOT one of; it never runs through game.gd's dispatch()
+	# switch), so it reads as a small private moment of wonder rather than
+	# a story beat landing.
+	"wonder": {"frequencies": [523.25, 659.25, 783.99], "triangle": false, "peak": 0.045},
 }
 const CHIME_START_STAGGER := 0.08  # note_start = index * this
 const CHIME_ATTACK := 0.03         # linear ramp to peak, note_start .. note_start + this
@@ -48,6 +54,25 @@ const STEP_INTERVAL_WALKING := 0.37
 const STEP_FREQUENCY_RUNNING := 82.0
 const STEP_FREQUENCY_WALKING := 68.0
 
+## Gate 0: two new one-shot affordance sounds, same "bake a short
+## AudioStreamWAV once per trigger" approach as chimes/steps above rather
+## than a live effect graph -- see this file's class doc comment for why.
+## Splash (puddles.gd): a short broadband-noise burst -- a splash's
+## dominant character -- plus two brighter droplet "plip" blips staggered
+## just after the main hit.
+const SPLASH_NOISE_DURATION := 0.28
+const SPLASH_NOISE_PEAK := 0.05
+const SPLASH_NOISE_DECAY := 0.14
+const SPLASH_DROPLETS := [{"start": 0.05, "freq": 900.0}, {"start": 0.12, "freq": 650.0}]
+const SPLASH_DROPLET_PEAK := 0.032
+const SPLASH_DROPLET_DECAY := 0.09
+## Slide whoosh (player.gd's _start_slide()): a soft noise sweep, rising
+## then falling across the whole ride, smoothed with a cheap one-pole
+## lowpass so it reads as air/wind rather than harsh static.
+const WHOOSH_DURATION := 0.9
+const WHOOSH_PEAK := 0.045
+const WHOOSH_SMOOTHING := 0.06
+
 var _started: bool = false
 var _drone_players: Array = []          # AudioStreamPlayer, one per DRONE_FREQUENCIES
 var _drone_target_gain: Array = [0.0, 0.0, 0.0]
@@ -55,6 +80,8 @@ var _drone_current_gain: Array = [0.0, 0.0, 0.0]
 var _master_current_gain: float = 0.0
 var _chime_player: AudioStreamPlayer
 var _step_player: AudioStreamPlayer
+var _effect_player: AudioStreamPlayer  # splash/whoosh -- kept off the chime player so a
+                                        # puddle splash can never cut off a dispatch chime
 var _last_step_time: float = -1000.0
 
 
@@ -74,6 +101,8 @@ func start() -> void:
 	add_child(_chime_player)
 	_step_player = AudioStreamPlayer.new()
 	add_child(_step_player)
+	_effect_player = AudioStreamPlayer.new()
+	add_child(_effect_player)
 
 	for frequency in DRONE_FREQUENCIES:
 		var player := AudioStreamPlayer.new()
@@ -138,6 +167,24 @@ func play_step(running: bool) -> void:
 	_step_player.play()
 
 
+## puddles.gd's splash-crossing trigger.
+func play_splash() -> void:
+	if not _started or Game.muted:
+		return
+	_effect_player.stream = _make_splash_wav()
+	_effect_player.volume_db = _linear_to_db_safe(_master_current_gain)
+	_effect_player.play()
+
+
+## player.gd's _start_slide() -- fires once, at the top of the ride.
+func play_slide_whoosh() -> void:
+	if not _started or Game.muted:
+		return
+	_effect_player.stream = _make_whoosh_wav()
+	_effect_player.volume_db = _linear_to_db_safe(_master_current_gain)
+	_effect_player.play()
+
+
 func _linear_to_db_safe(linear: float) -> float:
 	if linear <= 0.0001:
 		return -80.0
@@ -159,6 +206,61 @@ func _make_loop_tone(frequency: float) -> AudioStreamWAV:
 	wav.loop_begin = 0
 	wav.loop_end = period_samples
 	return wav
+
+
+## Gate 0: broadband noise burst + two droplet blips, pre-rendered to a
+## single one-shot clip -- same exponential-decay envelope shape
+## _make_step_wav below already uses, just applied to noise instead of a
+## triangle tone for the main hit.
+func _make_splash_wav() -> AudioStreamWAV:
+	var total_samples := int(ceil(SPLASH_NOISE_DURATION * SAMPLE_RATE))
+	# The two droplets can extend past the main noise burst; size the
+	# buffer to whichever one actually finishes last.
+	for d in SPLASH_DROPLETS:
+		var droplet_end: float = float(d["start"]) + SPLASH_DROPLET_DECAY * 3.0
+		total_samples = maxi(total_samples, int(ceil(droplet_end * SAMPLE_RATE)))
+
+	var floats := PackedFloat32Array()
+	floats.resize(total_samples)
+
+	var noise_samples := int(SPLASH_NOISE_DURATION * SAMPLE_RATE)
+	for s in range(noise_samples):
+		var t := float(s) / SAMPLE_RATE
+		var envelope: float = SPLASH_NOISE_PEAK * pow(CHIME_FLOOR / SPLASH_NOISE_PEAK, clampf(t / SPLASH_NOISE_DECAY, 0.0, 1.0))
+		floats[s] += randf_range(-1.0, 1.0) * envelope
+
+	for d in SPLASH_DROPLETS:
+		var start: float = d["start"]
+		var frequency: float = d["freq"]
+		var start_sample := int(start * SAMPLE_RATE)
+		var droplet_samples := int(SPLASH_DROPLET_DECAY * 3.0 * SAMPLE_RATE)
+		for i in range(droplet_samples):
+			var s := start_sample + i
+			if s >= total_samples:
+				break
+			var t := float(i) / SAMPLE_RATE
+			var envelope: float = SPLASH_DROPLET_PEAK * pow(CHIME_FLOOR / SPLASH_DROPLET_PEAK, clampf(t / SPLASH_DROPLET_DECAY, 0.0, 1.0))
+			floats[s] += sin(t * frequency * TAU) * envelope
+
+	return _floats_to_wav(floats)
+
+
+## Gate 0: white noise smoothed with a cheap one-pole lowpass (each sample
+## eased a small step toward the next raw noise value rather than jumping
+## straight to it) so it reads as soft air/wind instead of harsh static,
+## under a sin(progress*PI) envelope that rises then falls across the
+## whole ride -- one continuous "down the slide" gesture rather than a hit.
+func _make_whoosh_wav() -> AudioStreamWAV:
+	var total_samples := int(ceil(WHOOSH_DURATION * SAMPLE_RATE))
+	var floats := PackedFloat32Array()
+	floats.resize(total_samples)
+	var smoothed := 0.0
+	for s in range(total_samples):
+		var progress := float(s) / float(total_samples)
+		var envelope: float = WHOOSH_PEAK * sin(progress * PI)
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), WHOOSH_SMOOTHING)
+		floats[s] = smoothed * envelope
+	return _floats_to_wav(floats)
 
 
 ## audio.mjs:50-67's chime(kind), pre-rendered to a single one-shot clip.

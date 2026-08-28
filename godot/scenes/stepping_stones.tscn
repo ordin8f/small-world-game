@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/stepping_stones.gd" id="1_stepping_stones_script"]
+
+[node name="SteppingStones" type="Node" unique_id=3021882201]
+script = ExtResource("1_stepping_stones_script")
