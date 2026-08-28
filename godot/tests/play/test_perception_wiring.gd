@@ -135,3 +135,57 @@ func test_mood_moves_from_afternoon_to_dusk_across_the_episode() -> void:
 ## loudly if the constant is widened without a deliberate art decision.
 func Perception_fog_bound() -> float:
 	return 0.25
+
+
+func test_lens_never_authors_a_colour_even_when_enabled() -> void:
+	# ADDED after an independent review demonstrated the gap: with the lens
+	# ENABLED, injecting `env.fog_light_color = Color(warmth, 0, 0)` into
+	# perception.gd passed every other test in this suite. Checking only the
+	# lens-disabled path cannot catch a reintroduction of lens-authored
+	# lighting, which is the whole defect the inversion exists to prevent.
+	#
+	# The invariant: the lens modulates SCALARS only. Every colour on the
+	# Environment must equal the authored mood's colour no matter what the child
+	# is feeling.
+	#
+	# Asserted against perception.current_mood() -- the authored base actually in
+	# effect -- rather than against a specific .tres. `Game` is an autoload shared
+	# across tests, so a preceding test can leave the director in GO_HOME and this
+	# scene's mood then starts at dusk and eases back; pinning the expectation to
+	# afternoon.tres made this test order-dependent. The invariant does not care
+	# which mood is current, only that the lens did not author its colours.
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+
+	var perception := _find_perception(runner)
+	assert_object(perception).is_not_null()
+	perception.set("lens_enabled", true)
+
+	Game.start_episode(0.0)
+	# Drive the lens hard: FIND_BALL far from the group is the most extreme
+	# emotional state the episode produces.
+	Game.director.state = EpisodeDirector.State.FIND_BALL
+	if is_instance_valid(Game.player):
+		Game.player.global_position = Vector3(8.6, 0.0, -6.6)
+
+	var tree := Engine.get_main_loop() as SceneTree
+	for _i in range(120):
+		await tree.physics_frame
+
+	var base: Resource = perception.call("current_mood")
+	assert_object(base).is_not_null()
+
+	var world_env: WorldEnvironment = runner.scene().find_child("WorldEnvironment", true, false)
+	var env: Environment = world_env.environment
+
+	assert_bool(env.fog_light_color.is_equal_approx(base.fog_color)).is_true()
+	assert_bool(env.ambient_light_color.is_equal_approx(base.ambient_color)).is_true()
+	assert_bool(env.background_color.is_equal_approx(base.background_color)).is_true()
+	assert_bool(env.volumetric_fog_albedo.is_equal_approx(base.volumetric_albedo)).is_true()
+
+	var sun: DirectionalLight3D = runner.scene().find_child("Sun", true, false)
+	assert_bool(sun.light_color.is_equal_approx(base.sun_color)).is_true()
+
+	# And confirm the lens IS doing something, so this cannot be satisfied by the
+	# lens being accidentally disabled: unease must have moved fog off its base.
+	assert_bool(absf(env.fog_depth_begin - base.fog_begin) > 0.001).is_true()

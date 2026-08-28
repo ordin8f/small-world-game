@@ -41,12 +41,21 @@ const MOOD_EASE := 0.9
 ## pure authored mood. Used by the art-direction acceptance test.
 @export var lens_enabled := true
 
-@onready var world_environment: WorldEnvironment = get_tree().root.find_child("WorldEnvironment", true, false)
-@onready var sun: DirectionalLight3D = get_tree().root.find_child("Sun", true, false)
+@onready var world_environment: WorldEnvironment = _scope().find_child("WorldEnvironment", true, false)
+@onready var sun: DirectionalLight3D = _scope().find_child("Sun", true, false)
 
 var _moods: Dictionary = {}
 var _mood_progress := 0.0
 var _base: Resource
+
+
+## The scene this Node belongs to. Deliberately NOT get_tree().root: under
+## gdUnit4 every scene_runner instantiates another copy of main.tscn under the
+## root, so a root-wide search can bind to a different test's scene. Also
+## deliberately not get_tree().current_scene, which is null both in the runner
+## and when this project is driven by a --script SceneTree.
+func _scope() -> Node:
+	return get_parent() if get_parent() != null else get_tree().root
 
 
 func _ready() -> void:
