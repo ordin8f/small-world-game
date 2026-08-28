@@ -56,6 +56,65 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
   `street_lantern.*`, shared `tiny_treats_texture_1.png` (vendored, unused
   by src/); copied verbatim to `godot/assets/park/` (Godot, in use)
 
+### Kenney — Nature Kit 2.1
+
+- Original source: https://kenney.nl/assets/nature-kit
+- License: CC0 1.0 Universal (`License.txt` inside the downloaded pack
+  states "Creative Commons Zero, CC0";
+  http://creativecommons.org/publicdomain/zero/1.0/)
+- Use: 3 flat rock variants, used for the courtyard's 4 stepping-stone
+  positions (detailed-assets toggle, see below) — the same spots
+  `tools/_bootstrap_courtyard.gd`'s primitive fallback and
+  `scripts/logic/world_affordances.gd`'s `stone_index_at()` already used
+- Runtime files: `godot/assets/nature/rock_smallFlatA.glb`,
+  `rock_smallFlatB.glb`, `rock_smallFlatC.glb` (Godot only; not used by
+  `src/`), selected from Models/GLTF format/ in the official zip
+- Modified before vendoring: the stock files carry two materials named
+  "dirt" (tan) and "grass" (a bright, saturated teal-green placeholder
+  colour, not this project's own grass tone) at `roughnessFactor: 1,
+  metallicFactor: 1`. Per `docs/ART_DIRECTION.md`'s restrained-palette/
+  no-shiny-PBR rule, both materials were rewritten in place (glTF JSON
+  chunk only — mesh/binary data untouched) to this project's own
+  `PATH`/`FOLIAGE` palette constants (`tools/_bootstrap_courtyard.gd`) at
+  `roughness 0.92, metallic 0` before the files were added to the repo,
+  so they already match the environment's matte floor with no runtime
+  dependency. The unmodified originals are not vendored anywhere in this
+  repository.
+- Reason for selection: CC0, tiny (3-4.5 KB each, no external texture),
+  and a genuinely better-defined flat-stone silhouette than the
+  primitive fallback's squashed sphere, at the same footprint.
+
+## Detailed vs primitive assets
+
+`tools/_bootstrap_courtyard.gd` can build the courtyard two ways, chosen
+by the `AssetMode` toggle (`godot/scripts/logic/asset_mode.gd`):
+
+- **detailed** (default): the vendored glTF/glb props above, for
+  tree/bush/bench/lamp/rock;
+- **primitive**: today's `BoxMesh`/`SphereMesh`/`CylinderMesh` shapes for
+  those same 5 "kinds", at the same positions — for fast iteration when
+  the exact look doesn't matter.
+
+Both modes build a complete, playable level from the same generator;
+detailed mode falls back to the primitive shape (with a console warning,
+never a crash) if a listed asset is ever missing. Nothing else in the
+scene — the courtyard shell, playground, walls, grass, puddles — has a
+detailed equivalent; per `docs/ART_DIRECTION.md` those are meant to stay
+plain geometry regardless of this toggle.
+
+To switch: edit `godot/project.godot`'s `[small_world]` section
+(`assets/use_detailed=true` or `false`), or set
+`small_world/assets/use_detailed` in the editor's Project Settings —
+either way, without opening a scene — then regenerate and reimport:
+
+```
+godot --headless --path godot --script res://tools/_bootstrap_courtyard.gd
+godot --headless --path godot --import
+```
+
+`scenes/main.tscn` instances `courtyard.tscn` by reference, so it never
+needs regenerating itself.
+
 ## Reference material (not runtime assets — comparison references only)
 
 - `docs/reference/lilgator_*.jpg`: official screenshots of *Lil Gator Game*
