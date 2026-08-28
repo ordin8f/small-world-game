@@ -39,6 +39,13 @@ const CHIME_KINDS := {
 	# switch), so it reads as a small private moment of wonder rather than
 	# a story beat landing.
 	"wonder": {"frequencies": [523.25, 659.25, 783.99], "triangle": false, "peak": 0.045},
+	# Gate 1 (mechanics agent): pocket_treasure.gd's pickup and
+	# sandbox.gd's finished-castle flag -- a clean rising fifth, its own
+	# small identity distinct from "wonder" (stepping_stones.gd/
+	# imagination_prop.gd's transform cue) and from the three dispatch
+	# chimes above, so "you found/finished something" never gets confused
+	# with either of those other meanings.
+	"keepsake": {"frequencies": [587.33, 880.0], "triangle": false, "peak": 0.04},
 }
 const CHIME_START_STAGGER := 0.08  # note_start = index * this
 const CHIME_ATTACK := 0.03         # linear ramp to peak, note_start .. note_start + this
@@ -72,6 +79,25 @@ const SPLASH_DROPLET_DECAY := 0.09
 const WHOOSH_DURATION := 0.9
 const WHOOSH_PEAK := 0.045
 const WHOOSH_SMOOTHING := 0.06
+
+## Gate 1 (mechanics agent): sandbox.gd's pat-the-sand tap. Reuses the
+## whoosh's own "smoothed noise" technique (a cheap one-pole lowpass over
+## white noise) but much shorter and duller -- SAND_PAT_SMOOTHING is a
+## larger blend factor than WHOOSH_SMOOTHING, so LESS high-frequency
+## content survives, which reads as a soft thud rather than sustained air.
+const SAND_PAT_DURATION := 0.16
+const SAND_PAT_PEAK := 0.045
+const SAND_PAT_DECAY := 0.07
+const SAND_PAT_SMOOTHING := 0.12
+## Gate 1: swing.gd's bottom-of-the-arc creak -- a short, low triangle
+## blip with a downward pitch slide (CREAK_FREQUENCY * a factor that eases
+## from 1.3x to 1x across the same span the envelope decays over), which
+## is what makes a synthesized tone read as a creak instead of a clean
+## note.
+const CREAK_DURATION := 0.22
+const CREAK_PEAK := 0.03
+const CREAK_DECAY := 0.1
+const CREAK_FREQUENCY := 145.0
 
 var _started: bool = false
 var _drone_players: Array = []          # AudioStreamPlayer, one per DRONE_FREQUENCIES
@@ -207,6 +233,27 @@ func play_slide_whoosh() -> void:
 	_effect_player.play()
 
 
+## sandbox.gd's interact() -- fires once per mound patted into place.
+func play_sand_pat() -> void:
+	if not _started or Game.muted:
+		return
+	_effect_player.stream = _make_sand_pat_wav()
+	_effect_player.volume_db = _linear_to_db_safe(_master_current_gain)
+	_effect_player.play()
+
+
+## swing.gd's _maybe_creak() -- rate-limited there, not here (matches how
+## play_step()'s OWN self-rate-limit lives in that function rather than in
+## the caller). `intensity` 0..1 scales loudness a little with how fast the
+## swing is actually moving.
+func play_swing_creak(intensity: float) -> void:
+	if not _started or Game.muted:
+		return
+	_effect_player.stream = _make_creak_wav(clampf(intensity, 0.0, 1.0))
+	_effect_player.volume_db = _linear_to_db_safe(_master_current_gain)
+	_effect_player.play()
+
+
 func _linear_to_db_safe(linear: float) -> float:
 	if linear <= 0.0001:
 		return -80.0
@@ -282,6 +329,40 @@ func _make_whoosh_wav() -> AudioStreamWAV:
 		var envelope: float = WHOOSH_PEAK * sin(progress * PI)
 		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), WHOOSH_SMOOTHING)
 		floats[s] = smoothed * envelope
+	return _floats_to_wav(floats)
+
+
+## Gate 1: same smoothed-noise technique as _make_whoosh_wav() just above,
+## but short and percussive (a fast exponential decay envelope, not a
+## rise-then-fall) and duller (a much larger smoothing factor, so less
+## high-frequency content survives) -- a soft pat, not a gust.
+func _make_sand_pat_wav() -> AudioStreamWAV:
+	var total_samples := int(ceil(SAND_PAT_DURATION * SAMPLE_RATE))
+	var floats := PackedFloat32Array()
+	floats.resize(total_samples)
+	var smoothed := 0.0
+	for s in range(total_samples):
+		var t := float(s) / SAMPLE_RATE
+		var envelope: float = SAND_PAT_PEAK * pow(CHIME_FLOOR / SAND_PAT_PEAK, clampf(t / SAND_PAT_DECAY, 0.0, 1.0))
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), SAND_PAT_SMOOTHING)
+		floats[s] = smoothed * envelope
+	return _floats_to_wav(floats)
+
+
+## Gate 1: a short triangle blip (_make_step_wav()'s own technique) at a
+## low frequency, with a downward pitch slide across the decay -- a crude
+## but cheap approximation of frequency modulation that's what actually
+## makes this read as a creak rather than a clean plucked note.
+func _make_creak_wav(intensity: float) -> AudioStreamWAV:
+	var total_samples := int(ceil(CREAK_DURATION * SAMPLE_RATE))
+	var floats := PackedFloat32Array()
+	floats.resize(total_samples)
+	var peak: float = CREAK_PEAK * lerpf(0.5, 1.0, intensity)
+	for s in range(total_samples):
+		var t := float(s) / SAMPLE_RATE
+		var envelope: float = peak * pow(CHIME_FLOOR / peak, clampf(t / CREAK_DECAY, 0.0, 1.0))
+		var drift: float = lerpf(1.3, 1.0, clampf(t / CREAK_DECAY, 0.0, 1.0))
+		floats[s] = _triangle(t * CREAK_FREQUENCY * drift) * envelope
 	return _floats_to_wav(floats)
 
 

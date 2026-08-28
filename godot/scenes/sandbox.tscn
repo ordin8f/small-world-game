@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/sandbox.gd" id="1_sandbox_script"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qddow"]
+albedo_color = Color(0.82, 0.72, 0.52, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_2ddto"]
+material = SubResource("StandardMaterial3D_qddow")
+size = Vector3(3.2, 0.06, 3.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rgld7"]
+albedo_color = Color(0.62, 0.38, 0.2, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_a8pr3"]
+material = SubResource("StandardMaterial3D_rgld7")
+size = Vector3(3.44, 0.18, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_j6lu3"]
+material = SubResource("StandardMaterial3D_rgld7")
+size = Vector3(3.44, 0.18, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tpt06"]
+material = SubResource("StandardMaterial3D_rgld7")
+size = Vector3(0.12, 0.18, 3.2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_16ffl"]
+material = SubResource("StandardMaterial3D_rgld7")
+size = Vector3(0.12, 0.18, 3.2)
+
+[node name="Sandbox" type="Node3D" unique_id=771000306]
+script = ExtResource("1_sandbox_script")
+
+[node name="Pit" type="MeshInstance3D" parent="." unique_id=935116910]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("BoxMesh_2ddto")
+
+[node name="BorderNorth" type="MeshInstance3D" parent="." unique_id=2013717251]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 1.66)
+mesh = SubResource("BoxMesh_a8pr3")
+
+[node name="BorderSouth" type="MeshInstance3D" parent="." unique_id=134646857]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, -1.66)
+mesh = SubResource("BoxMesh_j6lu3")
+
+[node name="BorderEast" type="MeshInstance3D" parent="." unique_id=1536605411]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.66, 0.09, 0)
+mesh = SubResource("BoxMesh_tpt06")
+
+[node name="BorderWest" type="MeshInstance3D" parent="." unique_id=696465270]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.66, 0.09, 0)
+mesh = SubResource("BoxMesh_16ffl")

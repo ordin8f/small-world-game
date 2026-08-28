@@ -72,6 +72,22 @@ var _verb_to: Vector3 = Vector3.ZERO
 var _wall_offset_x: float = 0.0    ## current sideways drift from the wall's centerline, meters
 var _wall_wobble_time: float = 0.0
 
+## Gate 1 (mechanics agent): set by external free-roam mechanics (swing.gd)
+## that need to fully own the player's transform for a short ride -- the
+## same "this script does nothing, something else drives
+## global_position/rotation" contract every Verb above already gives
+## player.gd's OWN scripted beats, just reachable from outside this file.
+## A swing can be dropped anywhere by any future map (it doesn't know
+## player.gd's Verb enum and shouldn't have to), so it drives the player
+## directly the way ball.gd already drives ITS OWN position off Game.player
+## when carried -- this flag is the one addition that lets it do so without
+## fighting move_and_slide(). While true, _physics_process below does
+## nothing at all: no input read, no move_and_slide, no verb processing.
+## The external system is responsible for setting this back to false (and
+## for leaving character_visual in a sane pose/motion state) when the ride
+## ends.
+var external_control: bool = false
+
 
 func _ready() -> void:
 	Game.player = self
@@ -99,9 +115,17 @@ func _reset_to_start() -> void:
 	verb = Verb.GROUND
 	_wall_offset_x = 0.0
 	character_visual.rotation.z = 0.0
+	# Gate 1: a restart mid-swing-ride must hand control back too -- same
+	# defensive reasoning as the verb reset just above. swing.gd also
+	# listens for ARRIVE itself and dismounts on its own end, but a
+	# restart happening the same tick could race which handler runs first;
+	# this makes the player's own half of that reset unconditional.
+	external_control = false
 
 
 func _physics_process(delta: float) -> void:
+	if external_control:
+		return
 	match verb:
 		Verb.CLIMBING:
 			_process_climb(delta)

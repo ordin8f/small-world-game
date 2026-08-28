@@ -18,6 +18,10 @@
 [ext_resource type="PackedScene" path="res://scenes/title_camera.tscn" id="16_tcam0"]
 [ext_resource type="PackedScene" path="res://scenes/ui/credits_screen.tscn" id="17_cred1"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="18_paus2"]
+[ext_resource type="PackedScene" path="res://scenes/imagination_prop.tscn" id="19_imprp"]
+[ext_resource type="PackedScene" path="res://scenes/pocket_treasure.tscn" id="20_ptrsr"]
+[ext_resource type="PackedScene" path="res://scenes/swing.tscn" id="21_swng0"]
+[ext_resource type="PackedScene" path="res://scenes/sandbox.tscn" id="22_sbox0"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
 size = Vector2(2, 3)
@@ -60,7 +64,7 @@ transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.980
 [node name="Arun" type="Node3D" parent="NPCs" unique_id=540243000 instance=ExtResource("6_dp3eg")]
 transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -4.25)
 
-[node name="Third" type="Node3D" parent="NPCs" unique_id=593793772 instance=ExtResource("6_dp3eg")]
+[node name="Priya" type="Node3D" parent="NPCs" unique_id=593793772 instance=ExtResource("6_dp3eg")]
 transform = Transform3D(0.921061, 0, -0.38941833, 0, 1, 0, 0.38941833, 0, 0.921061, 1.45, 0, -3.55)
 
 [node name="Vignette" type="CanvasLayer" parent="." unique_id=835548136 instance=ExtResource("7_0ld40")]
@@ -92,3 +96,24 @@ layer = 11
 
 [node name="PauseMenu" type="CanvasLayer" parent="." unique_id=808032465 instance=ExtResource("18_paus2")]
 layer = 20
+
+[node name="CrateProp" type="Node3D" parent="." unique_id=4001002 instance=ExtResource("19_imprp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, -9.5)
+
+[node name="BenchProp" type="Node3D" parent="." unique_id=4001003 instance=ExtResource("19_imprp")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 3.0)
+
+[node name="Marble" type="Node3D" parent="." unique_id=4002002 instance=ExtResource("20_ptrsr")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.2, 0, -5.0)
+
+[node name="Stone" type="Node3D" parent="." unique_id=4002003 instance=ExtResource("20_ptrsr")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.8, 0, 7.2)
+
+[node name="Feather" type="Node3D" parent="." unique_id=4002004 instance=ExtResource("20_ptrsr")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 0, -4.5)
+
+[node name="Swing" type="Node3D" parent="." unique_id=4003001 instance=ExtResource("21_swng0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0, 0, 6.5)
+
+[node name="Sandbox" type="Node3D" parent="." unique_id=4004001 instance=ExtResource("22_sbox0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 5.2)

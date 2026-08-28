@@ -55,6 +55,21 @@ var run_id: int = 0
 var zones: Array = []
 var active_zone: Node = null
 
+## Gate 1 (mechanics agent): free-roam interactables -- imagination props,
+## pocket treasures, and NPC conversations. Deliberately a SECOND list
+## rather than folded into `zones` above: every InteractionZone is gated on
+## `required_state == director.state` (the seven-event rail), and these are
+## explicitly the opposite -- "always available, never gated on episode
+## state" (the brief's own words, matching how the four existing play verbs
+## already work). Node contract: a Node3D with `label: String`,
+## `radius: float`, and `func interact() -> void` -- no player_overlapping()
+## method required, unlike InteractionZone; _update_active_free_interactable()
+## below does that one distance check itself so every caller doesn't have
+## to reimplement it.
+var free_interactables: Array = []
+var active_free_interactable: Node = null
+var _last_prompt_label: String = ""
+
 ## UI-facing toggles (hud.gd's Sound/Reduce-motion buttons). reduced_motion
 ## is consumed directly by camera_rig.gd; muted is a flag ready for M2.5's
 ## audio to read once it exists (game.mjs's audio.setMuted mirror).
@@ -69,13 +84,13 @@ var muted: bool = false
 const SAVE_PATH := "user://progress.cfg"
 var completed_once: bool = false
 
-## Gate 0 frame (S6 ending): how many of the three optional pocket
-## treasures (DEMO_PLAN.md S3, Act 2/garden -- not yet built, tracked by
-## nothing today) the player has found this run. Always 0 until that
-## pickup mechanic exists; ending_screen.gd is written to render 0..3
-## correctly regardless, per the brief ("the shot must work either way").
-## Clamped through the setter rather than trusted as a bare field so nothing
-## downstream needs to re-check the 0..3 bound itself.
+## Gate 0 frame (S6 ending), wired up by Gate 1 (mechanics agent): how many
+## of the three pocket treasures (scripts/pocket_treasure.gd) the player
+## has found this run. ending_screen.gd renders this as 0..3 tokens on the
+## sill and was written/tested before anything ever set it above zero, per
+## the brief ("the shot must work either way") -- still true now that
+## something does. Clamped through the setter rather than trusted as a bare
+## field so nothing downstream needs to re-check the 0..3 bound itself.
 var treasures_found: int = 0
 
 
@@ -128,6 +143,8 @@ func _save_completed_flag() -> void:
 
 func _physics_process(_delta: float) -> void:
 	_update_active_zone()
+	_update_active_free_interactable()
+	_refresh_prompt()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -146,6 +163,14 @@ func start_episode(now: float = -1.0) -> void:
 	director.start(now if now >= 0.0 else _now_seconds())
 	lens = EmotionalLens.new()
 	active_zone = null
+	active_free_interactable = null
+	_last_prompt_label = ""
+	# Gate 1: pocket treasures reset on every fresh run, same as ball/player
+	# position -- set BEFORE the state_changed emit below so each
+	# PocketTreasure's own ARRIVE handler (which restores its own
+	# visibility/registration) sees the counter already at 0 regardless of
+	# node order, rather than racing it.
+	treasures_found = 0
 	state_changed.emit(director.state)
 	dialogue_shown.emit(DIALOGUES["arrival"][0], DIALOGUES["arrival"][1], 3.5)
 
@@ -162,6 +187,17 @@ func unregister_zone(zone: Node) -> void:
 	zones.erase(zone)
 	if active_zone == zone:
 		active_zone = null
+
+
+func register_free_interactable(node: Node) -> void:
+	if not free_interactables.has(node):
+		free_interactables.append(node)
+
+
+func unregister_free_interactable(node: Node) -> void:
+	free_interactables.erase(node)
+	if active_free_interactable == node:
+		active_free_interactable = null
 
 
 ## game.mjs:192-236 -- dispatch(), verbatim, minus the ball/audio side
@@ -207,6 +243,8 @@ func dispatch(event_name: String) -> bool:
 func interact() -> void:
 	if active_zone != null:
 		dispatch(active_zone.event_name)
+	elif active_free_interactable != null:
+		active_free_interactable.interact()
 
 
 ## Fires `callable` after `delay_secs`, scaled by Engine.time_scale (tests
@@ -258,9 +296,55 @@ func _update_active_zone() -> void:
 		if zone.required_state == director.state and zone.player_overlapping():
 			found = zone
 			break
-	if found != active_zone:
-		active_zone = found
-		prompt_changed.emit(found.label if found != null else "")
+	active_zone = found
+
+
+## Gate 1 (mechanics agent): the free-roam counterpart to _update_active_zone()
+## above -- imagination props, pocket treasures, NPC conversations, and the
+## swing, none of them gated on director.state (see free_interactables' own
+## doc comment). A plain nearest-in-range scan, same 2D x/z distance
+## InteractionZone.player_overlapping() already uses -- kept as its own pass
+## over its own array rather than merged into the zones loop above so the
+## rail and the always-on layer stay two independently reasoned-about lists.
+func _update_active_free_interactable() -> void:
+	var found: Node = null
+	var best_dist := INF
+	for interactable in free_interactables:
+		if not is_instance_valid(interactable):
+			continue
+		var d := _distance_to_player(interactable)
+		if d < interactable.radius and d < best_dist:
+			best_dist = d
+			found = interactable
+	active_free_interactable = found
+
+
+func _distance_to_player(node: Node3D) -> float:
+	if not is_instance_valid(player):
+		return INF
+	var p := player.global_position
+	var here := node.global_position
+	return Vector2(p.x - here.x, p.z - here.z).length()
+
+
+## The rail (active_zone) and the free-roam layer (active_free_interactable)
+## share exactly one prompt slot in the HUD -- arbitrated here, once, after
+## both of the passes above have run, rather than letting each of them emit
+## prompt_changed independently (which would have them fight over the same
+## signal whenever both are in range at once, e.g. Mina/Arun/Priya all stand
+## right where the Join/Return rail zones also trigger). The rail always
+## wins when it's actually active: it's the one prompt that corresponds to
+## the current objective text, so it should never be silently shadowed by a
+## free-roam prompt happening to be nearer.
+func _refresh_prompt() -> void:
+	var label := ""
+	if active_zone != null:
+		label = active_zone.label
+	elif active_free_interactable != null:
+		label = active_free_interactable.label
+	if label != _last_prompt_label:
+		_last_prompt_label = label
+		prompt_changed.emit(label)
 
 
 func _now_seconds() -> float:

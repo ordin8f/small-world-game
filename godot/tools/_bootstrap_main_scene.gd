@@ -77,7 +77,9 @@ func _init() -> void:
 	var character_visual_packed: PackedScene = load("res://scenes/character_visual.tscn")
 	_npc(npcs_container, root, character_visual_packed, "Mina", -0.95, -3.8, 0.2)
 	_npc(npcs_container, root, character_visual_packed, "Arun", 0.35, -4.25, -0.1)
-	_npc(npcs_container, root, character_visual_packed, "Third", 1.45, -3.55, -0.4)
+	# Gate 1 (mechanics agent): renamed from the placeholder "Third" -- see
+	# character_visual.gd's CHARACTER_DATA and its own class doc comment.
+	_npc(npcs_container, root, character_visual_packed, "Priya", 1.45, -3.55, -0.4)
 
 	# M2.4: UI -- CanvasLayer overlays, independent of Main's 3D transform.
 	# Not script-loaded via load() here, same reason as player/camera_rig/

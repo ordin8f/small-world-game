@@ -63,6 +63,16 @@ const IMAGINATION_SATURATION_TRIM := 0.16
 const IMAGINATION_GLOW_BOOST := 0.35
 const IMAGINATION_EASE := 3.0  # fast in/out -- a cue, not a mood change
 
+## Gate 1 (mechanics agent): source id (String, e.g. a node .name) -> true
+## while that source wants the cue active. set_imagination_target() below
+## used to just store one bool -- fine while stepping_stones.gd was the
+## only caller, but imagination_prop.gd (a flagged crate/bench elsewhere in
+## the world) drives the SAME single _imagination_target scalar too, and
+## two independent pollers both writing one bool would have them stomp each
+## other every physics tick whenever both happened to be near their own
+## trigger at once. Tracking sources instead means the cue only eases back
+## to 0 once every registered source has gone quiet.
+var _imagination_sources: Dictionary = {}
 var _imagination_target := 0.0
 var _imagination_strength := 0.0
 
@@ -225,11 +235,18 @@ func mood_progress() -> float:
 
 
 ## The clean entry point Gate 0's imagination-cue gameplay (stepping_stones.gd)
-## calls into. active=true eases the cue in; false eases it back out. Safe to
-## call every physics tick from a poller -- repeated calls with the same
-## value are cheap no-ops (_imagination_target just keeps its value).
-func set_imagination_target(active: bool) -> void:
-	_imagination_target = 1.0 if active else 0.0
+## calls into, and Gate 1's imagination_prop.gd reuses rather than inventing
+## a second channel. active=true eases the cue in; false eases it back out.
+## `source` distinguishes concurrent callers (see _imagination_sources'
+## own doc comment) -- defaulted so stepping_stones.gd's existing one-arg
+## call site needs no change. Safe to call every physics tick from a
+## poller -- repeated calls with the same value are cheap no-ops.
+func set_imagination_target(active: bool, source: String = "default") -> void:
+	if active:
+		_imagination_sources[source] = true
+	else:
+		_imagination_sources.erase(source)
+	_imagination_target = 1.0 if not _imagination_sources.is_empty() else 0.0
 
 
 ## 0..1 -- how strongly the current imagination cue is showing right now.
