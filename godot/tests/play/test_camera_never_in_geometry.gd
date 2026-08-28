@@ -56,7 +56,7 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 	# to the code after `await DriveRoute.run(...)` below. A Dictionary
 	# reference is itself captured by value, but the Dictionary it points
 	# to is shared, so mutations through it are visible on both sides.
-	var stats := {"checked_ticks": 0, "min_camera_y": INF}
+	var stats := {"checked_ticks": 0, "min_camera_y": INF, "max_angle_off_behind": 0.0}
 
 	var on_tick := func() -> void:
 		stats["checked_ticks"] += 1
@@ -67,11 +67,14 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		# Camera never below the plan's floor, never outside camera_rig.gd's
 		# own authored horizontal/depth clamps -- re-tuned for the
 		# 2026-08-28 world expansion (world_bounds.gd's doc comment) to
-		# match the new four-room envelope; see that file's own comment on
-		# these exact numbers.
+		# match the new four-room envelope, and the z max raised again
+		# (13.5 -> 15.9) by the camera-fix task the same day, once the
+		# pull-in fallback replacing the old sideways swing no longer
+		# needed the tighter bound -- see that file's own comment on these
+		# exact numbers.
 		assert_float(cam_pos.y).is_greater_equal(0.6)
 		assert_float(cam_pos.x).is_between(-15.0 - CLAMP_EPSILON, 21.0 + CLAMP_EPSILON)
-		assert_float(cam_pos.z).is_between(-19.0 - CLAMP_EPSILON, 13.5 + CLAMP_EPSILON)
+		assert_float(cam_pos.z).is_between(-19.0 - CLAMP_EPSILON, 15.9 + CLAMP_EPSILON)
 		# Minimum separation. Added after an independent review found this test
 		# passed straight through a real doorway framing collapse: the camera
 		# ended up 0.69 m horizontally from the player, filling the frame with
@@ -102,6 +105,42 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		# rather than fixed here: the real fix is widening the gap or reducing
 		# REVEAL's authored distance, both of which are art decisions.
 		assert_float(cam_pos.distance_to(player.global_position)).is_greater(authored_distance * 0.10)
+
+		# "Behind, not beside." Added for the camera-fix task (2026-08-28):
+		# the home-end pull-in fix that replaced the doorway-collapse fix's
+		# original sideways swing (camera_rig.gd's own doc comment has the
+		# full history). The distance-ratio assertion above was already
+		# passing straight through THAT bug too -- a radius-preserving swing
+		# keeps the ratio near 1.0 by construction even while it points the
+		# camera at the player's side or, deep in the home doorway, back
+		# toward their front. Distance alone can't tell "behind" from
+		# "beside"; this checks direction instead.
+		#
+		# Skips near-degenerate offsets (< 0.05 m) -- the pull-in fix's own
+		# honest-limit pocket, right at the home clamp's sign-flip point
+		# (camera_rig.gd's doc comment), can put the camera almost directly
+		# above the player, where the horizontal angle is meaningless noise,
+		# not a real direction to bound.
+		#
+		# 45 deg, not something tighter: comfortably above every angle this
+		# route actually produces post-fix (measured max 7.0 deg, now at the
+		# garden-gap crossing rather than the home doorway -- the home end's
+		# own worst case dropped further, to ~2 deg, once the z clamp bound
+		# was also raised 13.5 -> 15.9 the same task) and comfortably below
+		# what the pre-fix swing produced on the same route (measured max
+		# 82.5 deg, at the door beat) -- mutation-verified by reinstating
+		# the old swing code and confirming this assertion goes red at
+		# 82.5 deg while the distance-ratio one above stayed green
+		# throughout (ratio ~1.03 there, nowhere near its own 0.10 floor --
+		# confirming that floor alone could not have caught this class of
+		# bug, raising it or not).
+		var authored_yaw: float = CameraProfile.profile(player.global_position.z)["authored_yaw"]
+		var back := Vector2(sin(authored_yaw), cos(authored_yaw))
+		var horiz_offset := Vector2(cam_pos.x - player.global_position.x, cam_pos.z - player.global_position.z)
+		if horiz_offset.length() > 0.05:
+			var angle_off_behind := absf(rad_to_deg(back.angle_to(horiz_offset)))
+			stats["max_angle_off_behind"] = maxf(stats["max_angle_off_behind"], angle_off_behind)
+			assert_float(angle_off_behind).is_less_equal(45.0)
 
 		var query := PhysicsRayQueryParameters3D.create(head, cam_pos)
 		query.exclude = exclude
