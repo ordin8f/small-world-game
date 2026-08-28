@@ -29,7 +29,7 @@ func test_interact_at_watch_zone_dispatches_observe_and_auto_advances_to_ball_in
 	Game.start_episode(0.0)
 	assert_str(Game.director.state).is_equal(EpisodeDirector.State.ARRIVE)
 
-	var ticks := await DriveRoute.run(runner, player, [[0.0, -1.2]], func() -> void: pass)  # Watch marker
+	var ticks := await DriveRoute.run(runner, player, [[0.0, -8.0]], func() -> void: pass)  # Watch marker (2026-08-28 world expansion)
 	assert_int(ticks).is_greater(0)
 
 	assert_object(Game.active_zone).is_not_null()

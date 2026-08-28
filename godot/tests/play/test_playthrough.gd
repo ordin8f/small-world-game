@@ -14,15 +14,19 @@ extends GdUnitTestSuite
 const TIME_SCALE := 8.0
 const MAX_WAIT_TICKS := 600  # 10s of real ticks -- generous per auto-timer wait
 
-const ROUTE_TO_WATCH := [[0.0, -1.2]]
+## Relocated for the 2026-08-28 world expansion (world_bounds.gd's own doc
+## comment has the four-room layout) -- same shape of route as before, new
+## distances. (12.0, -8.0) is the "just past the garden gap" waypoint,
+## matching test_camera_never_in_geometry.gd's own ROUTE.
+const ROUTE_TO_WATCH := [[0.0, -8.0]]
 # Both legs funnel through the garden-wall gap (matches
 # test_camera_never_in_geometry.gd's route) -- a straight line from Watch
 # to BallEnd, or BallEnd back to Group, cuts through the wall itself
 # otherwise; a real player has to walk through the same opening both ways.
-const ROUTE_TO_BALL := [[6.5, -3.0], [8.6, -6.6]]
-const ROUTE_TO_GROUP := [[6.5, -3.0], [0.0, -3.8]]
-const ROUTE_TO_JOIN := [[0.0, -3.1]]
-const ROUTE_TO_DOOR := [[0.0, 10.8]]
+const ROUTE_TO_BALL := [[12.0, -8.0], [14.0, -12.0]]
+const ROUTE_TO_GROUP := [[12.0, -8.0], [0.0, -11.0]]
+const ROUTE_TO_JOIN := [[0.0, -10.3]]
+const ROUTE_TO_DOOR := [[0.0, 13.0]]
 
 
 func after_test() -> void:

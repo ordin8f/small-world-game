@@ -112,7 +112,7 @@ func test_a_finished_castle_survives_ordinary_idle_time() -> void:
 
 	# Walk away and let a few seconds pass -- nothing about this mechanic
 	# should be time-limited or fade on its own.
-	player.global_position = Vector3(0.0, 0.0, 6.5)
+	player.global_position = Vector3(0.0, 0.0, 10.0)
 	for _i in range(180):
 		await tree.physics_frame
 	assert_int(mounds.get_child_count()).is_equal(1)

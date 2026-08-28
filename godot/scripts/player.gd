@@ -27,14 +27,17 @@ extends CharacterBody3D
 @export var run_speed: float = 4.1
 @export var locked_y: float = 0.0
 
-## game.mjs:80's authored start (also resetGame()'s player.position, lines
-## 242-263) -- the doorway threshold, not the world origin. Missed in the
-## original M1.3/M2.2 port: nothing set the player's x/z, so it defaulted
-## to (0, 0, 0), which CameraProfile.profile() treats as already fully
-## APPROACH-zoned (the z=7..3 threshold->approach blend saturates at
-## z<=3), skipping the authored THRESHOLD opening shot entirely. Found
-## while shooting M3.4's "threshold" reference frame.
-const START_POSITION := Vector3(0.0, 0.0, 6.5)
+## The doorway threshold, not the world origin -- inside the home porch
+## (world_bounds.gd's HOME room, x[-7,7] z[8,16]), 4 m short of the
+## doorway piers (centered z=15) and 2 m short of the lane mouth (z=8).
+## Relocated in the 2026-08-28 world expansion from the single-room
+## version's (0, 0, 6.5) -- see world_bounds.gd's own doc comment for the
+## four-room layout this and every other authored position below now sits
+## in. CameraProfile.profile()'s THRESHOLD->APPROACH band (z 11..8) was
+## re-tuned alongside this so the player starts partway through it rather
+## than already-saturated -- see that file's own doc comment for why
+## z=(0,0,0)-equivalent under-zoning was a real bug the first time.
+const START_POSITION := Vector3(0.0, 0.0, 10.0)
 
 ## Set true only while an actual movement key is held -- mirrors
 ## player.moving in the source, which gates heading/walk-cycle updates too

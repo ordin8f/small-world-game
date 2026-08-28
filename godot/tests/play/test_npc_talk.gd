@@ -40,7 +40,7 @@ func test_talking_to_mina_turns_her_to_face_the_player() -> void:
 	assert_int(mina.get("_line_index")).is_greater(lines_before)
 	assert_float(absf(mina.rotation.y - heading_before)).is_greater(0.1)
 	# She turns and stays -- she must not have wandered off her mark.
-	assert_float(mina.global_position.distance_to(Vector3(-0.95, 0.0, -3.8))).is_less(0.1)
+	assert_float(mina.global_position.distance_to(Vector3(-0.95, 0.0, -11.0))).is_less(0.1)
 
 
 func test_talking_to_arun_makes_him_actually_follow_the_moving_player() -> void:

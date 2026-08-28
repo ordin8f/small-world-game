@@ -6,9 +6,13 @@ extends Node3D
 ## Game.state_changed rather than being polled by game.gd, keeping
 ## dispatch() to pure orchestration (see game.gd's doc comment).
 
-const START := Vector3(0.5, 0.45, -3.7)
-const END := Vector3(8.6, 0.45, -6.6)
-const REST_POSITION := Vector3(0.45, 0.42, -3.9)  # game.mjs:220, where it settles once returned
+## Relocated for the 2026-08-28 world expansion (world_bounds.gd's own doc
+## comment has the four-room layout) -- same offsets from Group (0,-11,
+## was (0,-3.8)) and the garden pocket's BallEnd marker (14,-12, was
+## (8.6,-6.6)) the single-room version held from its own equivalents.
+const START := Vector3(0.5, 0.45, -10.9)
+const END := Vector3(14.0, 0.45, -12.0)
+const REST_POSITION := Vector3(0.45, 0.42, -11.1)  # where it settles once returned
 const ARC_HEIGHT := 2.1
 const FLIGHT_SECONDS := 1.8
 const CARRY_SIDE := 0.36

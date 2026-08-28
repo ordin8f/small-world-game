@@ -31,7 +31,7 @@ size = Vector2(2, 3)
 [node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_trceg")]
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=1051988228 instance=ExtResource("2_a8y0u")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_jkv2x")]
 
@@ -40,29 +40,29 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
 [node name="InteractionZones" type="Node3D" parent="." unique_id=1744831515]
 
 [node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
 
 [node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=724519269 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 0, -6.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -12)
 
 [node name="Return" type="Node3D" parent="InteractionZones" unique_id=893543193 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11)
 
 [node name="Join" type="Node3D" parent="InteractionZones" unique_id=394030464 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10.3)
 
 [node name="Door" type="Node3D" parent="InteractionZones" unique_id=278243070 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 13)
 
 [node name="Ball" type="Node3D" parent="." unique_id=1995740494 instance=ExtResource("5_muem4")]
 
 [node name="NPCs" type="Node3D" parent="." unique_id=126009109]
 
 [node name="Mina" type="Node3D" parent="NPCs" unique_id=2137871954 instance=ExtResource("6_dp3eg")]
-transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, -0.95, 0, -3.8)
+transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, -0.95, 0, -11)
 
 [node name="Arun" type="Node3D" parent="NPCs" unique_id=540243000 instance=ExtResource("6_dp3eg")]
-transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -4.25)
+transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -11.45)
 
 [node name="Priya" type="Node3D" parent="NPCs" unique_id=593793772 instance=ExtResource("6_dp3eg")]
 transform = Transform3D(0.921061, 0, -0.38941833, 0, 1, 0, 0.38941833, 0, 0.921061, 1.45, 0, -3.55)
@@ -98,22 +98,22 @@ layer = 11
 layer = 20
 
 [node name="CrateProp" type="Node3D" parent="." unique_id=4001002 instance=ExtResource("19_imprp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, 0, -9.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -16.0)
 
 [node name="BenchProp" type="Node3D" parent="." unique_id=4001003 instance=ExtResource("19_imprp")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.0, 0, 3.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0, 0, 4.5)
 
 [node name="Marble" type="Node3D" parent="." unique_id=4002002 instance=ExtResource("20_ptrsr")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.2, 0, -5.0)
 
 [node name="Stone" type="Node3D" parent="." unique_id=4002003 instance=ExtResource("20_ptrsr")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.8, 0, 7.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.0, 0, -8.0)
 
 [node name="Feather" type="Node3D" parent="." unique_id=4002004 instance=ExtResource("20_ptrsr")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 0, -4.5)
 
 [node name="Swing" type="Node3D" parent="." unique_id=4003001 instance=ExtResource("21_swng0")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0, 0, 6.5)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, -8.0)
 
 [node name="Sandbox" type="Node3D" parent="." unique_id=4004001 instance=ExtResource("22_sbox0")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0, 0, 5.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, -8.0)

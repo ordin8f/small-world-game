@@ -26,16 +26,17 @@ extends SceneTree
 ##
 ## Beat positions and the safe route between them come straight from the
 ## already-proven play tests, not re-derived here:
-##   - threshold: player.gd:25 START_POSITION (the doorway threshold).
+##   - threshold: player.gd's START_POSITION (the doorway threshold).
 ##   - watch/ball/door: test_playthrough.gd's ROUTE_TO_WATCH/ROUTE_TO_BALL/
 ##     ROUTE_TO_DOOR.
 ##   - gap/circle: test_camera_never_in_geometry.gd's ROUTE comment block
 ##     spells out *why* a direct line from BallEnd to Group isn't safe --
-##     world_bounds.gd:30-31's two garden-wall colliders sit at
-##     x in [5.05, 5.75], and a straight line from either Watch or BallEnd
-##     to the far side clips that corner. Both tests funnel through
-##     (6.5, -3.0) first; this script does the same, then takes one short
-##     final hop to the exact authored gap position for the "gap" shot.
+##     world_bounds.gd's garden-wall colliders (as of the 2026-08-28 world
+##     expansion, x=11 +-0.35) sit right on the path, and a straight line
+##     from either Watch or BallEnd to the far side clips that corner. Both
+##     tests funnel through (12.0, -8.0) first; this script does the same,
+##     then takes one short final hop to the exact authored gap position
+##     for the "gap" shot.
 
 const SCENE_PATH := "res://scenes/main.tscn"
 const OUT_DIR := "user://shots"
@@ -123,6 +124,20 @@ func _run() -> void:
 		_shutdown(1)
 		return
 
+	# Gate 0 frame: TitleCamera's own _ready() (title_card.gd:116-117's
+	# show_title()) sets ITS Camera3D current=true, which wins over
+	# camera_rig.tscn's baked-in current=true simply by running later in
+	# node order -- normal boot always un-hijacks this via title_card.gd's
+	# Play button (Game.title_camera.glide_to_gameplay(), which ends by
+	# setting the gameplay camera current again). This script never goes
+	# through that title screen at all, so without this line every capture
+	# below silently renders from the fixed title-drift camera instead of
+	# the real play rig -- found while re-verifying this route against the
+	# 2026-08-28 world expansion (every beat looked identical, framed on
+	# the doorway, regardless of where the driven player actually was).
+	if is_instance_valid(_game.camera):
+		_game.camera.current = true
+
 	_game.start_episode(0.0)  # test_playthrough.gd:34's own call -- deterministic clock, real reason unrelated to time_scale above
 	_hide_ui_layers()  # start_episode() fires Game.state_changed too -- see _dispatch()'s own comment
 
@@ -135,7 +150,7 @@ func _run() -> void:
 
 	# 2. watch -- test_playthrough.gd's ROUTE_TO_WATCH, then the "observe"
 	# event (episode_director.gd:35) into OBSERVED.
-	await _drive([[0.0, -1.2]])
+	await _drive([[0.0, -8.0]])
 	_dispatch("observe")
 	await _settle_and_capture(2, "watch")
 
@@ -146,17 +161,23 @@ func _run() -> void:
 	_dispatch("ball_kicked")
 	await _wait_while_state(EpisodeDirector.State.BALL_IN_FLIGHT)
 
-	# gap -- via (6.5,-3.0) first, the same safety-margin waypoint both
+	# gap -- via (12.0,-8.0) first, the same safety-margin waypoint both
 	# test_playthrough.gd (ROUTE_TO_BALL/ROUTE_TO_GROUP) and
 	# test_camera_never_in_geometry.gd (ROUTE) route through before cutting
 	# across the garden-wall gap, then one short hop to the authored gap
-	# position itself.
-	await _drive([[6.5, -3.0], [5.2, -3.0]])
+	# position itself (WALL_X=11.0 minus 0.2, at the gap's own z midpoint).
+	# 10.0 rather than WALL_X-0.2 (10.8): DriveRoute's 0.5 m arrival radius
+	# means a target that close to the wall's own near face (10.65) can
+	# settle on either side of it depending on approach angle -- found by
+	# inspecting this exact beat's captured player position landing at
+	# x=11.26 (through the wall, not short of it). 10.0 keeps the whole
+	# 0.5 m arrival circle clear.
+	await _drive([[12.0, -8.0], [10.0, -8.0]])
 	await _settle_and_capture(3, "gap")
 
 	# ball -- test_playthrough.gd's ROUTE_TO_BALL's own final waypoint,
-	# ball.gd:10's END position.
-	await _drive([[8.6, -6.6]])
+	# ball.gd's END position.
+	await _drive([[14.0, -12.0]])
 	await _settle_and_capture(4, "ball")
 
 	# circle -- "ball_picked_up" into RETURN_BALL (ball.gd:53-54 starts
@@ -164,7 +185,7 @@ func _run() -> void:
 	# ROUTE_TO_GROUP), then "ball_returned" into INVITED (ball.gd:55-57
 	# snaps it to REST_POSITION immediately -- no tween to wait for here).
 	_dispatch("ball_picked_up")
-	await _drive([[6.5, -3.0], [0.0, -3.1]])
+	await _drive([[12.0, -8.0], [0.0, -10.3]])
 	_dispatch("ball_returned")
 	await _settle_and_capture(5, "circle")
 
@@ -173,7 +194,7 @@ func _run() -> void:
 	# is "going home", not "arrived home" -- COMPLETE is one event past
 	# this frame.
 	_dispatch("joined")
-	await _drive([[0.0, 10.8]])
+	await _drive([[0.0, 13.0]])
 	await _settle_and_capture(6, "door")
 
 	# Printed on both outcomes, tagged for easy grep -- tools/shots.sh/.ps1

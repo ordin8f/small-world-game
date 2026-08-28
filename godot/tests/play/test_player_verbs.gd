@@ -38,8 +38,12 @@ func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_o
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
 	# Just clear of the wall's own physics collider (half_x 0.35 + player
-	# radius 0.32 = 0.67) but still inside WorldAffordances' 0.75 mount range.
-	player.global_position = Vector3(4.7, 0.0, -6.0)
+	# radius 0.32 = 0.67) but still inside WorldAffordances' 0.75 mount
+	# range. WALL_X relocated to 11.0 for the 2026-08-28 world expansion
+	# (world_bounds.gd's own doc comment); z=-13.0 sits well inside the
+	# deep segment (-16..-9), same relative spot the single-room version's
+	# z=-6.0 held inside its own (-8..-3.8) segment.
+	player.global_position = Vector3(10.3, 0.0, -13.0)
 
 	await runner.simulate_frames(2)
 	assert_int(player.verb).is_equal(player.Verb.WALL_MOUNTING)
@@ -82,16 +86,17 @@ func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_o
 func test_walking_off_the_end_of_a_wall_segment_dismounts_just_as_gently() -> void:
 	# The OTHER way off the wall -- not a deliberate sideways lean, but
 	# simply walking to where the segment (WorldAffordances.WALL_SEGMENTS'
-	# first entry, z -8.0..-3.8) runs out, toward the garden-gap opening.
-	# Same non-punishing landing: no fail state, just the ground again.
+	# first entry, z -16.0..-9.0 as of the 2026-08-28 world expansion) runs
+	# out, toward the garden-gap opening. Same non-punishing landing: no
+	# fail state, just the ground again.
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
-	player.global_position = Vector3(4.7, 0.0, -4.3)  # near the segment's z_max=-3.8 end
+	player.global_position = Vector3(10.3, 0.0, -9.5)  # near the segment's z_max=-9.0 end
 	await runner.simulate_frames(2)
 	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 
 	# "move_back" is the key that increases world z at this yaw -- toward
-	# the -3.8 end and off it.
+	# the -9.0 end and off it.
 	runner.simulate_action_press("move_back")
 	var dismounted := await _wait_for_verb(runner, player, player.Verb.GROUND)
 	runner.simulate_action_release("move_back")
@@ -99,7 +104,7 @@ func test_walking_off_the_end_of_a_wall_segment_dismounts_just_as_gently() -> vo
 	assert_bool(dismounted).is_true()
 	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
 	# Walked off the near end, not teleported to the far one.
-	assert_float(player.global_position.z).is_greater(-3.9)
+	assert_float(player.global_position.z).is_greater(-9.1)
 
 
 func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
@@ -108,7 +113,7 @@ func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
 	# must never, by itself, cross the dismount threshold.
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
-	player.global_position = Vector3(4.7, 0.0, -6.0)
+	player.global_position = Vector3(10.3, 0.0, -13.0)
 	await runner.simulate_frames(2)
 	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 

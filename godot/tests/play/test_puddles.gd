@@ -17,7 +17,7 @@ func test_entering_a_puddle_splashes_once_per_entry() -> void:
 	var first_puddle: Dictionary = WorldAffordances.PUDDLES[0]
 
 	# Dry ground first.
-	player.global_position = Vector3(0.0, 0.0, 6.5)
+	player.global_position = Vector3(0.0, 0.0, 10.0)
 	for _i in range(5):
 		await tree.physics_frame
 	assert_int(puddles.splash_count).is_equal(0)
@@ -29,7 +29,7 @@ func test_entering_a_puddle_splashes_once_per_entry() -> void:
 	assert_int(puddles.splash_count).is_equal(1)
 
 	# Step out, then back in -- a fresh splash.
-	player.global_position = Vector3(0.0, 0.0, 6.5)
+	player.global_position = Vector3(0.0, 0.0, 10.0)
 	for _i in range(5):
 		await tree.physics_frame
 	player.global_position = Vector3(first_puddle["x"], 0.0, first_puddle["z"])
@@ -82,7 +82,7 @@ func test_dry_ground_never_splashes() -> void:
 	Game.start_episode(0.0)
 
 	var tree := Engine.get_main_loop() as SceneTree
-	for wp in [[0.0, 6.5], [0.0, -3.8], [8.6, -6.6]]:
+	for wp in [[0.0, 10.0], [0.0, -11.0], [14.0, -12.0]]:  # Start / Group / BallEnd (2026-08-28 world expansion)
 		player.global_position = Vector3(wp[0], 0.0, wp[1])
 		for _i in range(10):
 			await tree.physics_frame
