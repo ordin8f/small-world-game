@@ -10,6 +10,11 @@ extends SceneTree
 ## demo plan, and the whole reason this file exists rather than the values being
 ## computed from the EmotionalLens at runtime.
 ##
+## Fog distances were re-scaled 2026-08-28 for the expanded world. They were
+## authored for a 20x24 m room (diagonal ~31 m); at 39x37 m (diagonal ~54 m)
+## the old 60 m envelope covered the entire world and everything washed to fog
+## colour -- the deep shadow these moods exist for disappeared.
+##
 ## Direction being aimed at, from ART_DIRECTION.md and the concept sheet:
 ## warm low sun raking across, deep readable shadow, visible haze carrying the
 ## light, restrained palette with selective warmth -- NOT a toy-box palette and
@@ -54,8 +59,8 @@ func _afternoon() -> Resource:
 	m.sun_target = Vector3(0.0, 1.2, -2.0)
 	m.sun_volumetric_energy = 2.2
 	m.fog_color = Color(0.76, 0.70, 0.59)
-	m.fog_begin = 14.0
-	m.fog_end = 60.0
+	m.fog_begin = 22.0
+	m.fog_end = 120.0
 	m.volumetric_density = 0.018
 	m.volumetric_albedo = Color(1.0, 0.92, 0.80)
 	m.exposure = 0.62
@@ -82,8 +87,8 @@ func _golden() -> Resource:
 	m.sun_target = Vector3(0.0, 1.1, -3.0)
 	m.sun_volumetric_energy = 3.0
 	m.fog_color = Color(0.86, 0.71, 0.51)
-	m.fog_begin = 12.0
-	m.fog_end = 55.0
+	m.fog_begin = 20.0
+	m.fog_end = 110.0
 	m.volumetric_density = 0.020
 	m.volumetric_albedo = Color(1.0, 0.88, 0.70)
 	m.exposure = 0.68
@@ -110,8 +115,8 @@ func _dusk() -> Resource:
 	m.sun_target = Vector3(0.0, 1.0, -4.0)
 	m.sun_volumetric_energy = 2.0
 	m.fog_color = Color(0.55, 0.46, 0.56)
-	m.fog_begin = 10.0
-	m.fog_end = 42.0
+	m.fog_begin = 16.0
+	m.fog_end = 85.0
 	m.volumetric_density = 0.026
 	m.volumetric_albedo = Color(0.85, 0.78, 0.86)
 	m.volumetric_emission = Color(0.02, 0.018, 0.03)

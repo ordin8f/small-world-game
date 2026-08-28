@@ -113,7 +113,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.0, 0, -8.0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.7, 0, -4.5)
 
 [node name="Swing" type="Node3D" parent="." unique_id=4003001 instance=ExtResource("21_swng0")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0, -8.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -8.0)
 
 [node name="Sandbox" type="Node3D" parent="." unique_id=4004001 instance=ExtResource("22_sbox0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, -8.0)
