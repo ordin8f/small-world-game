@@ -67,6 +67,17 @@ func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_o
 	assert_bool(dismounted).is_true()
 	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
 
+	# Regression: stepping off must actually leave. An earlier version
+	# landed the dismount inside WorldAffordances.WALL_MOUNT_X_RANGE, so
+	# the very next GROUND tick's trigger check silently re-mounted the
+	# player -- "stepping off" did nothing observable from outside a
+	# single-frame check. Give it a couple of seconds with no input at all
+	# and confirm it does NOT climb back on by itself.
+	for _i in range(120):
+		await runner.simulate_frames(1)
+	assert_bool(player.verb == player.Verb.GROUND).is_true()
+	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
+
 
 func test_walking_off_the_end_of_a_wall_segment_dismounts_just_as_gently() -> void:
 	# The OTHER way off the wall -- not a deliberate sideways lean, but

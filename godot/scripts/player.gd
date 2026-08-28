@@ -368,7 +368,18 @@ func _start_wall_dismount() -> void:
 	verb = Verb.WALL_DISMOUNT
 	_verb_time = 0.0
 	_verb_from = global_position
-	_verb_to = Vector3(global_position.x, locked_y, global_position.z)
+	var landing_x := global_position.x
+	# A lean-caused dismount (exceeded WALL_HALF_WIDTH) must land clearly
+	# outside WorldAffordances.near_wall_mount()'s wider WALL_MOUNT_X_RANGE,
+	# not just past the half-width -- landing anywhere inside that range
+	# means the very next GROUND tick's _check_verb_triggers() sees the
+	# wall again and re-mounts immediately, so "stepping off" would
+	# silently do nothing. A segment-end dismount doesn't need this: z
+	# alone already clears wall_segment_at_z(), so x is left as-is.
+	if absf(_wall_offset_x) > WorldAffordances.WALL_HALF_WIDTH:
+		var side := signf(_wall_offset_x)
+		landing_x = WorldAffordances.WALL_X + side * (WorldAffordances.WALL_MOUNT_X_RANGE + 0.3)
+	_verb_to = Vector3(landing_x, locked_y, global_position.z)
 	character_visual.rotation.z = 0.0
 	_wall_offset_x = 0.0
 	moving = false

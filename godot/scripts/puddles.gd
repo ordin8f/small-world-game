@@ -52,10 +52,18 @@ func _spawn_ring(pos: Vector3) -> void:
 	mat.emission = RING_COLOR
 	mat.emission_energy_multiplier = 0.6
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mesh.surface_set_material(0, mat)
 
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
+	# Override material set on the INSTANCE, not Mesh.surface_set_material()
+	# on the resource -- _advance_rings() below reads it back via
+	# get_surface_override_material(), which only ever sees instance
+	# overrides (same pattern fireflies.gd already uses for its own
+	# per-sphere material). Setting it on the mesh resource instead left
+	# get_surface_override_material() returning null every tick, so the
+	# fade-out below silently never ran: every ring popped out of
+	# existence via queue_free() at full opacity instead of fading.
+	instance.set_surface_override_material(0, mat)
 	instance.position = pos
 	instance.scale = Vector3.ONE * RING_START_SCALE
 	add_child(instance)
