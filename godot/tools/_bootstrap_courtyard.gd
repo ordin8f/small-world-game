@@ -10,6 +10,16 @@ extends SceneTree
 ## Materials are matte StandardMaterial3D (roughness 0.92, metalness 0,
 ## palette colors as plain 0..1 floats -- no hex round-trip needed, unlike
 ## the JS source, since Godot's Color already takes 0..1 components).
+##
+## Detailed-vs-primitive toggle: a handful of "kinds" (tree, bush, bench,
+## lamp, rock) are built through _kind(), which picks a vendored glTF/glb
+## prop or today's primitive mesh per AssetMode.use_detailed() -- see
+## scripts/logic/asset_mode.gd for how that's set and ASSET_CREDITS.md's
+## "Detailed vs primitive assets" section for the full picture. Everything
+## else in this file (courtyard shell, playground, walls, grass, puddles)
+## is primitive-only in both modes, per ART_DIRECTION.md's "broad
+## architectural planes... restrained materials" -- there is no detailed
+## equivalent to toggle to, intentionally.
 
 const ROUGHNESS := 0.92
 
@@ -17,6 +27,20 @@ const ROUGHNESS := 0.92
 func _init() -> void:
 	var root := Node3D.new()
 	root.name = "Courtyard"
+	# M3.3 (70ddfef) attached prop_material_tuner.gd here so vendored glTF
+	# props get bumped to the environment's >=0.78 matte roughness floor
+	# live at _ready() (see _prop()'s doc comment for why that has to run
+	# at runtime rather than be baked in here). A later regeneration of
+	# this file dropped the attachment silently -- the exact "same class
+	# of bug as M3.1's player.tscn" that M3.3's own commit message warned
+	# about -- and courtyard.tscn has shipped without it since (confirmed:
+	# no .tscn in the repo referenced prop_material_tuner.gd before this
+	# line). Re-attached here, in the generator itself, so it survives the
+	# next regeneration too. Safe to set directly (unlike player.gd/
+	# ball.gd): prop_material_tuner.gd references no autoload, so it is
+	# not affected by the "Game identifier not found" bare --script issue
+	# those two scripts hit.
+	root.set_script(load("res://scripts/prop_material_tuner.gd"))
 
 	_add_lighting(root)
 	_build_static_world(root)
@@ -260,16 +284,22 @@ func _build_static_world(root: Node3D) -> void:
 		[6.8, 0.01, -4.2, 1.4, 0.04, 0.8],
 	]:
 		_mesh(root, "sphere", Vector3(p[0], p[1], p[2]), Vector3(p[3], p[4], p[5]), puddle_color)
-	for stone in [[6.1, -2.5, 0.45], [6.9, -3.2, 0.52], [7.7, -3.9, 0.48], [8.4, -4.7, 0.55]]:
-		var s: float = stone[2]
-		_mesh(root, "sphere", Vector3(stone[0], 0.05, stone[1]), Vector3(s, 0.14, s * 0.85), PATH)
+	# NOTE: these 4 positions are also hardcoded in scripts/logic/
+	# world_affordances.gd's stone_index_at() for the floor-is-lava
+	# mechanic -- not touched here, and not moved by the toggle below.
+	var stone_spots := [[6.1, -2.5, 0.45], [6.9, -3.2, 0.52], [7.7, -3.9, 0.48], [8.4, -4.7, 0.55]]
+	for i in range(stone_spots.size()):
+		var stone: Array = stone_spots[i]
+		_add_rock(root, stone[0], stone[1], stone[2], i)
 	# M3.2: real bench.gltf at the procedural bench's own position/footprint
-	# (the primitive cube trio it replaces was itself at this spot).
-	_prop(root, "res://assets/park/bench.gltf", Vector3(-7.4, 0.0, -0.8))
+	# (the primitive cube trio it replaces was itself at this spot; that
+	# trio lives on as _primitive_bench(), the toggle's primitive-mode
+	# fallback for this same spot).
+	_kind(root, Vector3(-7.4, 0.0, -0.8), "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, 0.0, "Bench")
 
-	_add_tree(root, -7.6, 1.7, 1.05)
-	_add_tree(root, 8.3, -8.2, 1.25)
-	_add_tree(root, 7.9, 6.2, 0.9)
+	_add_tree(root, -7.6, 1.7, 1.05, 0)
+	_add_tree(root, 8.3, -8.2, 1.25, 1)
+	_add_tree(root, 7.9, 6.2, 0.9, 2)
 
 
 	# DEFERRED: the overhead canopy that frames the top of frame in
@@ -279,20 +309,27 @@ func _build_static_world(root: Node3D) -> void:
 	# edges, sized against where the camera actually sits -- which is being
 	# fixed right now. Same reason as the gateway below.
 
-	# M3.2: ASSET_CREDITS.md's one featured bush_large.gltf, at the
-	# procedural bush-sphere spot nearest the bench/tree cluster (the other
-	# 5 procedural spheres stay as generic scattered shrubbery -- the credit
-	# describes one specific bush, not six).
-	_prop(root, "res://assets/park/bush_large.gltf", Vector3(-8.7, 0.0, -6.5))
-
+	# M3.2 gave ASSET_CREDITS.md's one featured bush_large.gltf to the
+	# spot nearest the bench/tree cluster and left 5 more spheres as
+	# "generic scattered shrubbery" with no detailed equivalent at all.
+	# The detailed-assets toggle (M4) extends bush_large.gltf to all 6 of
+	# today's positions instead -- still zero new placements, just the
+	# same "kind" swapped in everywhere it already stood; primitive mode
+	# renders all 6 as the original sphere via _primitive_bush().
+	#
 	# Bushes moved clear of the ball's rest spot (8.6, -6.6) on 2026-08-28. The
 	# retuned low REVEAL camera framed the ball beat onto a bush sitting 0.64
 	# units from where the ball lands, so the character and the ball both
 	# vanished into it. Confirmed as prop placement rather than camera by
 	# rendering the identical REVEAL numbers at a clean nearby position.
-	for bush in [[6.4, -4.4, 1.0], [6.2, -8.7, 0.8], [9.4, -3.0, 0.85], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9]]:
+	var bush_spots := [
+		[-8.7, -6.5, 1.0],  # ASSET_CREDITS.md's originally-credited spot
+		[6.4, -4.4, 1.0], [6.2, -8.7, 0.8], [9.4, -3.0, 0.85], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9],
+	]
+	for i in range(bush_spots.size()):
+		var bush: Array = bush_spots[i]
 		var s: float = bush[2]
-		_mesh(root, "sphere", Vector3(bush[0], 0.55 * s, bush[1]), Vector3(1.3 * s, 1.0 * s, 1.1 * s), FOLIAGE)
+		_kind(root, Vector3(bush[0], 0.0, bush[1]), "res://assets/park/bush_large.gltf", s, Callable(self, "_primitive_bush"), s, 0.0, "Bush%d" % i)
 
 	var flower_color := Color(0.85, 0.72, 0.42)
 	for flower in [[6.2, -5.5], [6.7, -6.3], [8.8, -5.6], [9.0, -7.0], [-8.4, 4.2], [-9.0, 5.0]]:
@@ -311,9 +348,11 @@ func _build_static_world(root: Node3D) -> void:
 
 ## M3.2: real tree_large.gltf, replacing the 3-primitive trunk+foliage
 ## composition -- same positions and the same per-tree scale factors
-## (1.05/1.25/0.9) game.mjs's addTree() used for size variety.
-func _add_tree(root: Node3D, x: float, z: float, s: float) -> void:
-	_prop(root, "res://assets/park/tree_large.gltf", Vector3(x, 0.0, z), s)
+## (1.05/1.25/0.9) game.mjs's addTree() used for size variety. The
+## detailed-assets toggle (M4) revives that 3-primitive composition as
+## _primitive_tree(), primitive mode's fallback for these same spots.
+func _add_tree(root: Node3D, x: float, z: float, s: float, index: int) -> void:
+	_kind(root, Vector3(x, 0.0, z), "res://assets/park/tree_large.gltf", s, Callable(self, "_primitive_tree"), s, 0.0, "Tree%d" % index)
 
 
 ## M3.2: the two ASSET_CREDITS.md props with no equivalent in game.mjs's
@@ -331,16 +370,31 @@ func _add_tree(root: Node3D, x: float, z: float, s: float) -> void:
 ##   just beyond the home threshold's z=12 wall (WorldBounds' z<=12 bound
 ##   means the player can never reach it), glimpsed through the doorway
 ##   gap rather than standing inside the walkable courtyard.
+## street_lantern.gltf goes through the toggle (_primitive_lamp() is its
+## primitive-mode fallback); house.gltf does not -- it was never a
+## registered "kind" (the brief's list is tree/bush/bench/lamp/rock) and
+## has no primitive predecessor to fall back to (game.mjs's
+## buildStaticWorld() never had a house at all -- see ASSET_CREDITS.md).
+## It sits beyond WorldBounds' z<=12 walkable bound either way, so it
+## never affects "iterate fast on mechanics", primitive mode's whole
+## reason to exist.
 func _add_props(root: Node3D) -> void:
-	_prop(root, "res://assets/park/street_lantern.gltf", Vector3(4.5, 0.0, 9.2))
+	_kind(root, Vector3(4.5, 0.0, 9.2), "res://assets/park/street_lantern.gltf", 1.0, Callable(self, "_primitive_lamp"), 1.0, 0.0, "StreetLantern")
 	_prop(root, "res://assets/house/house.gltf", Vector3(0.0, 0.0, 16.0))
 
 
 ## Instances a glTF PackedScene as a purely visual prop -- WorldBounds'
 ## own box colliders remain the sole source of collision, untouched here.
-func _prop(root: Node3D, path: String, position: Vector3, scale: float = 1.0, rotation_y: float = 0.0) -> void:
+## `name_hint`, if given, becomes the instance's node name (Godot
+## otherwise names repeated instances of the same source file "@Node3D@N"
+## once the first copy claims "<filename>2" -- harmless, since nothing
+## looks these mesh nodes up by name, but confusing to read in the
+## editor once a kind like bush_large.gltf is instanced 6 times).
+func _prop(root: Node3D, path: String, position: Vector3, scale: float = 1.0, rotation_y: float = 0.0, name_hint: String = "") -> void:
 	var packed: PackedScene = load(path)
 	var inst: Node3D = packed.instantiate()
+	if name_hint != "":
+		inst.name = name_hint
 	root.add_child(inst)
 	inst.owner = root
 	inst.position = position
@@ -358,6 +412,93 @@ func _prop(root: Node3D, path: String, position: Vector3, scale: float = 1.0, ro
 	# runtime by prop_material_tuner.gd, attached to this scene's root --
 	# the same live-tree approach character_visual.gd already uses
 	# successfully for the same >=0.78 floor.
+
+
+# --------------------------------------------------- detailed/primitive kinds --
+
+## Builds one registered "kind" of prop at `position`: the vendored
+## glTF/glb at `detailed_path` (instanced at `detailed_scale`) when
+## AssetMode.resolve_detailed() says so, otherwise `primitive_fallback` --
+## a Callable shaped like _primitive_tree()/_primitive_bush()/
+## _primitive_bench()/_primitive_lamp()/_primitive_rock(): fn(root,
+## position, scale, rotation_y). `detailed_scale` and `primitive_scale`
+## are separate parameters, not one shared value, because a vendored
+## mesh's native size does not always match the primitive's own
+## scale-as-metres convention (see _add_rock()); everywhere else they are
+## simply the same number passed twice.
+func _kind(root: Node3D, position: Vector3, detailed_path: String, detailed_scale: float, primitive_fallback: Callable, primitive_scale: float, rotation_y: float = 0.0, name_hint: String = "") -> void:
+	if AssetMode.resolve_detailed(detailed_path):
+		_prop(root, detailed_path, position, detailed_scale, rotation_y, name_hint)
+		return
+	if AssetMode.use_detailed():
+		push_warning("Detailed asset missing, using primitive fallback: %s" % detailed_path)
+	primitive_fallback.call(root, position, primitive_scale, rotation_y)
+
+
+## Primitive-mode fallback for _add_tree(): the 3-primitive trunk+foliage
+## composition M3.2's tree_large.gltf replaced, restored here as the
+## toggle's "today's boxes" side. Not a precise match to tree_large.gltf's
+## silhouette (~2.75m wide x ~5m tall) -- close enough in scale (WOOD
+## trunk + two FOLIAGE tiers, apex ~4.65m at scale 1.0) to read as the
+## same kind of thing standing in the same spot.
+func _primitive_tree(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	_mesh(root, "cylinder", position + Vector3(0.0, 1.5 * scale, 0.0), Vector3(0.22, 3.0, 0.22) * scale, WOOD)
+	_mesh(root, "sphere", position + Vector3(0.0, 3.2 * scale, 0.0), Vector3(1.6, 1.4, 1.6) * scale, FOLIAGE)
+	_mesh(root, "sphere", position + Vector3(0.0, 4.1 * scale, 0.0), Vector3(1.1, 1.1, 1.1) * scale, FOLIAGE_LIGHT)
+
+
+## Primitive-mode fallback for every bush_spots entry in
+## _build_static_world() -- identical to the sphere formula the 5
+## always-primitive bushes used before M4, now shared by all 6.
+func _primitive_bush(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	_mesh(root, "sphere", position + Vector3(0.0, 0.55 * scale, 0.0), Vector3(1.3, 1.0, 1.1) * scale, FOLIAGE)
+
+
+## Primitive-mode fallback for the bench spot: the "cube trio" bench.gltf
+## replaced in M3.2 (seat + backrest + a single plinth standing in for
+## two legs), in the playground's existing WOOD/WOOD_LIGHT tones.
+func _primitive_bench(root: Node3D, position: Vector3, scale: float, rotation_y: float) -> void:
+	var rot := Vector3(0.0, rotation_y, 0.0)
+	_mesh(root, "cube", position + Vector3(0.0, 0.20 * scale, 0.0), Vector3(1.5, 0.4, 0.45) * scale, WOOD, rot)
+	_mesh(root, "cube", position + Vector3(0.0, 0.46 * scale, 0.0), Vector3(1.7, 0.12, 0.55) * scale, WOOD_LIGHT, rot)
+	_mesh(root, "cube", position + Vector3(0.0, 0.80 * scale, -0.20 * scale), Vector3(1.7, 0.55, 0.12) * scale, WOOD_LIGHT, rot)
+
+
+## Primitive-mode fallback for the street lantern: a dark pole plus a
+## small emissive WARM_LIGHT head, echoing the same warm-glow-as-anchor
+## treatment _build_static_world() already uses for the home threshold's
+## porch light. Sized to street_lantern.gltf's own ~4.5m height.
+func _primitive_lamp(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	_mesh(root, "cylinder", position + Vector3(0.0, 2.0 * scale, 0.0), Vector3(0.08, 4.0, 0.08) * scale, SHADOW_STONE)
+	_mesh(root, "sphere", position + Vector3(0.0, 4.15 * scale, 0.0), Vector3(0.28, 0.28, 0.28) * scale, WARM_LIGHT, Vector3.ZERO, 1.2)
+
+
+## Primitive-mode fallback for the stepping stones: exactly today's
+## flattened PATH-colored sphere, unchanged and unmoved (positions are
+## shared with world_affordances.gd -- see the NOTE above stone_spots in
+## _build_static_world()).
+func _primitive_rock(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	_mesh(root, "sphere", position + Vector3(0.0, 0.05, 0.0), Vector3(scale, 0.14, scale * 0.85), PATH)
+
+
+## Kenney Nature Kit's CC0 flat rocks (ASSET_CREDITS.md), re-materialed
+## to this project's own PATH/FOLIAGE palette before vendoring (stock
+## colors were an unrelated bright teal-green "grass" placeholder --
+## see ASSET_CREDITS.md). ~0.48m wide at scale 1.0 in GLTF format, so the
+## detailed path gets its own correction factor to land on the same
+## ground footprint `s` already gives the primitive sphere fallback
+## (diameter == s metres); the primitive path uses `s` directly, as it
+## always has.
+const ROCK_VARIANTS := [
+	"res://assets/nature/rock_smallFlatA.glb",
+	"res://assets/nature/rock_smallFlatB.glb",
+	"res://assets/nature/rock_smallFlatC.glb",
+]
+const ROCK_NATIVE_WIDTH := 0.48
+
+func _add_rock(root: Node3D, x: float, z: float, s: float, variant_index: int) -> void:
+	var path: String = ROCK_VARIANTS[variant_index % ROCK_VARIANTS.size()]
+	_kind(root, Vector3(x, 0.0, z), path, s / ROCK_NATIVE_WIDTH, Callable(self, "_primitive_rock"), s, float(variant_index) * 0.9, "Rock%d" % variant_index)
 
 
 # ------------------------------------------------------------ wall colliders --

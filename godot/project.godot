@@ -18,6 +18,18 @@ config/icon="res://icon.svg"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0, 0, 0, 1)
 
+[small_world]
+
+; Detailed-vs-primitive courtyard asset toggle -- read by
+; scripts/logic/asset_mode.gd (AssetMode.use_detailed()), consumed by
+; tools/_bootstrap_courtyard.gd at generation time. true = vendored
+; glTF/glb props (bench/tree/bush/lamp/rock); false = today's
+; Box/Sphere/Cylinder primitives, for fast iteration. Flip this, then
+; re-run `godot --headless --path godot --script
+; res://tools/_bootstrap_courtyard.gd` followed by `--import`. See
+; ASSET_CREDITS.md's "Detailed vs primitive assets" section.
+assets/use_detailed=true
+
 [gui]
 
 theme/custom="res://resources/ui/theme.tres"
