@@ -77,7 +77,20 @@ static func _smoothstep_bidirectional(edge0: float, edge1: float, value: float) 
 	return x * x * (3.0 - 2.0 * x)
 
 
+## Bands re-tuned for the 2026-08-28 world expansion (world_bounds.gd's
+## four-room layout: HOME z[8,16] -> LANE z[-4,8] -> PLAYGROUND z[-20,-4]).
+## THRESHOLD->APPROACH now blends exactly across the home/lane seam (z 11
+## down to 8, the lane mouth) -- by the time the player has actually
+## entered the lane they are fully APPROACH-zoned, mirroring the old
+## single-room band's own width (4 m) and the same "starts partway
+## through, not saturated" relationship to player.gd's START_POSITION (10)
+## the old band held to its own start (6.5). APPROACH->REVEAL now blends
+## across the playground's own entrance (z -4, the lane/playground seam)
+## down to the Watch marker (z -8) -- REVEAL is fully engaged by the beat
+## where the player actually stops to watch the group, same relationship
+## the old band held between its z=-2..-5 span and the old Watch/Group
+## positions.
 static func profile(z: float) -> Dictionary:
-	var threshold_to_approach := _smoothstep_bidirectional(7.0, 3.0, z)
-	var approach_to_reveal := _smoothstep_bidirectional(-2.0, -5.0, z)
+	var threshold_to_approach := _smoothstep_bidirectional(11.0, 8.0, z)
+	var approach_to_reveal := _smoothstep_bidirectional(-4.0, -8.0, z)
 	return _blend(_blend(THRESHOLD, APPROACH, threshold_to_approach), REVEAL, approach_to_reveal)

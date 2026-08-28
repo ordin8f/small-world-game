@@ -42,6 +42,14 @@ func _run() -> void:
 		_shutdown(1)
 		return
 
+	# Gate 0 frame: force the real play camera current -- see
+	# screenshot_route.gd's identical fix for why (TitleCamera's own
+	# _ready() otherwise keeps its fixed drift camera active for this
+	# script's entire run, since it never goes through title_card.gd's
+	# Play button / glide_to_gameplay() handoff).
+	if is_instance_valid(_game.camera):
+		_game.camera.current = true
+
 	_game.start_episode(0.0)
 	_hide_ui()
 
@@ -66,7 +74,10 @@ func _run() -> void:
 	await _capture("slide_landed")
 
 	# --- 2. Garden wall: mount and balance along the top -------------------
-	_player.global_position = Vector3(4.7, 0.0, -6.0)
+	# WALL_X relocated to 11.0 for the 2026-08-28 world expansion
+	# (world_bounds.gd's own doc comment); same offset test_player_verbs.gd
+	# uses.
+	_player.global_position = Vector3(10.3, 0.0, -13.0)
 	await _wait_for_verb("WALL_WALKING", 60)
 	_runner.simulate_action_press("move_forward")
 	await _wait_ticks(45)
@@ -87,7 +98,7 @@ func _run() -> void:
 	_player.global_position.y = 0.0
 
 	# --- 3. Stepping stones: the gap (imagination cue) vs. a stone ---------
-	_player.global_position = Vector3(6.5, 0.0, -5.1)
+	_player.global_position = Vector3(12.1, 0.0, -10.3)
 	await _wait_ticks(100)
 	await _capture("stones_gap_imagination")
 
@@ -98,7 +109,7 @@ func _run() -> void:
 
 	# --- 4. Puddle splash ---------------------------------------------------
 	var puddle: Dictionary = WorldAffordances.PUDDLES[0]
-	_player.global_position = Vector3(0.0, 0.0, 6.5)  # dry ground first, so entering it is a fresh trigger
+	_player.global_position = Vector3(0.0, 0.0, 10.0)  # dry ground first, so entering it is a fresh trigger
 	await _wait_ticks(6)
 	_player.global_position = Vector3(puddle["x"], 0.0, puddle["z"])
 	await _wait_ticks(8)  # ring is young, bright, and still small -- reads clearly
@@ -114,7 +125,7 @@ func _run() -> void:
 	var stepping_stones: Node = _main.find_child("SteppingStones", true, false)
 	if perception != null and stepping_stones != null:
 		stepping_stones.set_physics_process(false)  # isolate: stop its own poller fighting the override below
-		_player.global_position = Vector3(6.5, 0.0, -5.1)  # identical camera framing both shots
+		_player.global_position = Vector3(12.1, 0.0, -10.3)  # identical camera framing both shots
 
 		perception.call("set_imagination_target", false)
 		await _wait_ticks(60)

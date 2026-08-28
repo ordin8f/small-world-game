@@ -1,10 +1,14 @@
 extends GdUnitTestSuite
 ## Port of tests/camera.test.mjs -- verbatim assertions against CameraProfile.
+## Reference z values re-tuned for the 2026-08-28 world expansion
+## (camera_profile.gd's own doc comment has the new band positions: THRESHOLD
+## <-> APPROACH blends over z[8,11], the home/lane seam; APPROACH <-> REVEAL
+## over z[-8,-4], the playground entrance -> Watch marker span).
 
 func test_camera_opens_from_threshold_toward_reveal() -> void:
-	var threshold := CameraProfile.profile(6.5)  # player start, near home
-	var approach := CameraProfile.profile(0.0)   # mid-courtyard
-	var reveal := CameraProfile.profile(-6.0)    # playground / garden depth
+	var threshold := CameraProfile.profile(14.0)  # near home, inside the porch
+	var approach := CameraProfile.profile(2.0)    # mid-lane
+	var reveal := CameraProfile.profile(-12.0)    # playground / garden depth
 	assert_float(threshold["distance"]).is_less(approach["distance"])
 	assert_float(approach["distance"]).is_less(reveal["distance"])
 	assert_float(threshold["fov"]).is_less(reveal["fov"])
@@ -12,10 +16,10 @@ func test_camera_opens_from_threshold_toward_reveal() -> void:
 
 
 func test_camera_zones_are_stable_past_their_anchor_points() -> void:
-	var deep_threshold := CameraProfile.profile(12.0)  # at the home doorway
-	var deep_reveal := CameraProfile.profile(-12.0)    # far garden wall
-	assert_float(absf(deep_threshold["distance"] - CameraProfile.profile(7.0)["distance"])).is_less(0.01)
-	assert_float(absf(deep_reveal["distance"] - CameraProfile.profile(-5.0)["distance"])).is_less(0.01)
+	var deep_threshold := CameraProfile.profile(15.0)  # at the home doorway
+	var deep_reveal := CameraProfile.profile(-16.0)    # far garden wall
+	assert_float(absf(deep_threshold["distance"] - CameraProfile.profile(11.0)["distance"])).is_less(0.01)
+	assert_float(absf(deep_reveal["distance"] - CameraProfile.profile(-8.0)["distance"])).is_less(0.01)
 
 
 func test_w_is_forward_and_d_is_screen_right_at_neutral_yaw() -> void:

@@ -1,94 +1,94 @@
 [gd_scene format=3]
 
-[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_trceg"]
-[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_a8y0u"]
-[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_jkv2x"]
-[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="4_jbj1t"]
-[ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="5_muem4"]
-[ext_resource type="PackedScene" path="res://scenes/character_visual.tscn" id="6_dp3eg"]
-[ext_resource type="PackedScene" path="res://scenes/ui/vignette.tscn" id="7_0ld40"]
-[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8_gqmmt"]
-[ext_resource type="PackedScene" path="res://scenes/ui/title_card.tscn" id="9_yc10j"]
-[ext_resource type="PackedScene" path="res://scenes/ui/ending_screen.tscn" id="10_jscy8"]
-[ext_resource type="PackedScene" path="res://scenes/perception.tscn" id="11_pm3ni"]
-[ext_resource type="PackedScene" path="res://scenes/fireflies.tscn" id="12_y6deb"]
-[ext_resource type="PackedScene" path="res://scenes/home_glow.tscn" id="13_og1vs"]
-[ext_resource type="PackedScene" path="res://scenes/stepping_stones.tscn" id="14_st0ne"]
-[ext_resource type="PackedScene" path="res://scenes/puddles.tscn" id="15_pdl3s"]
-[ext_resource type="PackedScene" path="res://scenes/title_camera.tscn" id="16_tcam0"]
-[ext_resource type="PackedScene" path="res://scenes/ui/credits_screen.tscn" id="17_cred1"]
-[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="18_paus2"]
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_dp3eg"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_0ld40"]
+[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_gqmmt"]
+[ext_resource type="PackedScene" path="res://scenes/title_camera.tscn" id="4_yc10j"]
+[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="5_jscy8"]
+[ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="6_pm3ni"]
+[ext_resource type="PackedScene" path="res://scenes/character_visual.tscn" id="7_y6deb"]
+[ext_resource type="PackedScene" path="res://scenes/ui/vignette.tscn" id="8_og1vs"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="9_2wyq8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/title_card.tscn" id="10_vxglm"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ending_screen.tscn" id="11_2f3dj"]
+[ext_resource type="PackedScene" path="res://scenes/ui/credits_screen.tscn" id="12_yq6so"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="13_fv21b"]
+[ext_resource type="PackedScene" path="res://scenes/perception.tscn" id="14_tel4y"]
+[ext_resource type="PackedScene" path="res://scenes/fireflies.tscn" id="15_qkpxi"]
+[ext_resource type="PackedScene" path="res://scenes/home_glow.tscn" id="16_5q0nq"]
+[ext_resource type="PackedScene" path="res://scenes/stepping_stones.tscn" id="17_dgi5k"]
+[ext_resource type="PackedScene" path="res://scenes/puddles.tscn" id="18_j8jky"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
 size = Vector2(2, 3)
 
-[node name="Main" type="Node3D" unique_id=1598631220]
+[node name="Main" type="Node3D" unique_id=554323661]
 
-[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_trceg")]
+[node name="Courtyard" type="Node3D" parent="." unique_id=1557196032 instance=ExtResource("1_dp3eg")]
 
-[node name="Player" type="CharacterBody3D" parent="." unique_id=1051988228 instance=ExtResource("2_a8y0u")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1051988228 instance=ExtResource("2_0ld40")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
 
-[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_jkv2x")]
+[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_gqmmt")]
 
-[node name="TitleCamera" type="Node3D" parent="." unique_id=2066987062 instance=ExtResource("16_tcam0")]
+[node name="TitleCamera" type="Node3D" parent="." unique_id=930324954 instance=ExtResource("4_yc10j")]
 
-[node name="InteractionZones" type="Node3D" parent="." unique_id=1744831515]
+[node name="InteractionZones" type="Node3D" parent="." unique_id=1513348684]
 
-[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("5_jscy8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
 
-[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=724519269 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 0, -6.6)
+[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=368251186 instance=ExtResource("5_jscy8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -12)
 
-[node name="Return" type="Node3D" parent="InteractionZones" unique_id=893543193 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.8)
+[node name="Return" type="Node3D" parent="InteractionZones" unique_id=1393364029 instance=ExtResource("5_jscy8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11)
 
-[node name="Join" type="Node3D" parent="InteractionZones" unique_id=394030464 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.1)
+[node name="Join" type="Node3D" parent="InteractionZones" unique_id=1449053309 instance=ExtResource("5_jscy8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10.3)
 
-[node name="Door" type="Node3D" parent="InteractionZones" unique_id=278243070 instance=ExtResource("4_jbj1t")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.8)
+[node name="Door" type="Node3D" parent="InteractionZones" unique_id=670425825 instance=ExtResource("5_jscy8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 13)
 
-[node name="Ball" type="Node3D" parent="." unique_id=1995740494 instance=ExtResource("5_muem4")]
+[node name="Ball" type="Node3D" parent="." unique_id=211406976 instance=ExtResource("6_pm3ni")]
 
-[node name="NPCs" type="Node3D" parent="." unique_id=126009109]
+[node name="NPCs" type="Node3D" parent="." unique_id=771854058]
 
-[node name="Mina" type="Node3D" parent="NPCs" unique_id=2137871954 instance=ExtResource("6_dp3eg")]
-transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, -0.95, 0, -3.8)
+[node name="Mina" type="Node3D" parent="NPCs" unique_id=2137871954 instance=ExtResource("7_y6deb")]
+transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, -0.95, 0, -11)
 
-[node name="Arun" type="Node3D" parent="NPCs" unique_id=540243000 instance=ExtResource("6_dp3eg")]
-transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -4.25)
+[node name="Arun" type="Node3D" parent="NPCs" unique_id=26399629 instance=ExtResource("7_y6deb")]
+transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -11.45)
 
-[node name="Third" type="Node3D" parent="NPCs" unique_id=593793772 instance=ExtResource("6_dp3eg")]
-transform = Transform3D(0.921061, 0, -0.38941833, 0, 1, 0, 0.38941833, 0, 0.921061, 1.45, 0, -3.55)
+[node name="Third" type="Node3D" parent="NPCs" unique_id=225452251 instance=ExtResource("7_y6deb")]
+transform = Transform3D(0.921061, 0, -0.38941833, 0, 1, 0, 0.38941833, 0, 0.921061, 1.45, 0, -10.75)
 
-[node name="Vignette" type="CanvasLayer" parent="." unique_id=835548136 instance=ExtResource("7_0ld40")]
+[node name="Vignette" type="CanvasLayer" parent="." unique_id=835548136 instance=ExtResource("8_og1vs")]
 layer = 8
 
-[node name="Hud" type="CanvasLayer" parent="." unique_id=550031470 instance=ExtResource("8_gqmmt")]
+[node name="Hud" type="CanvasLayer" parent="." unique_id=550031470 instance=ExtResource("9_2wyq8")]
 layer = 5
 
-[node name="TitleCard" type="CanvasLayer" parent="." unique_id=1520156969 instance=ExtResource("9_yc10j")]
+[node name="TitleCard" type="CanvasLayer" parent="." unique_id=405154478 instance=ExtResource("10_vxglm")]
 layer = 10
 
-[node name="EndingScreen" type="CanvasLayer" parent="." unique_id=1572770631 instance=ExtResource("10_jscy8")]
+[node name="EndingScreen" type="CanvasLayer" parent="." unique_id=669963092 instance=ExtResource("11_2f3dj")]
 layer = 10
 
-[node name="Perception" type="Node" parent="." unique_id=510694259 instance=ExtResource("11_pm3ni")]
+[node name="CreditsScreen" type="CanvasLayer" parent="." unique_id=572634149 instance=ExtResource("12_yq6so")]
+layer = 11
 
-[node name="Fireflies" type="Node3D" parent="." unique_id=782116458 instance=ExtResource("12_y6deb")]
+[node name="PauseMenu" type="CanvasLayer" parent="." unique_id=228734287 instance=ExtResource("13_fv21b")]
+layer = 20
 
-[node name="HomeGlow" type="MeshInstance3D" parent="." unique_id=546062445 instance=ExtResource("13_og1vs")]
+[node name="Perception" type="Node" parent="." unique_id=510694259 instance=ExtResource("14_tel4y")]
+
+[node name="Fireflies" type="Node3D" parent="." unique_id=782116458 instance=ExtResource("15_qkpxi")]
+
+[node name="HomeGlow" type="MeshInstance3D" parent="." unique_id=546062445 instance=ExtResource("16_5q0nq")]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 1.7, 11.82)
 mesh = SubResource("PlaneMesh_dpsxx")
 
-[node name="SteppingStones" type="Node" parent="." unique_id=3021882201 instance=ExtResource("14_st0ne")]
+[node name="SteppingStones" type="Node" parent="." unique_id=-1273085095 instance=ExtResource("17_dgi5k")]
 
-[node name="Puddles" type="Node" parent="." unique_id=3021882202 instance=ExtResource("15_pdl3s")]
-
-[node name="CreditsScreen" type="CanvasLayer" parent="." unique_id=887232321 instance=ExtResource("17_cred1")]
-layer = 11
-
-[node name="PauseMenu" type="CanvasLayer" parent="." unique_id=808032465 instance=ExtResource("18_paus2")]
-layer = 20
+[node name="Puddles" type="Node" parent="." unique_id=-1273085094 instance=ExtResource("18_j8jky")]

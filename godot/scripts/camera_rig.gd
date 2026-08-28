@@ -67,16 +67,39 @@ func _physics_process(delta: float) -> void:
 	var raw_x := p.x + raw_offset.x
 	var raw_z := p.z + raw_offset.z
 
-	# game.mjs:399-400's own authored world-space clamp (the courtyard's
-	# actual x/z extents) -- test_camera_never_in_geometry.gd asserts the
-	# FINAL camera position never exceeds these, so they stay the hard
-	# outer bound no matter what happens below.
-	var desired_z := clampf(raw_z, -12.55, 11.05)
+	# The courtyard's own world-space envelope -- test_camera_never_in_
+	# geometry.gd asserts the FINAL camera position never exceeds these, so
+	# they stay the hard outer bound no matter what happens below.
+	# Re-tuned for the 2026-08-28 world expansion (world_bounds.gd's own
+	# doc comment has the four-room layout).
+	#
+	# UNLIKE the single-room version's pair, these are NOT "just inside
+	# can_move_to's own envelope" -- an earlier version of this pass tried
+	# exactly that (a uniform ~0.35 m margin off can_move_to's own
+	# [-16.6,22.6]/[-20.3,16.3]) and it silently reproduced the doorway
+	# collapse bug documented below, because that margin put the clamp
+	# PAST the nearest real wall face instead of short of it: the home
+	# back cap sits at z=16.3 (half_z 0.05, near face 16.25) and the
+	# doorway piers themselves -- the FIRST thing the sideways swing below
+	# would actually hit -- start at z=14, well inside a 16.55 clamp.
+	# Screenshot-verified (tools/shots.ps1's "threshold"/"door" beats): with
+	# the old margin-off-can_move_to numbers the swing target still landed
+	# inside the piers' own solid footprint, so the spring arm shortened
+	# the arm all the way back down to point-blank against them anyway --
+	# same visual bug the fix exists to prevent, just moved one wall over.
+	# Each bound below is instead picked to sit clear of the SPECIFIC
+	# nearest wall a swing in that direction would meet: z max clears the
+	# doorway piers (front face 14.0) rather than the back cap behind them;
+	# z min clears the playground's own back wall (near face -19.4); x
+	# min/max clear the playground west wall (-15.4) and the garden
+	# pocket's east wall (21.65) respectively -- the two widest rooms, and
+	# so the two real bounds a wide REVEAL-zone swing could actually reach.
+	var desired_z := clampf(raw_z, -19.0, 13.5)
 	var desired_x: float
 	if desired_z == raw_z:
-		# Common case, and exactly game.mjs:399-400: the courtyard has room
-		# for the full authored shot in its intended direction.
-		desired_x = clampf(raw_x, -9.65, 9.65)
+		# Common case: the courtyard has room for the full authored shot
+		# in its intended direction.
+		desired_x = clampf(raw_x, -15.0, 21.0)
 	else:
 		# Doorway collapse fix (Gate 1 camera item; 780c690's commit
 		# message: "at the home doorway the SpringArm3D camera collapses
@@ -112,7 +135,7 @@ func _physics_process(delta: float) -> void:
 		var used_z := desired_z - p.z
 		var side_mag := sqrt(maxf(0.0, horiz_radius * horiz_radius - used_z * used_z))
 		var side_sign := 1.0 if raw_offset.x >= 0.0 else -1.0
-		desired_x = clampf(p.x + side_sign * side_mag, -9.65, 9.65)
+		desired_x = clampf(p.x + side_sign * side_mag, -15.0, 21.0)
 
 	var desired := Vector3(desired_x, height, desired_z)
 

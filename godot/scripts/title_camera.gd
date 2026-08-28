@@ -14,16 +14,25 @@ extends Node3D
 ##
 ## Anchor/look-target: docs/concept-art/extended/concept_07_circle.png --
 ## a low camera standing inside the home threshold passage
-## (_bootstrap_courtyard.gd's piers, z 10.6..12.6, x opening -1.2..1.2),
+## (_bootstrap_courtyard.gd's piers, z 14..16, x opening -1.2..1.2),
 ## looking south through it at the chalk circle where the three NPCs
-## already stand (courtyard.tscn's KeyPoints/Group marker, (0, -3.8) --
-## same GROUP_POSITION perception.gd uses). Reuses existing geometry,
-## lighting and characters entirely; this file only ever places a camera.
+## already stand (courtyard.tscn's KeyPoints/Group marker, (0, -11) as of
+## the 2026-08-28 world expansion -- see world_bounds.gd's doc comment).
+## Reuses existing geometry, lighting and characters entirely; this file
+## only ever places a camera.
+##
+## KNOWN GAP left by that same expansion: perception.gd's own
+## GROUP_POSITION constant (Vector2(0, -3.8)) was NOT updated to match --
+## it is explicitly off-limits to this pass ("perception.gd... settled").
+## That constant drives its distance_from_group comfort/fog modulation, so
+## today it measures distance from a point that now sits in the middle of
+## the empty lane rather than at the actual circle. This file's own
+## ANCHOR/LOOK_TARGET below are updated; perception.gd's own copy is not.
 
 signal glide_finished
 
-const ANCHOR := Vector3(0.0, 1.4, 11.0)
-const LOOK_TARGET := Vector3(0.0, 1.15, -3.8)
+const ANCHOR := Vector3(0.0, 1.4, 15.0)
+const LOOK_TARGET := Vector3(0.0, 1.15, -11.0)
 const FOV := 46.0
 
 ## Small, slow, independent sines on position and look-target -- an

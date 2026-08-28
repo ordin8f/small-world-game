@@ -14,17 +14,18 @@ func _init() -> void:
 	courtyard.owner = root
 
 	# M1.3: the real player, positioned at the courtyard's "Start" key point
-	# (game.mjs line 80's player.position = [0, 0, 6.5]). Not script-loaded
-	# via load() here -- same reason as player.tscn's own generator: `Game`
-	# autoload isn't registered this early in a bare --script run. Since
-	# player.tscn already carries its own script reference (attached as a
-	# plain ExtResource text edit after generation), instantiating the
-	# PackedScene picks that up without needing to load the script here too.
+	# (player.gd's own START_POSITION -- the home porch, 2026-08-28 world
+	# expansion). Not script-loaded via load() here -- same reason as
+	# player.tscn's own generator: `Game` autoload isn't registered this
+	# early in a bare --script run. Since player.tscn already carries its
+	# own script reference (attached as a plain ExtResource text edit after
+	# generation), instantiating the PackedScene picks that up without
+	# needing to load the script here too.
 	var player_packed: PackedScene = load("res://scenes/player.tscn")
 	var player: Node3D = player_packed.instantiate()
 	root.add_child(player)
 	player.owner = root
-	player.position = Vector3(0.0, 0.0, 6.5)
+	player.position = Vector3(0.0, 0.0, 10.0)
 
 	# M1.4: the real play camera -- pivot -> SpringArm3D -> Camera3D, driven
 	# every physics tick by CameraProfile.profile(player.z). Not script-
@@ -52,12 +53,15 @@ func _init() -> void:
 	root.add_child(zones_container)
 	zones_container.owner = root
 
+	# Positions match courtyard.tscn's own KeyPoints markers exactly (2026-08-28
+	# world expansion -- see world_bounds.gd's doc comment for the four-room
+	# layout these were relocated into).
 	var zone_packed: PackedScene = load("res://scenes/interaction_zone.tscn")
-	_interaction_zone(zone_packed, zones_container, root, "Watch", 0.0, -1.2)
-	_interaction_zone(zone_packed, zones_container, root, "BallEnd", 8.6, -6.6)
-	_interaction_zone(zone_packed, zones_container, root, "Return", 0.0, -3.8)
-	_interaction_zone(zone_packed, zones_container, root, "Join", 0.0, -3.1)
-	_interaction_zone(zone_packed, zones_container, root, "Door", 0.0, 10.8)
+	_interaction_zone(zone_packed, zones_container, root, "Watch", 0.0, -8.0)
+	_interaction_zone(zone_packed, zones_container, root, "BallEnd", 14.0, -12.0)
+	_interaction_zone(zone_packed, zones_container, root, "Return", 0.0, -11.0)
+	_interaction_zone(zone_packed, zones_container, root, "Join", 0.0, -10.3)
+	_interaction_zone(zone_packed, zones_container, root, "Door", 0.0, 13.0)
 
 	# M2.3: the real ball -- starts at ballStart (game.mjs:115), flies to
 	# ballEnd on BALL_IN_FLIGHT, carried/rest-positioned by state changes.
@@ -74,10 +78,12 @@ func _init() -> void:
 	root.add_child(npcs_container)
 	npcs_container.owner = root
 
+	# Same offsets from the Group marker as before the 2026-08-28 world
+	# expansion, just applied at Group's new position (0, -11).
 	var character_visual_packed: PackedScene = load("res://scenes/character_visual.tscn")
-	_npc(npcs_container, root, character_visual_packed, "Mina", -0.95, -3.8, 0.2)
-	_npc(npcs_container, root, character_visual_packed, "Arun", 0.35, -4.25, -0.1)
-	_npc(npcs_container, root, character_visual_packed, "Third", 1.45, -3.55, -0.4)
+	_npc(npcs_container, root, character_visual_packed, "Mina", -0.95, -11.0, 0.2)
+	_npc(npcs_container, root, character_visual_packed, "Arun", 0.35, -11.45, -0.1)
+	_npc(npcs_container, root, character_visual_packed, "Third", 1.45, -10.75, -0.4)
 
 	# M2.4: UI -- CanvasLayer overlays, independent of Main's 3D transform.
 	# Not script-loaded via load() here, same reason as player/camera_rig/

@@ -16,10 +16,13 @@ extends RefCounted
 
 # ---------------------------------------------------------------- tower/slide --
 ## Left tower (bootstrap's `for x in [-3.4, 3.4]` loop, first iteration) and
-## its WorldBounds.COLLIDERS footprint (frozen; see that file's own doc
-## comment): {"x": -3.4, "z": -5.6, "half_x": 1.35, "half_z": 1.35}.
+## its WorldBounds.COLLIDERS footprint: {"x": -3.4, "z": -12.8, "half_x":
+## 1.35, "half_z": 1.35} -- relocated with the rest of the playground in
+## the 2026-08-28 world expansion (world_bounds.gd's own doc comment), same
+## x and footprint size as before, just deeper (z -5.6 -> -12.8) to sit
+## near the new Group position (0, -11).
 const TOWER_X := -3.4
-const TOWER_Z := -5.6
+const TOWER_Z := -12.8
 const TOWER_FOOTPRINT_HALF := 1.35
 
 ## Platform deck top: bootstrap's platform cube at y=2.75, scale.y=0.25 ->
@@ -46,18 +49,22 @@ const PLATFORM_STAND := Vector3(TOWER_X, PLATFORM_TOP_Y, TOWER_Z + 1.0)
 ## block (matches the brief: "There is a slide in this game that you
 ## cannot slide down"). This is the actual playable path: down and out
 ## from the platform into the open courtyard, landing clear of the
-## tower's own collider footprint (which ends at z=-4.25).
+## tower's own collider footprint. End point holds the same +3.7 z offset
+## from TOWER_Z the single-room version authored (was -1.9 at TOWER_Z
+## -5.6), now landing at -9.1.
 const SLIDE_START := PLATFORM_STAND
-const SLIDE_END := Vector3(TOWER_X, 0.0, -1.9)
+const SLIDE_END := Vector3(TOWER_X, 0.0, -9.1)
 
 # ------------------------------------------------------------------- wall --
-## Garden wall (bootstrap's two PLASTER_LIGHT wall meshes at x=5.4). Top
-## surface at y = 0.55 (origin) + 1.2/2 (its own render height) = 1.15.
-const WALL_X := 5.4
+## Garden wall (bootstrap's two PLASTER_LIGHT wall meshes at x=11 -- the
+## playground/garden-pocket boundary since the 2026-08-28 world expansion,
+## relocated from the old single-room x=5.4). Top surface at y = 0.55
+## (origin) + 1.2/2 (its own render height) = 1.15.
+const WALL_X := 11.0
 const WALL_TOP_Y := 1.15
 const WALL_SEGMENTS := [
-	{"z_min": -8.0, "z_max": -3.8},
-	{"z_min": -1.8, "z_max": -0.4},
+	{"z_min": -16.0, "z_max": -9.0},
+	{"z_min": -7.0, "z_max": -4.0},
 ]
 ## How close in x, at ground level, mounts the wall.
 const WALL_MOUNT_X_RANGE := 0.75
@@ -67,28 +74,34 @@ const WALL_MOUNT_X_RANGE := 0.75
 const WALL_HALF_WIDTH := 0.4
 
 # ---------------------------------------------------------------- stones --
-## Four stones, bootstrap's `for stone in [...]` loop. Capture radius here
-## is authored generously (the render mesh itself is only ~0.2-0.28 m) so
-## crossing them reads as a hop-friendly game, not a pixel-precise one.
+## Four stones just past the garden gap, bootstrap's `for stone in [...]`
+## loop -- same positions relative to the gap (x=WALL_X, z=-8, the gap's
+## own midpoint) as the single-room version held relative to its gap.
+## Capture radius here is authored generously (the render mesh itself is
+## only ~0.2-0.28 m) so crossing them reads as a hop-friendly game, not a
+## pixel-precise one.
 const STONES := [
-	{"x": 6.1, "z": -2.5, "radius": 0.5},
-	{"x": 6.9, "z": -3.2, "radius": 0.55},
-	{"x": 7.7, "z": -3.9, "radius": 0.52},
-	{"x": 8.4, "z": -4.7, "radius": 0.58},
+	{"x": 11.7, "z": -7.7, "radius": 0.5},
+	{"x": 12.5, "z": -8.4, "radius": 0.55},
+	{"x": 13.3, "z": -9.1, "radius": 0.52},
+	{"x": 14.0, "z": -9.9, "radius": 0.58},
 ]
 ## Bounding region (padded around the 4 stones) the "the gap reads as
 ## water" imagination cue is confined to -- outside it, ordinary ground is
 ## just ordinary ground, never almost-lava.
-const STONES_REGION := {"x_min": 5.5, "x_max": 9.0, "z_min": -5.3, "z_max": -1.9}
+const STONES_REGION := {"x_min": 11.1, "x_max": 14.6, "z_min": -10.5, "z_max": -7.1}
 
 # --------------------------------------------------------------- puddles --
 ## Three puddles, bootstrap's `for p in [...]` loop of
 ## [x, y, z, scale_x, scale_y, scale_z] on a radius-0.5 sphere mesh, so
-## world radius = 0.5 * scale.
+## world radius = 0.5 * scale. First two sit in the lane (unchanged --
+## the lane's own x[-3,3]/z[-4,8] footprint already contained them, see
+## world_bounds.gd's doc comment on the four places); the third is the
+## garden one, relocated with the rest of that pocket.
 const PUDDLES := [
 	{"x": -1.5, "z": 3.2, "rx": 0.8, "rz": 0.45},
 	{"x": 2.1, "z": 0.8, "rx": 0.575, "rz": 0.375},
-	{"x": 6.8, "z": -4.2, "rx": 0.7, "rz": 0.4},
+	{"x": 12.4, "z": -9.4, "rx": 0.7, "rz": 0.4},
 ]
 
 

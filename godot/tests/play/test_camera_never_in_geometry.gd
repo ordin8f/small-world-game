@@ -17,19 +17,25 @@ const HEAD_HEIGHT := 1.5
 ## relaxation of the actual bound.
 const CLAMP_EPSILON := 0.02
 
-## start -> watch -> gap (garden-wall opening, matches test_garden_gap.gd's
-## known-traversable point) -> ball -> group -> door, per courtyard.tscn's
-## Marker3D key points (tools/_bootstrap_courtyard.gd).
+## start -> watch -> gap (garden-wall opening, matches
+## test_world_bounds.gd's known-traversable point) -> ball -> group -> door,
+## per courtyard.tscn's Marker3D key points (tools/_bootstrap_courtyard.gd).
+## Relocated for the 2026-08-28 world expansion (world_bounds.gd's own doc
+## comment has the four-room layout: home -> lane -> playground -> garden
+## pocket through the wall gap at x=11) -- same shape of route as the
+## single-room version, just at the new distances.
 const ROUTE := [
-	[0.0, -1.2],   # Watch
-	[6.5, -3.0],   # through the garden-wall gap (outbound)
-	[8.6, -6.6],   # BallEnd
-	[6.5, -3.0],   # back through the gap (inbound) -- straight-line steering
-	               # from BallEnd to Group would otherwise cut through the
-	               # garden wall itself; a real player has to funnel back
-	               # through the same opening, same as the outbound leg.
-	[0.0, -3.8],   # Group
-	[0.0, 10.8],   # Door
+	[0.0, -8.0],    # Watch
+	[12.0, -8.0],   # through the garden-wall gap (outbound) -- z=-8 sits in
+	                # the gap's own -9..-7 open band, so this crosses x=11
+	                # cleanly rather than clipping either solid segment.
+	[14.0, -12.0],  # BallEnd
+	[12.0, -8.0],   # back through the gap (inbound) -- straight-line steering
+	                # from BallEnd to Group would otherwise cut through the
+	                # garden wall itself; a real player has to funnel back
+	                # through the same opening, same as the outbound leg.
+	[0.0, -11.0],   # Group
+	[0.0, 13.0],    # Door
 ]
 
 
@@ -58,11 +64,14 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		var cam_pos: Vector3 = camera.global_position
 		stats["min_camera_y"] = minf(stats["min_camera_y"], cam_pos.y)
 
-		# Camera never below the plan's floor, never outside the source's
-		# authored horizontal/depth clamps (game.mjs:399-400).
+		# Camera never below the plan's floor, never outside camera_rig.gd's
+		# own authored horizontal/depth clamps -- re-tuned for the
+		# 2026-08-28 world expansion (world_bounds.gd's doc comment) to
+		# match the new four-room envelope; see that file's own comment on
+		# these exact numbers.
 		assert_float(cam_pos.y).is_greater_equal(0.6)
-		assert_float(cam_pos.x).is_between(-9.65 - CLAMP_EPSILON, 9.65 + CLAMP_EPSILON)
-		assert_float(cam_pos.z).is_between(-12.55 - CLAMP_EPSILON, 11.05 + CLAMP_EPSILON)
+		assert_float(cam_pos.x).is_between(-15.0 - CLAMP_EPSILON, 21.0 + CLAMP_EPSILON)
+		assert_float(cam_pos.z).is_between(-19.0 - CLAMP_EPSILON, 13.5 + CLAMP_EPSILON)
 
 		var query := PhysicsRayQueryParameters3D.create(head, cam_pos)
 		query.exclude = exclude

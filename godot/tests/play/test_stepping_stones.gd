@@ -22,18 +22,21 @@ func test_stone_vs_gap_changes_the_perception_imagination_strength() -> void:
 		await tree.physics_frame
 	assert_float(perception.call("imagination_strength")).is_less(0.05)
 
-	# In the gap, still among the stones -- the cue kicks in.
-	# Clear of the wall colliders (x <= 5.75) and every stone's capture
-	# radius, but still inside the stones region.
-	assert_bool(WorldAffordances.in_stones_region(6.5, -5.1)).is_true()
-	assert_int(WorldAffordances.stone_index_at(6.5, -5.1)).is_equal(-1)
-	player.global_position = Vector3(6.5, 0.0, -5.1)
+	# In the gap, still among the stones -- the cue kicks in. Clear of the
+	# wall colliders (WALL_X=11, half_x 0.35) and every stone's capture
+	# radius, but still inside the stones region. Relocated for the
+	# 2026-08-28 world expansion (world_bounds.gd's own doc comment) --
+	# same offset from the gap's own midpoint the single-room version's
+	# (6.5, -5.1) held from its own gap.
+	assert_bool(WorldAffordances.in_stones_region(12.1, -10.3)).is_true()
+	assert_int(WorldAffordances.stone_index_at(12.1, -10.3)).is_equal(-1)
+	player.global_position = Vector3(12.1, 0.0, -10.3)
 	for _i in range(90):
 		await tree.physics_frame
 	assert_float(perception.call("imagination_strength")).is_greater(0.5)
 
 	# Far away entirely -- back to no cue, it dissolves rather than sticking.
-	player.global_position = Vector3(0.0, 0.0, 6.5)
+	player.global_position = Vector3(0.0, 0.0, 10.0)
 	for _i in range(90):
 		await tree.physics_frame
 	assert_float(perception.call("imagination_strength")).is_less(0.05)
@@ -47,7 +50,7 @@ func test_imagination_cue_never_touches_authored_colour() -> void:
 	var player: Node3D = Game.player
 	var perception: Node = runner.scene().find_child("Perception", true, false)
 
-	player.global_position = Vector3(6.5, 0.0, -5.1)  # in the gap -- cue active, clear of colliders
+	player.global_position = Vector3(12.1, 0.0, -10.3)  # in the gap -- cue active, clear of colliders
 	var tree := Engine.get_main_loop() as SceneTree
 	for _i in range(90):
 		await tree.physics_frame
