@@ -141,6 +141,14 @@ const WARM_LIGHT := Color(1.0, 0.66, 0.28)
 ## natural light with deep but readable shadow"; the pale plaster dissolves into
 ## the fog at distance, so surfaces meant to read as dark need their own value.
 const SHADOW_STONE := Color(0.24, 0.21, 0.19)
+## Ambience pass (2026-08-28): faded laundry cloth. The one deliberately
+## cooler, slightly-more-separated note in an otherwise warm/neutral palette
+## -- ART_DIRECTION.md's "child and key interactive elements can carry
+## slightly clearer colour separation, but should still belong to the
+## world" -- so a washing line reads as cloth against plaster instead of
+## disappearing into it. Both still muted, not toy-box.
+const CLOTH_PALE := Color(0.80, 0.76, 0.66)
+const CLOTH_MUTED_BLUE := Color(0.44, 0.49, 0.54)
 
 
 ## 2026-08-28 world expansion: one cramped 20x24.5 m room -> four connected
@@ -192,17 +200,44 @@ func _build_static_world(root: Node3D) -> void:
 
 	# Trees flanking the lane's home-side mouth (concept_02's "narrow
 	# passage... light at the far end" reads better with something framing
-	# the near end too), plus the deep garden tree.
-	_add_tree(root, -6.0, 9.5, 1.05)
-	_add_tree(root, 6.0, 9.5, 0.9)
-	_add_tree(root, 13.9, -13.4, 1.25)
+	# the near end too), the deep garden tree, and one new tree behind the
+	# chalk circle. Scales bumped from the original expansion's 1.05/0.9/1.25
+	# -- concept_03/06/07 all crop the top of frame with canopy mass. This
+	# reuses the same _add_tree()/_kind() path every tree here already goes
+	# through, so both AssetMode branches (tree_large.gltf, and
+	# _primitive_tree's own trunk + two foliage tiers) get a real trunk for
+	# free. The previous attempt at overhead framing hung bare foliage
+	# spheres at y 6-7.5 with no trunk at all and read as floating discs from
+	# the play camera -- a bespoke hack, not this path, which is why simply
+	# adding/enlarging trees here doesn't repeat that failure.
+	_add_tree(root, -6.0, 9.5, 1.25)
+	_add_tree(root, 6.0, 9.5, 1.1)
+	_add_tree(root, 13.9, -13.4, 1.35)
+	# Behind and slightly off-centre from the circle (Group sits at x=0,
+	# z=-11) so its trunk doesn't stand in the chalk circle itself and its
+	# canopy doesn't smother the arcade's own centre arch (_build_playground)
+	# -- concept_07's "one large tree breaking the skyline" over the watching
+	# child and the group beyond.
+	_add_tree(root, -2.5, -16.5, 1.4)
 
-	# DEFERRED: the overhead canopy that frames the top of frame in
-	# concept_03/06/07. First attempt hung foliage spheres at y 6-7.5 with no
-	# trunk; from the play camera they read as floating discs, not a canopy.
-	# Doing this properly means canopy attached to real trees at the frame
-	# edges, sized against where the camera actually sits. Unchanged by this
-	# pass; still open.
+	# Gap 1 (ambience pass): a silhouette layer beyond the playable walls --
+	# see _add_distant_layer()'s own doc comment.
+	_add_distant_layer(root)
+
+	# Gap 3 (ambience pass): thin things a low sun draws. concept_02/04's
+	# ball-topped bollard, marking the lane mouth beside the path.
+	_mesh(root, "cylinder", Vector3(-2.6, 0.45, 7.5), Vector3(0.10, 0.9, 0.10), SHADOW_STONE)
+	_mesh(root, "sphere", Vector3(-2.6, 0.95, 7.5), Vector3(0.22, 0.22, 0.22), SHADOW_STONE)
+
+	# A washing line across the home porch -- ART_DIRECTION.md's own example
+	# of "signs of life" storytelling, anchored wall-to-wall (x=-7..7, the
+	# HOME room's own side walls) rather than on new posts. One thin
+	# cylinder rotated horizontal, plus three flat "cloth" panels that hang
+	# just below it with a small stagger in position, colour and tilt so
+	# they don't read as one rigid strip.
+	_mesh(root, "cylinder", Vector3(0.0, 2.5, 10.3), Vector3(0.02, 14.0, 0.02), SHADOW_STONE, Vector3(0, 0, deg_to_rad(90.0)))
+	for cloth in [[-3.4, CLOTH_PALE, 0.12], [-0.6, CLOTH_MUTED_BLUE, -0.16], [2.5, CLOTH_PALE, 0.10]]:
+		_mesh(root, "cube", Vector3(cloth[0], 2.15, 10.3 + cloth[2]), Vector3(0.55, 0.6, 0.03), cloth[1], Vector3(0, 0, deg_to_rad(4.0)))
 
 	# M3.2: ASSET_CREDITS.md's one featured bush_large.gltf, near the bench/
 	# tree cluster (west playground, same relative offset as the
@@ -285,8 +320,21 @@ func _build_home(root: Node3D) -> void:
 ## the only place in this pass that goes taller rather than wider, since a
 ## canyon read needs the height/width ratio, not just enclosure.
 func _build_lane(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-3.0, 4.75, 2.0), Vector3(0.5, 9.5, 12.4), PLASTER)
-	_mesh(root, "cube", Vector3(3.0, 4.75, 2.0), Vector3(0.5, 9.5, 12.4), PLASTER_LIGHT)
+	# Each wall is split into a dark plinth (y 0..0.4) and the tall plaster
+	# above it, in place of one flat cube -- Gap 4 of the ambience pass
+	# ("ground that isn't one plane"). The 39x37m world sits on a single flat
+	# ground plane and player.gd's Y is locked at 0 with no terrain-follow at
+	# all, so real height relief across a walkable path isn't available
+	# here; this is the safe substitute, a shadow-catching base that grounds
+	# the wall instead of leaving it looking like it floats on the flat
+	# plane. Zero risk to the locked-Y character: it sits flush with the
+	# wall's own existing footprint (world_bounds.gd's LANE colliders,
+	# unchanged), and the player's own 0.32m collision radius can never
+	# bring their rendered body closer to it than the wall face itself.
+	_mesh(root, "cube", Vector3(-3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(-3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER)
+	_mesh(root, "cube", Vector3(3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER_LIGHT)
 	# Deliberately nothing else in here -- ART_DIRECTION.md's "avoid filling
 	# every space with props" and the brief's own "keep it sparse": the two
 	# puddles already at x[-1.5,2.1] (see caller) are the lane's only detail,
@@ -307,7 +355,12 @@ func _build_playground(root: Node3D) -> void:
 	# a second wall out at x=16 alongside it there would look like a second,
 	# redundant room. Deliberately absent for z > -16 for that reason.
 	_mesh(root, "cube", Vector3(16.0, 4.0, -18.0), Vector3(1.1, 8.2, 4.0), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(0, 4.0, -20.0), Vector3(33.0, 8.2, 1.1), PLASTER)
+	# South wall, as a blind arcade instead of one flat cube -- Gap 2 of the
+	# ambience pass. concept_03_playground_scale.png is literally a row of
+	# arches in a weathered wall; before this the build had exactly one arch
+	# anywhere (the garden gap). See _build_arcade_wall()'s own doc comment
+	# for why these are blind niches, not punch-throughs.
+	_build_arcade_wall(root, 0.0, -20.0, 33.0, 1.1, 8.2, [-10.0, 0.0, 10.0])
 
 	for x in [-3.4, 3.4]:
 		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT)
@@ -349,6 +402,24 @@ func _build_garden_pocket(root: Node3D) -> void:
 	for creeper in [[-9.1, 0.62], [-8.1, 0.5], [-7.1, 0.58]]:
 		_mesh(root, "sphere", Vector3(11.0, 1.9, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
 
+	# Gap 4 (ambience pass): a shallow sill at the arch's own threshold --
+	# ground relief the locked-Y player (player.gd) can still walk over
+	# convincingly, the same scale as the stepping stones already shipped
+	# elsewhere in this world (~0.1m poke-up, already walked over there).
+	# Unlike the lane's plinth above, this one IS crossed underfoot -- kept
+	# to that same shallow precedent rather than a real riser for that
+	# reason.
+	_mesh(root, "cube", Vector3(11.0, 0.04, -8.0), Vector3(0.8, 0.08, 2.0), SHADOW_STONE)
+
+	# A low garden fence along the pocket's bare south wall (x[13,19],
+	# z=-4.6) -- Gap 3, thin things a low sun draws. Kept well clear of the
+	# gap->ball sightline (the player's route from the arch at x=11 to
+	# BallEnd at x=14,z=-12) so it doesn't compete with GardenPocketLight's
+	# carefully-tuned "ball is the brightest thing in frame" below.
+	for fx in range(13, 20):
+		_mesh(root, "cylinder", Vector3(float(fx), 0.28, -4.6), Vector3(0.05, 0.56, 0.05), WOOD)
+	_mesh(root, "cube", Vector3(16.0, 0.54, -4.6), Vector3(7.4, 0.06, 0.06), WOOD_LIGHT)
+
 	# A practical light in the garden pocket, over where the ball lands.
 	#
 	# docs/concept-art/extended/concept_06_garden_gap.png makes the ball the
@@ -378,6 +449,159 @@ func _build_garden_pocket(root: Node3D) -> void:
 	pocket.shadow_enabled = false
 	root.add_child(pocket)
 	pocket.owner = root
+
+
+# --------------------------------------------------------- ambience pass --
+# 2026-08-28: five gaps closed against docs/concept-art/extended/ and
+# docs/ART_DIRECTION.md's "beauty from light, proportion, atmosphere and
+# silence rather than asset density" -- a depth layer beyond the walls, a
+# blind arcade, a handful of thin light-catching things, two safe forms of
+# ground relief, and the overhead canopy the trees above now carry. Every
+# shape below is either plain MeshInstance3D (via _mesh(), no new collider --
+# WorldBounds.COLLIDERS is untouched by this whole pass) or CSG with
+# use_collision = false, so none of it can change what world_bounds.gd's
+# 2-D circle-vs-box check allows a player to reach.
+
+
+## Gap 1: a silhouette layer OUTSIDE the playable envelope (world_bounds.gd's
+## can_move_to: x[-16.6,22.6] z[-20.3,16.3]). Every plate in
+## docs/concept-art/extended/ recedes -- distant rooftops, a treeline, haze --
+## and this world stopped at a flat plaster wall with nothing behind it,
+## which is also why volumetric fog (fog_end 42-60m across the three moods,
+## mood_preset.gd) had nothing at a second distance to separate from the
+## near walls. Purely visual and well clear of the envelope, so none of it
+## can ever be walked into or change test_camera_never_in_geometry.gd's
+## result (that raycast only checks physics layer 2, and nothing here joins
+## any physics layer at all).
+func _add_distant_layer(root: Node3D) -> void:
+	# South, beyond the playground's far wall (z=-20) -- the backdrop the
+	# watch/circle beats already look toward, past the chalk circle and the
+	# new arcade.
+	_roofline(root, -11.0, -29.0, 5.5, 10.0)
+	_roofline(root, 1.0, -32.0, 7.0, 12.5)
+	_roofline(root, 10.5, -28.5, 5.0, 9.0)
+	_treeline_mass(root, -6.0, -27.0, 6.5, 8.5)
+	_treeline_mass(root, 6.5, -30.0, 7.5, 9.5)
+
+	# West, beyond the playground's side wall (x=-16.6).
+	_roofline(root, -24.0, -11.0, 6.0, 10.5)
+	_treeline_mass(root, -25.5, -16.0, 7.0, 8.0)
+
+	# East, beyond the garden pocket's far wall (x=22.6) -- visible past the
+	# gap/ball beats, the "something beyond the wall" the garden light
+	# already promises up close.
+	_roofline(root, 29.0, -9.0, 5.5, 10.0)
+	_treeline_mass(root, 30.0, -14.5, 6.5, 8.5)
+
+
+## One roofline mass: a plain block plus a shallow cone roof. SHADOW_STONE
+## reads as near-silhouette against the sky at this distance, and fog begins
+## swallowing detail past ~12-14m (mood_preset.gd's fog_begin) long before
+## these are reached -- this only has to be a correct SHAPE, not a correct
+## building, per ART_DIRECTION.md's "modest geometric detail".
+func _roofline(root: Node3D, x: float, z: float, width: float, height: float) -> void:
+	var wall_h: float = height * 0.6
+	_mesh(root, "cube", Vector3(x, wall_h * 0.5, z), Vector3(width, wall_h, width * 0.8), SHADOW_STONE)
+	var roof_h: float = height - wall_h
+	_mesh(root, "cone", Vector3(x, wall_h + roof_h * 0.5, z), Vector3(width * 1.15, roof_h, width * 0.95), SHADOW_STONE)
+
+
+## One treeline mass: two overlapping flattened spheres standing in for a
+## distant stand of trees -- the same FOLIAGE the near trees use, just
+## bigger and coarser, since nothing here is meant to survive a close look.
+func _treeline_mass(root: Node3D, x: float, z: float, width: float, height: float) -> void:
+	_mesh(root, "sphere", Vector3(x, height * 0.5, z), Vector3(width, height, width), FOLIAGE)
+	_mesh(root, "sphere", Vector3(x + width * 0.32, height * 0.42, z + width * 0.18), Vector3(width * 0.68, height * 0.76, width * 0.68), FOLIAGE)
+
+
+## Gap 2: concept_03_playground_scale.png's row of arches in a weathered
+## wall. Blind niches, not punch-throughs: cut only partway into the wall's
+## own thickness, so there is always a shadowed stone backing visible inside
+## each opening. A THROUGH arch here would visually promise a route that
+## isn't one -- unlike the garden gap, this wall is the world's true south
+## edge, and world_bounds.gd's collider for it (unchanged, still one solid
+## box the full span) would stop a player who tried to walk into what looked
+## like an opening.
+##
+## `length` runs along local/world X, `thickness` along local/world Z --
+## matches this wall's own orientation (its long axis is X). CSGBox3D for
+## the pier mass, then a CSGBox3D+CSGCylinder3D pair per arch as SUBTRACTION
+## children (a rectangular lower half union a round top -- the standard
+## two-primitive round-arch cut). use_collision = false throughout: the real
+## collider for this wall is world_bounds.gd's own flat box, untouched.
+func _build_arcade_wall(root: Node3D, center_x: float, center_z: float, length: float, thickness: float, wall_height: float, arch_xs: Array) -> void:
+	var combiner := CSGCombiner3D.new()
+	combiner.name = "ArcadeWall"
+	root.add_child(combiner)
+	combiner.owner = root
+	combiner.position = Vector3(center_x, 0.0, center_z)
+
+	var pier := CSGBox3D.new()
+	pier.size = Vector3(length, wall_height, thickness)
+	pier.position = Vector3(0.0, wall_height * 0.5, 0.0)
+	pier.operation = CSGShape3D.OPERATION_UNION
+	pier.material = _csg_material(PLASTER)
+	pier.use_collision = false
+	combiner.add_child(pier)
+	pier.owner = root
+
+	# +Z is this wall's playground-facing side (world z=-20+thickness/2) --
+	# confirmed sun-facing in all three moods (mood_preset.gd's sun_from/
+	# sun_target all point predominantly toward -X/-Z, so a +Z-facing
+	# surface catches it), which is the whole point: something for the low
+	# sun to rake across and into.
+	var near_face: float = thickness * 0.5
+	for ax in arch_xs:
+		_arch_niche(combiner, root, float(ax), near_face)
+
+
+const ARCH_WIDTH := 1.6
+const ARCH_SPRING_Y := 2.0
+const ARCH_DEPTH := 0.8
+
+## One blind arch niche. `local_x` is the arch's centre along the wall's own
+## run; `near_face` is the local Z of the wall's sun-facing surface, so the
+## cut always starts flush with it regardless of wall thickness. Total niche
+## height (ARCH_SPRING_Y + radius = 2.8m) leaves most of `wall_height` above
+## it as a solid parapet band -- the arches are a feature partway up a
+## taller wall, matching the plate, not the wall's full height.
+func _arch_niche(combiner: CSGCombiner3D, root: Node3D, local_x: float, near_face: float) -> void:
+	var radius: float = ARCH_WIDTH * 0.5
+	var cut_material := _csg_material(SHADOW_STONE)
+	# 0.05 past the face, both cutters -- clean boolean, no coplanar
+	# z-fighting at the opening's own front edge.
+	var cut_z: float = near_face - ARCH_DEPTH * 0.5 + 0.05
+
+	var lower := CSGBox3D.new()
+	lower.size = Vector3(ARCH_WIDTH, ARCH_SPRING_Y, ARCH_DEPTH)
+	lower.position = Vector3(local_x, ARCH_SPRING_Y * 0.5, cut_z)
+	lower.operation = CSGShape3D.OPERATION_SUBTRACTION
+	lower.material = cut_material
+	lower.use_collision = false
+	combiner.add_child(lower)
+	lower.owner = root
+
+	var top := CSGCylinder3D.new()
+	top.radius = radius
+	top.height = ARCH_DEPTH
+	top.sides = 16
+	top.rotation = Vector3(deg_to_rad(90.0), 0.0, 0.0)  # local Y axis (default) -> world Z
+	top.position = Vector3(local_x, ARCH_SPRING_Y, cut_z)
+	top.operation = CSGShape3D.OPERATION_SUBTRACTION
+	top.material = cut_material
+	top.use_collision = false
+	combiner.add_child(top)
+	top.owner = root
+
+
+## Shared material setup for CSG shapes -- same values _mesh() uses for
+## every MeshInstance3D, so the arcade matches the rest of the palette.
+func _csg_material(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.roughness = ROUGHNESS
+	mat.metallic = 0.0
+	return mat
 
 
 ## M3.2: real tree_large.gltf, replacing the 3-primitive trunk+foliage
