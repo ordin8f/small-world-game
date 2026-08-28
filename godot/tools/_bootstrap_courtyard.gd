@@ -222,6 +222,32 @@ func _build_static_world(root: Node3D) -> void:
 	for creeper in [[-3.9, 0.62], [-2.9, 0.5], [-1.9, 0.58]]:
 		_mesh(root, "sphere", Vector3(5.4, 1.9, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
 
+	# A practical light in the garden pocket, over where the ball lands.
+	#
+	# docs/concept-art/extended/concept_06_garden_gap.png makes the ball the
+	# BRIGHTEST thing in its frame -- glowing in golden light through the arch,
+	# which is what makes the garden route something you want to take rather
+	# than something the objective text sends you on.
+	#
+	# It also fixes a real gameplay problem the screenshot route surfaced: the
+	# ball beat renders as a dark orange smear against near-black. FIND_BALL is
+	# the lowest-comfort state in episode_director.gd's emotional_target(), so
+	# perception.gd's lens modulation pulls exposure DOWN and fog IN during the
+	# exact beat whose objective is "find a small object". Mood and playability
+	# were pulling opposite ways. A local light resolves it without weakening the
+	# mood: the world stays dim, the thing you are looking for does not.
+	var pocket := OmniLight3D.new()
+	pocket.name = "GardenPocketLight"
+	pocket.position = Vector3(8.6, 2.6, -6.6)
+	pocket.light_color = Color(1.0, 0.82, 0.52)
+	pocket.light_energy = 4.2
+	pocket.omni_range = 11.0
+	pocket.omni_attenuation = 1.35
+	pocket.light_volumetric_fog_energy = 2.4
+	pocket.shadow_enabled = false
+	root.add_child(pocket)
+	pocket.owner = root
+
 	# Puddles, stepping stones, and bench.
 	var puddle_color := Color(0.20, 0.32, 0.37, 0.65)
 	for p in [
