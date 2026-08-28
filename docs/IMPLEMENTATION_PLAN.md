@@ -1,5 +1,7 @@
 # Implementation Plan
 
+> **Status:** written for the original PlayCanvas/TypeScript direction, which was decided but never implemented (`DEMO_PLAN.md` section 2.1). The engine decision is now **Godot 4.7.2, typed GDScript** (`DEMO_PLAN.md` decision 1), and `DEMO_PLAN.md` is the current ticket source. The architectural *patterns* below — typed domain events, a central Narrative Director, an `Interactable` contract, a save-data shape — are kept as design reference. The stack table in section 2 has been corrected; the TypeScript code samples elsewhere in this document describe the superseded plan, not the current Godot codebase, and have not been rewritten into GDScript.
+
 ## 1. Build philosophy
 
 Build the project as a sequence of gated prototypes. Each stage must prove one part of the experience before more content or higher-quality artwork is introduced.
@@ -16,19 +18,17 @@ The core validation question is:
 
 | Layer | Choice |
 |---|---|
-| Game engine | PlayCanvas Engine |
-| Language | TypeScript |
-| Build system | Vite |
-| 3D authoring | Blender |
-| Runtime asset format | GLB/glTF |
-| Asset optimization | glTF Transform |
-| Unit/content testing | Vitest |
-| Browser/E2E testing | Playwright |
-| Prototype save | `localStorage` |
-| Hosting | Static browser hosting |
+| Game engine | Godot 4.7.2 |
+| Language | Typed GDScript |
+| Renderer | Forward+ |
+| 3D authoring / asset source | GLB/glTF import; current character assets are Kenney packs (`DEMO_PLAN.md` milestone M3) |
+| Automated testing | gdUnit4, vendored under `godot/addons/gdUnit4/` |
+| Verification / export tooling | `godot/tools/*.ps1` (`import`, `test`, `verify`, `export`, `serve`) |
+| Save data | Godot `ConfigFile`/JSON under `user://` |
+| Target | Windows desktop build; web export is a later nice-to-have, not a gate |
 | Runtime AI | None |
 
-Use WebGL 2 as the compatibility/performance baseline. Treat WebGPU as an optional enhancement rather than a requirement.
+Forward+ needs a Vulkan-capable GPU; there is no WebGL2/WebGPU baseline to target now that the browser build is frozen (`DEMO_PLAN.md` decision 6).
 
 ## 3. Visual direction
 
@@ -106,7 +106,7 @@ The Narrative Director interprets that event and decides whether to advance the 
 ### Application bootstrap
 
 Responsibilities:
-- initialize PlayCanvas;
+- initialize the engine (scene tree / autoloads);
 - choose graphics quality;
 - load scenes;
 - show loading progress;

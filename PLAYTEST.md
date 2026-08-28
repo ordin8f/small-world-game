@@ -22,4 +22,6 @@ Open `http://localhost:8080`.
 
 ## Scope
 
-This is a disposable experience prototype, not the production engine foundation. It validates child-scale navigation, a social action loop, and the Emotional Lens before the episode is ported to PlayCanvas.
+This is a frozen experience prototype (`DEMO_PLAN.md` decision 6), not the production engine foundation. It validated child-scale navigation, a social action loop, and the Emotional Lens; the production build is a fresh implementation in Godot 4.7.2, not an automated port of this code.
+
+See [`docs/PLAYTEST.md`](docs/PLAYTEST.md) for playtest scope, success criteria, and the data boundary.

@@ -28,4 +28,4 @@ Maintain Pages deployment, prepare tester instructions, collect copied feedback 
 
 ## Production port
 
-Only after playtest evidence supports the mechanics, define the boundary for moving validated systems into PlayCanvas and strict TypeScript.
+Only after playtest evidence supports the mechanics, define the boundary for moving validated systems into Godot and typed GDScript.

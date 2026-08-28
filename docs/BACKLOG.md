@@ -1,31 +1,31 @@
 # Initial Backlog
 
+> **Status:** written for the original PlayCanvas/TypeScript direction, which was decided but never implemented (`DEMO_PLAN.md` section 2.1). `DEMO_PLAN.md`'s milestones (M0–M6) are the current ticket source and supersede the P0–P8 milestones below. This backlog is kept for the design intent in P1–P6 (route beats, social approaches, Emotional Lens tuning) that still applies to the Godot build.
+
 Work in order. Do not move to a new milestone until the preceding exit gate is met.
 
 ## P0 — Foundation
 
 ### P0-01 Project scaffold
 
-Create a code-first PlayCanvas Engine project using TypeScript and Vite.
+Create a code-first Godot 4.7.2 project using typed GDScript.
 
 Acceptance:
-- development server starts;
+- project imports headless (`godot --headless --import`);
 - default scene renders;
-- production build succeeds;
-- no uncaught console errors;
+- release export succeeds;
+- no uncaught errors in the Godot log;
 - Git history remains clean.
 
 ### P0-02 Engineering guardrails
 
-Add strict TypeScript, format/lint/typecheck/test/build commands and CI-ready verification.
+Add gdUnit4, and headless import/test/export commands with CI-ready verification.
 
 Acceptance:
-```bash
-npm run format:check
-npm run lint
-npm run typecheck
-npm test
-npm run build
+```powershell
+godot/tools/import.ps1
+godot/tools/test.ps1
+godot/tools/export.ps1
 ```
 All pass.
 

@@ -8,4 +8,4 @@
 | Narrative and social | objectives, timing, short dialogue, gestures | belonging is conveyed through action | renderer and movement mathematics |
 | Accessibility and QA | keyboard, focus, subtitles, reduced motion, browser checks | blockers are reproducible and regression-tested | product scope without approval |
 | Release | CI, Pages packaging, tester handoff | a verified static build is shareable | gameplay behavior for deployment convenience |
-| Production port | PlayCanvas/TypeScript boundary | validated mechanics have explicit port criteria | premature rewrite before playtest evidence |
+| Production port | Godot/GDScript boundary | validated mechanics have explicit port criteria | premature rewrite before playtest evidence |
