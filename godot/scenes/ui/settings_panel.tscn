@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/settings_panel.gd" id="1_settings_panel_script"]
+
+[node name="SettingsPanel" type="VBoxContainer" unique_id=1478115901]
+script = ExtResource("1_settings_panel_script")
+theme_override_constants/separation = 10
+
+[node name="Heading" type="Label" parent="." unique_id=251830136]
+layout_mode = 2
+theme_type_variation = &"Eyebrow"
+text = "SETTINGS"
+
+[node name="MuteButton" type="Button" parent="." unique_id=975291672]
+layout_mode = 2
+theme_type_variation = &"PlainButton"
+toggle_mode = true
+text = "Sound on"
+
+[node name="MotionButton" type="Button" parent="." unique_id=25672463]
+layout_mode = 2
+theme_type_variation = &"PlainButton"
+toggle_mode = true
+text = "Reduce motion"

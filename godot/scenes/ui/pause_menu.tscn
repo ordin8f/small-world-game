@@ -1,0 +1,71 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="1_6tw0m"]
+[ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="2_pause_menu_script"]
+
+[node name="PauseMenu" type="CanvasLayer" unique_id=228734287]
+script = ExtResource("2_pause_menu_script")
+layer = 20
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=1822586631]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.02, 0.02, 0.02, 0.6)
+
+[node name="Root" type="CenterContainer" parent="." unique_id=464195362]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Card" type="VBoxContainer" parent="Root" unique_id=1550527504]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Heading" type="Label" parent="Root/Card" unique_id=1402819058]
+layout_mode = 2
+theme_type_variation = &"ScreenHeading"
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="MenuButtons" type="VBoxContainer" parent="Root/Card" unique_id=1633251780]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="ResumeButton" type="Button" parent="Root/Card/MenuButtons" unique_id=1015978930]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Resume"
+
+[node name="RestartButton" type="Button" parent="Root/Card/MenuButtons" unique_id=680843578]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Restart the afternoon"
+
+[node name="SettingsButton" type="Button" parent="Root/Card/MenuButtons" unique_id=1572738811]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="Root/Card/MenuButtons" unique_id=1643069849]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Quit"
+
+[node name="SettingsPanel" type="VBoxContainer" parent="Root/Card" unique_id=1478115901 instance=ExtResource("1_6tw0m")]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SettingsBack" type="Button" parent="Root/Card" unique_id=758306160]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Back"

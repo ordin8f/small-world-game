@@ -84,6 +84,28 @@ var _effect_player: AudioStreamPlayer  # splash/whoosh -- kept off the chime pla
                                         # puddle splash can never cut off a dispatch chime
 var _last_step_time: float = -1000.0
 
+## Gate 0 frame (S8 pause): kept distinct from Game.muted (the persistent,
+## user-facing Sound on/off toggle) so pausing/resuming can never flip that
+## button's own displayed state or fight a player who muted deliberately --
+## duck() only affects the transient pause-time gain target below.
+var _ducked: bool = false
+
+
+## PROCESS_MODE_ALWAYS: this node's own _process() below is what performs
+## the actual duck (smoothing _master_current_gain toward 0), so it must
+## keep running while SceneTree.paused is true or "audio ducks while
+## paused" (DEMO_PLAN.md S8) could never actually happen. Nothing else
+## about this autoload's behavior depends on pause state -- start()/
+## play_*() are only ever called from gameplay code that itself stops
+## running while paused.
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+## Called by pause_menu.gd on pause/resume.
+func duck(active: bool) -> void:
+	_ducked = active
+
 
 ## Idempotent, matching AudioDirector.start()'s own `if (this.context)
 ## return`. Called from Game.start_episode() -- audio.mjs's own call site
@@ -116,7 +138,7 @@ func start() -> void:
 func _process(delta: float) -> void:
 	if not _started:
 		return
-	var mute_target := 0.0 if Game.muted else MASTER_GAIN
+	var mute_target := 0.0 if (Game.muted or _ducked) else MASTER_GAIN
 	_master_current_gain = CameraProfile.damp(_master_current_gain, mute_target, MUTE_GAIN_LAMBDA, delta)
 
 	for i in range(_drone_players.size()):

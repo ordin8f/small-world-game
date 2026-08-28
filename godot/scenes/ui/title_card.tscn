@@ -1,40 +1,227 @@
 [gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/ui/title_card.gd" id="1_title_card_script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/settings_panel.tscn" id="1_a10dp"]
+[ext_resource type="Script" path="res://scripts/ui/title_card.gd" id="2_title_card_script"]
 
-[node name="TitleCard" type="CanvasLayer" unique_id=1520156969]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_4cu4b"]
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+bg_color = Color(0.05, 0.055, 0.05, 0.88)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.66, 0.28, 0.3)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="TitleCard" type="CanvasLayer" unique_id=405154478]
 layer = 10
-script = ExtResource("1_title_card_script")
+script = ExtResource("2_title_card_script")
 
-[node name="Root" type="CenterContainer" parent="." unique_id=1797059288]
+[node name="Backdrop" type="ColorRect" parent="." unique_id=1577117165]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+
+[node name="MenuRoot" type="CenterContainer" parent="." unique_id=1207709989]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="Card" type="VBoxContainer" parent="Root" unique_id=896773346]
+[node name="Card" type="VBoxContainer" parent="MenuRoot" unique_id=1639080863]
+custom_minimum_size = Vector2(640, 0)
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="Eyebrow" type="Label" parent="MenuRoot/Card" unique_id=1487896371]
+layout_mode = 2
+theme_type_variation = &"Eyebrow"
+text = "SMALL WORLD"
+horizontal_alignment = 1
+
+[node name="Wordmark" type="Label" parent="MenuRoot/Card" unique_id=693521416]
+layout_mode = 2
+theme_type_variation = &"Wordmark"
+text = "The Lost Ball"
+horizontal_alignment = 1
+
+[node name="MenuButtons" type="VBoxContainer" parent="MenuRoot/Card" unique_id=1839988036]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="PlayButton" type="Button" parent="MenuRoot/Card/MenuButtons" unique_id=61822845]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Play"
+
+[node name="SettingsButton" type="Button" parent="MenuRoot/Card/MenuButtons" unique_id=3079018]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Settings"
+
+[node name="CreditsButton" type="Button" parent="MenuRoot/Card/MenuButtons" unique_id=811894192]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Credits"
+
+[node name="SettingsPanel" type="VBoxContainer" parent="MenuRoot/Card" unique_id=1478115901 instance=ExtResource("1_a10dp")]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SettingsBack" type="Button" parent="MenuRoot/Card" unique_id=71570871]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Back"
+
+[node name="Hint" type="Label" parent="MenuRoot/Card" unique_id=1799861265]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "Move: WASD / arrows  ·  Interact: E or Space  ·  Run: Shift"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="FeedbackCorner" type="Control" parent="." unique_id=659496775]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -48.0
+offset_right = -20.0
+offset_bottom = -16.0
+
+[node name="FeedbackButton" type="Button" parent="FeedbackCorner" unique_id=436478870]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_type_variation = &"PlainButton"
+text = "Playtest feedback"
+
+[node name="FeedbackPopup" type="CenterContainer" parent="." unique_id=1319858684]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="FeedbackCard" type="PanelContainer" parent="FeedbackPopup" unique_id=1962991056]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_4cu4b")
+
+[node name="Fields" type="VBoxContainer" parent="FeedbackPopup/FeedbackCard" unique_id=1635890452]
 custom_minimum_size = Vector2(560, 0)
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 10
 
-[node name="Eyebrow" type="Label" parent="Root/Card" unique_id=1132326]
+[node name="Heading" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=1991494392]
 layout_mode = 2
-text = "Small World · Playtest Episode"
+theme_type_variation = &"ScreenHeading"
+text = "Playtest feedback"
 
-[node name="Title" type="Label" parent="Root/Card" unique_id=241049295]
+[node name="ScaleGroupLegend" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=1944565239]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "The Lost Ball"
-
-[node name="Lede" type="Label" parent="Root/Card" unique_id=1979446577]
-layout_mode = 2
-text = "You know the playground now. The other children know your face. But you are not quite part of their game—yet."
+theme_type_variation = &"BodyText"
+text = "Did the world feel large from the child's height?"
 autowrap_mode = 3
 
-[node name="BeginButton" type="Button" parent="Root/Card" unique_id=1708096970]
+[node name="ScaleGroup" type="HBoxContainer" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=1429592525]
 layout_mode = 2
-text = "Begin the afternoon"
+theme_override_constants/separation = 16
 
-[node name="ControlsSummary" type="Label" parent="Root/Card" unique_id=933605933]
+[node name="Yes" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ScaleGroup" unique_id=949441225]
 layout_mode = 2
-text = "Move: WASD / arrows · Interact: E or Space · Run: Shift"
+text = "Yes"
+
+[node name="Partly" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ScaleGroup" unique_id=1166135211]
+layout_mode = 2
+text = "Partly"
+
+[node name="No" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ScaleGroup" unique_id=45279370]
+layout_mode = 2
+text = "No"
+
+[node name="EmotionGroupLegend" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=786765034]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "How noticeable was the emotional shift?"
 autowrap_mode = 3
+
+[node name="EmotionGroup" type="HBoxContainer" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=1692206625]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TooSubtle" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/EmotionGroup" unique_id=865713893]
+layout_mode = 2
+text = "Too subtle"
+
+[node name="AboutRight" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/EmotionGroup" unique_id=907687267]
+layout_mode = 2
+text = "About right"
+
+[node name="TooStrong" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/EmotionGroup" unique_id=363738955]
+layout_mode = 2
+text = "Too strong"
+
+[node name="ContinueGroupLegend" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=2118214771]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "Would you play another afternoon?"
+autowrap_mode = 3
+
+[node name="ContinueGroup" type="HBoxContainer" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=957325798]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Yes" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ContinueGroup" unique_id=1202829584]
+layout_mode = 2
+text = "Yes"
+
+[node name="Maybe" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ContinueGroup" unique_id=1427054262]
+layout_mode = 2
+text = "Maybe"
+
+[node name="No" type="CheckBox" parent="FeedbackPopup/FeedbackCard/Fields/ContinueGroup" unique_id=318530161]
+layout_mode = 2
+text = "No"
+
+[node name="NotesLabel" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=140935716]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "What did you notice or feel?"
+
+[node name="Notes" type="TextEdit" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=680956179]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+wrap_mode = 1
+
+[node name="Actions" type="HBoxContainer" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=234003715]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CopyButton" type="Button" parent="FeedbackPopup/FeedbackCard/Fields/Actions" unique_id=1968289665]
+layout_mode = 2
+theme_type_variation = &"PlainButton"
+text = "Copy playtest notes"
+
+[node name="CloseButton" type="Button" parent="FeedbackPopup/FeedbackCard/Fields/Actions" unique_id=1258712501]
+layout_mode = 2
+theme_type_variation = &"PlainButton"
+text = "Close"
+
+[node name="CopyStatus" type="Label" parent="FeedbackPopup/FeedbackCard/Fields" unique_id=49371882]
+layout_mode = 2
+theme_type_variation = &"MutedText"

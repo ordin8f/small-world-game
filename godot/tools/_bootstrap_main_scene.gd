@@ -34,6 +34,13 @@ func _init() -> void:
 	root.add_child(camera_rig)
 	camera_rig.owner = root
 
+	# Gate 0 frame (S0/S1/S6): the title/ending cinematic camera -- its own
+	# independent path (title_camera.gd), never touching camera_rig above.
+	var title_camera_packed: PackedScene = load("res://scenes/title_camera.tscn")
+	var title_camera: Node3D = title_camera_packed.instantiate()
+	root.add_child(title_camera)
+	title_camera.owner = root
+
 	# M2.2: interaction zones, one per game.mjs:170-188 trigger. Positions
 	# match courtyard.tscn's own Marker3D key points exactly (see
 	# _bootstrap_courtyard.gd); radii live in interaction_zone.gd's
@@ -78,7 +85,12 @@ func _init() -> void:
 	_instance_child(root, "res://scenes/ui/vignette.tscn")
 	_instance_child(root, "res://scenes/ui/hud.tscn")
 	_instance_child(root, "res://scenes/ui/title_card.tscn")
-	_instance_child(root, "res://scenes/ui/end_card.tscn")
+	# Gate 0 frame: S6 held-shot ending (replaces the removed feedback-survey
+	# end_card.tscn), S7 credits, and S8 pause -- see each script's own doc
+	# comment.
+	_instance_child(root, "res://scenes/ui/ending_screen.tscn")
+	_instance_child(root, "res://scenes/ui/credits_screen.tscn")
+	_instance_child(root, "res://scenes/ui/pause_menu.tscn")
 
 	# M2.5: perception -- fog/light/color driven by the emotional lens
 	# (also the only thing that ever calls lens.set_target()/update(), so
@@ -89,6 +101,27 @@ func _init() -> void:
 	_instance_child(root, "res://scenes/fireflies.tscn")
 	_instance_child(root, "res://scenes/home_glow.tscn")
 
+	# Gate 0 verbs (81eb659): the floor-is-lava stepping stones and the
+	# splashable puddles, both pure pollers with no transform of their own
+	# (see each script's doc comment). NOTE: this generator had drifted out
+	# of sync with the real main.tscn before this fix -- these two were
+	# already shipped there (added directly, not through this file) with no
+	# generator update to match. Restored here so a from-scratch rebuild is
+	# accurate again; today's actual main.tscn edit (TitleCamera/
+	# EndingScreen/CreditsScreen/PauseMenu) was applied as a direct text
+	# edit instead, specifically to avoid re-running this (until now stale)
+	# generator over already-shipped work. A load()+instantiate()+pack()
+	# "patch" script was tried first and rejected: packing a loaded
+	# main.tscn after add_child()-ing freshly instanced children onto it
+	# reproducibly duplicated each newly-added instance under an
+	# auto-generated `@Type@N` name alongside the correctly-named one --
+	# real nodes in the saved file, each running its own _ready(), not just
+	# a text artifact. Root cause not fully isolated; treat mixing "load an
+	# already-built scene" with "instance new children into it, then
+	# re-pack" as unreliable until it is.
+	_instance_child(root, "res://scenes/stepping_stones.tscn")
+	_instance_child(root, "res://scenes/puddles.tscn")
+
 	var packed := PackedScene.new()
 	packed.pack(root)
 	var err := ResourceSaver.save(packed, "res://scenes/main.tscn")
@@ -96,7 +129,7 @@ func _init() -> void:
 		printerr("Failed to save main.tscn: ", err)
 		quit(1)
 		return
-	print("Wrote scenes/main.tscn with courtyard + player + camera rig + interaction zones + ball + NPCs + UI + perception")
+	print("Wrote scenes/main.tscn with courtyard + player + camera rig + title camera + interaction zones + ball + NPCs + UI (incl. ending/credits/pause) + perception")
 	quit()
 
 

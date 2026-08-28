@@ -1,0 +1,148 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ending_screen.gd" id="1_ending_screen_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frcrr"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 160
+border_width_top = 90
+border_width_right = 160
+border_color = Color(0.02, 0.02, 0.02, 0.97)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_802kv"]
+bg_color = Color(0.09, 0.065, 0.045, 0.97)
+border_width_top = 2
+border_color = Color(1, 0.66, 0.28, 0.35)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pyjtg"]
+bg_color = Color(1, 0.74, 0.4, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.92, 0.78, 0.6)
+corner_radius_top_left = 13
+corner_radius_top_right = 13
+corner_radius_bottom_right = 13
+corner_radius_bottom_left = 13
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7f101"]
+bg_color = Color(1, 0.74, 0.4, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.92, 0.78, 0.6)
+corner_radius_top_left = 13
+corner_radius_top_right = 13
+corner_radius_bottom_right = 13
+corner_radius_bottom_left = 13
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_foc8m"]
+bg_color = Color(1, 0.74, 0.4, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.92, 0.78, 0.6)
+corner_radius_top_left = 13
+corner_radius_top_right = 13
+corner_radius_bottom_right = 13
+corner_radius_bottom_left = 13
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7txdo"]
+bg_color = Color(0.02, 0.02, 0.02, 0.95)
+
+[node name="EndingScreen" type="CanvasLayer" unique_id=1732555614]
+script = ExtResource("1_ending_screen_script")
+layer = 10
+
+[node name="Frame" type="Panel" parent="." unique_id=816154115]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_frcrr")
+
+[node name="Sill" type="Panel" parent="." unique_id=587907493]
+anchors_preset = -1
+anchor_top = 0.7083
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_802kv")
+
+[node name="IconsCenter" type="CenterContainer" parent="Sill" unique_id=267657947]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Icons" type="HBoxContainer" parent="Sill/IconsCenter" unique_id=2120791274]
+layout_mode = 2
+theme_override_constants/separation = 44
+
+[node name="Treasure0" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=723861347]
+visible = false
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_pyjtg")
+
+[node name="Treasure1" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=830676404]
+visible = false
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_7f101")
+
+[node name="Treasure2" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=1534958206]
+visible = false
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_foc8m")
+
+[node name="MullionV" type="Panel" parent="." unique_id=339446217]
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.125
+anchor_right = 0.5
+anchor_bottom = 0.7083
+offset_left = -3.0
+offset_right = 3.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_7txdo")
+
+[node name="MullionH" type="Panel" parent="." unique_id=1253736919]
+anchors_preset = -1
+anchor_left = 0.125
+anchor_top = 0.41665
+anchor_right = 0.875
+anchor_bottom = 0.41665
+offset_top = -3.0
+offset_bottom = 3.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_7txdo")
+
+[node name="TextArea" type="CenterContainer" parent="." unique_id=1920677872]
+anchors_preset = -1
+anchor_left = 0.125
+anchor_top = 0.125
+anchor_right = 0.875
+anchor_bottom = 0.7083
+mouse_filter = 2
+
+[node name="LineText" type="Label" parent="TextArea" unique_id=435906989]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_type_variation = &"ScreenHeading"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="FadeToBlack" type="ColorRect" parent="." unique_id=1232857035]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0, 0, 0, 1)

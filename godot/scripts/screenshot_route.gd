@@ -244,7 +244,7 @@ func _drive(waypoints: Array) -> void:
 
 
 ## Every CanvasLayer under Main, at any depth -- main.tscn's own direct
-## children (Vignette, Hud, TitleCard, EndCard -- scenes/main.tscn:59-68)
+## children (Vignette, Hud, TitleCard, EndingScreen, CreditsScreen, PauseMenu)
 ## today, but found recursively rather than via _main.get_children() alone
 ## so a CanvasLayer nested inside one of those (or added later) can't slip
 ## through un-hidden. DebugOverlay is a separate autoload sibling of Main,

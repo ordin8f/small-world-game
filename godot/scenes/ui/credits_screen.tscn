@@ -1,0 +1,121 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/credits_screen.gd" id="1_credits_screen_script"]
+
+[node name="CreditsScreen" type="CanvasLayer" unique_id=572634149]
+script = ExtResource("1_credits_screen_script")
+layer = 11
+
+[node name="Backdrop" type="ColorRect" parent="." unique_id=786166312]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.02, 0.02, 0.02, 1)
+
+[node name="Root" type="CenterContainer" parent="." unique_id=2002802791]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Card" type="VBoxContainer" parent="Root" unique_id=1175829056]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Heading" type="Label" parent="Root/Card" unique_id=1324827683]
+layout_mode = 2
+theme_type_variation = &"ScreenHeading"
+text = "Credits"
+horizontal_alignment = 1
+
+[node name="Entry0" type="VBoxContainer" parent="Root/Card" unique_id=1898373907]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Root/Card/Entry0" unique_id=1219685276]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "Kenney -- Mini Characters 1.0"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/Card/Entry0" unique_id=1796215629]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "Player and playground children  ·  CC0 1.0"
+horizontal_alignment = 1
+
+[node name="Entry1" type="VBoxContainer" parent="Root/Card" unique_id=413738334]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Root/Card/Entry1" unique_id=644529689]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "Tiny Treats -- Homely House 1.0"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/Card/Entry1" unique_id=679369038]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "The distant house  ·  CC0 1.0"
+horizontal_alignment = 1
+
+[node name="Entry2" type="VBoxContainer" parent="Root/Card" unique_id=1403093068]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Root/Card/Entry2" unique_id=1596342562]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "Tiny Treats -- Pretty Park 1.0"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/Card/Entry2" unique_id=491904869]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "Trees, bench, bush, street lantern  ·  CC0 1.0"
+horizontal_alignment = 1
+
+[node name="Entry3" type="VBoxContainer" parent="Root/Card" unique_id=1280941998]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Root/Card/Entry3" unique_id=1547396532]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "gdUnit4 (MikeSchulze)"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/Card/Entry3" unique_id=4817310]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "Test framework  ·  MIT"
+horizontal_alignment = 1
+
+[node name="Entry4" type="VBoxContainer" parent="Root/Card" unique_id=1935014960]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="Root/Card/Entry4" unique_id=683372684]
+layout_mode = 2
+theme_type_variation = &"BodyText"
+text = "Godot Engine 4.7"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Root/Card/Entry4" unique_id=1565443883]
+layout_mode = 2
+theme_type_variation = &"MutedText"
+text = "godotengine.org  ·  MIT"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Root/Card" unique_id=100207999]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+
+[node name="ReturnButton" type="Button" parent="Root/Card" unique_id=384499328]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PlainButton"
+text = "Return to title"

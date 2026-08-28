@@ -9,12 +9,15 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/vignette.tscn" id="7_0ld40"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8_gqmmt"]
 [ext_resource type="PackedScene" path="res://scenes/ui/title_card.tscn" id="9_yc10j"]
-[ext_resource type="PackedScene" path="res://scenes/ui/end_card.tscn" id="10_jscy8"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ending_screen.tscn" id="10_jscy8"]
 [ext_resource type="PackedScene" path="res://scenes/perception.tscn" id="11_pm3ni"]
 [ext_resource type="PackedScene" path="res://scenes/fireflies.tscn" id="12_y6deb"]
 [ext_resource type="PackedScene" path="res://scenes/home_glow.tscn" id="13_og1vs"]
 [ext_resource type="PackedScene" path="res://scenes/stepping_stones.tscn" id="14_st0ne"]
 [ext_resource type="PackedScene" path="res://scenes/puddles.tscn" id="15_pdl3s"]
+[ext_resource type="PackedScene" path="res://scenes/title_camera.tscn" id="16_tcam0"]
+[ext_resource type="PackedScene" path="res://scenes/ui/credits_screen.tscn" id="17_cred1"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="18_paus2"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
 size = Vector2(2, 3)
@@ -27,6 +30,8 @@ size = Vector2(2, 3)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_jkv2x")]
+
+[node name="TitleCamera" type="Node3D" parent="." unique_id=2066987062 instance=ExtResource("16_tcam0")]
 
 [node name="InteractionZones" type="Node3D" parent="." unique_id=1744831515]
 
@@ -67,7 +72,7 @@ layer = 5
 [node name="TitleCard" type="CanvasLayer" parent="." unique_id=1520156969 instance=ExtResource("9_yc10j")]
 layer = 10
 
-[node name="EndCard" type="CanvasLayer" parent="." unique_id=1572770631 instance=ExtResource("10_jscy8")]
+[node name="EndingScreen" type="CanvasLayer" parent="." unique_id=1572770631 instance=ExtResource("10_jscy8")]
 layer = 10
 
 [node name="Perception" type="Node" parent="." unique_id=510694259 instance=ExtResource("11_pm3ni")]
@@ -81,3 +86,9 @@ mesh = SubResource("PlaneMesh_dpsxx")
 [node name="SteppingStones" type="Node" parent="." unique_id=3021882201 instance=ExtResource("14_st0ne")]
 
 [node name="Puddles" type="Node" parent="." unique_id=3021882202 instance=ExtResource("15_pdl3s")]
+
+[node name="CreditsScreen" type="CanvasLayer" parent="." unique_id=887232321 instance=ExtResource("17_cred1")]
+layer = 11
+
+[node name="PauseMenu" type="CanvasLayer" parent="." unique_id=808032465 instance=ExtResource("18_paus2")]
+layer = 20
