@@ -1,0 +1,21 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ball.gd" id="1_ball_script"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_n1dj2"]
+radius = 0.42
+height = 0.84
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7s4qf"]
+albedo_color = Color(0.83, 0.53, 0.18, 1)
+roughness = 0.6
+emission_enabled = true
+emission = Color(0.83, 0.53, 0.18, 1)
+emission_energy_multiplier = 0.0
+
+[node name="Ball" type="Node3D" unique_id=211406976]
+script = ExtResource("1_ball_script")
+
+[node name="Mesh" type="MeshInstance3D" parent="." unique_id=1642435463]
+mesh = SubResource("SphereMesh_n1dj2")
+surface_material_override/0 = SubResource("StandardMaterial3D_7s4qf")

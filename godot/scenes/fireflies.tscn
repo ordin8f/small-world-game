@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/fireflies.gd" id="1_fireflies_script"]
+
+[node name="Fireflies" type="Node3D" unique_id=782116458]
+script = ExtResource("1_fireflies_script")

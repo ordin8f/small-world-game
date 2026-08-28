@@ -1,0 +1,83 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/courtyard.tscn" id="1_trceg"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_a8y0u"]
+[ext_resource type="PackedScene" path="res://scenes/camera_rig.tscn" id="3_jkv2x"]
+[ext_resource type="PackedScene" path="res://scenes/interaction_zone.tscn" id="4_jbj1t"]
+[ext_resource type="PackedScene" path="res://scenes/ball.tscn" id="5_muem4"]
+[ext_resource type="PackedScene" path="res://scenes/character_visual.tscn" id="6_dp3eg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/vignette.tscn" id="7_0ld40"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="8_gqmmt"]
+[ext_resource type="PackedScene" path="res://scenes/ui/title_card.tscn" id="9_yc10j"]
+[ext_resource type="PackedScene" path="res://scenes/ui/end_card.tscn" id="10_jscy8"]
+[ext_resource type="PackedScene" path="res://scenes/perception.tscn" id="11_pm3ni"]
+[ext_resource type="PackedScene" path="res://scenes/fireflies.tscn" id="12_y6deb"]
+[ext_resource type="PackedScene" path="res://scenes/home_glow.tscn" id="13_og1vs"]
+[ext_resource type="PackedScene" path="res://scenes/stepping_stones.tscn" id="14_st0ne"]
+[ext_resource type="PackedScene" path="res://scenes/puddles.tscn" id="15_pdl3s"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
+size = Vector2(2, 3)
+
+[node name="Main" type="Node3D" unique_id=1598631220]
+
+[node name="Courtyard" type="Node3D" parent="." unique_id=1785392476 instance=ExtResource("1_trceg")]
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=1051988228 instance=ExtResource("2_a8y0u")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.5)
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=2036477573 instance=ExtResource("3_jkv2x")]
+
+[node name="InteractionZones" type="Node3D" parent="." unique_id=1744831515]
+
+[node name="Watch" type="Node3D" parent="InteractionZones" unique_id=763838446 instance=ExtResource("4_jbj1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1.2)
+
+[node name="BallEnd" type="Node3D" parent="InteractionZones" unique_id=724519269 instance=ExtResource("4_jbj1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.6, 0, -6.6)
+
+[node name="Return" type="Node3D" parent="InteractionZones" unique_id=893543193 instance=ExtResource("4_jbj1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.8)
+
+[node name="Join" type="Node3D" parent="InteractionZones" unique_id=394030464 instance=ExtResource("4_jbj1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.1)
+
+[node name="Door" type="Node3D" parent="InteractionZones" unique_id=278243070 instance=ExtResource("4_jbj1t")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10.8)
+
+[node name="Ball" type="Node3D" parent="." unique_id=1995740494 instance=ExtResource("5_muem4")]
+
+[node name="NPCs" type="Node3D" parent="." unique_id=126009109]
+
+[node name="Mina" type="Node3D" parent="NPCs" unique_id=2137871954 instance=ExtResource("6_dp3eg")]
+transform = Transform3D(0.9800666, 0, 0.19866933, 0, 1, 0, -0.19866933, 0, 0.9800666, -0.95, 0, -3.8)
+
+[node name="Arun" type="Node3D" parent="NPCs" unique_id=540243000 instance=ExtResource("6_dp3eg")]
+transform = Transform3D(0.9950042, 0, -0.09983342, 0, 1, 0, 0.09983342, 0, 0.9950042, 0.35, 0, -4.25)
+
+[node name="Third" type="Node3D" parent="NPCs" unique_id=593793772 instance=ExtResource("6_dp3eg")]
+transform = Transform3D(0.921061, 0, -0.38941833, 0, 1, 0, 0.38941833, 0, 0.921061, 1.45, 0, -3.55)
+
+[node name="Vignette" type="CanvasLayer" parent="." unique_id=835548136 instance=ExtResource("7_0ld40")]
+layer = 8
+
+[node name="Hud" type="CanvasLayer" parent="." unique_id=550031470 instance=ExtResource("8_gqmmt")]
+layer = 5
+
+[node name="TitleCard" type="CanvasLayer" parent="." unique_id=1520156969 instance=ExtResource("9_yc10j")]
+layer = 10
+
+[node name="EndCard" type="CanvasLayer" parent="." unique_id=1572770631 instance=ExtResource("10_jscy8")]
+layer = 10
+
+[node name="Perception" type="Node" parent="." unique_id=510694259 instance=ExtResource("11_pm3ni")]
+
+[node name="Fireflies" type="Node3D" parent="." unique_id=782116458 instance=ExtResource("12_y6deb")]
+
+[node name="HomeGlow" type="MeshInstance3D" parent="." unique_id=546062445 instance=ExtResource("13_og1vs")]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 1.7, 11.82)
+mesh = SubResource("PlaneMesh_dpsxx")
+
+[node name="SteppingStones" type="Node" parent="." unique_id=3021882201 instance=ExtResource("14_st0ne")]
+
+[node name="Puddles" type="Node" parent="." unique_id=3021882202 instance=ExtResource("15_pdl3s")]

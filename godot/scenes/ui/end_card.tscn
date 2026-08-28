@@ -1,0 +1,109 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/end_card.gd" id="1_end_card_script"]
+
+[node name="EndCard" type="CanvasLayer" unique_id=1572770631]
+layer = 10
+script = ExtResource("1_end_card_script")
+
+[node name="Root" type="CenterContainer" parent="." unique_id=1405755017]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Card" type="VBoxContainer" parent="Root" unique_id=1587864966]
+custom_minimum_size = Vector2(620, 0)
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Root/Card" unique_id=2068646461]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Episode complete"
+
+[node name="Summary" type="Label" parent="Root/Card" unique_id=1131719702]
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="ScaleGroupLegend" type="Label" parent="Root/Card" unique_id=399859287]
+layout_mode = 2
+text = "Did the world feel large from the child's height?"
+autowrap_mode = 3
+
+[node name="ScaleGroup" type="HBoxContainer" parent="Root/Card" unique_id=2076325951]
+layout_mode = 2
+
+[node name="Yes" type="CheckBox" parent="Root/Card/ScaleGroup" unique_id=1714150410]
+layout_mode = 2
+text = "Yes"
+
+[node name="Partly" type="CheckBox" parent="Root/Card/ScaleGroup" unique_id=455602776]
+layout_mode = 2
+text = "Partly"
+
+[node name="No" type="CheckBox" parent="Root/Card/ScaleGroup" unique_id=1142938833]
+layout_mode = 2
+text = "No"
+
+[node name="EmotionGroupLegend" type="Label" parent="Root/Card" unique_id=1600454251]
+layout_mode = 2
+text = "How noticeable was the emotional shift?"
+autowrap_mode = 3
+
+[node name="EmotionGroup" type="HBoxContainer" parent="Root/Card" unique_id=1438579839]
+layout_mode = 2
+
+[node name="TooSubtle" type="CheckBox" parent="Root/Card/EmotionGroup" unique_id=1257189954]
+layout_mode = 2
+text = "Too subtle"
+
+[node name="AboutRight" type="CheckBox" parent="Root/Card/EmotionGroup" unique_id=198156019]
+layout_mode = 2
+text = "About right"
+
+[node name="TooStrong" type="CheckBox" parent="Root/Card/EmotionGroup" unique_id=249393178]
+layout_mode = 2
+text = "Too strong"
+
+[node name="ContinueGroupLegend" type="Label" parent="Root/Card" unique_id=1223098652]
+layout_mode = 2
+text = "Would you play another afternoon?"
+autowrap_mode = 3
+
+[node name="ContinueGroup" type="HBoxContainer" parent="Root/Card" unique_id=997551181]
+layout_mode = 2
+
+[node name="Yes" type="CheckBox" parent="Root/Card/ContinueGroup" unique_id=1169062288]
+layout_mode = 2
+text = "Yes"
+
+[node name="Maybe" type="CheckBox" parent="Root/Card/ContinueGroup" unique_id=1694037522]
+layout_mode = 2
+text = "Maybe"
+
+[node name="No" type="CheckBox" parent="Root/Card/ContinueGroup" unique_id=735239426]
+layout_mode = 2
+text = "No"
+
+[node name="NotesLabel" type="Label" parent="Root/Card" unique_id=150726330]
+layout_mode = 2
+text = "What did you notice or feel?"
+
+[node name="Notes" type="TextEdit" parent="Root/Card" unique_id=1829891815]
+custom_minimum_size = Vector2(0, 90)
+layout_mode = 2
+wrap_mode = 1
+
+[node name="Actions" type="HBoxContainer" parent="Root/Card" unique_id=539004656]
+layout_mode = 2
+
+[node name="CopyButton" type="Button" parent="Root/Card/Actions" unique_id=2072993006]
+layout_mode = 2
+text = "Copy playtest notes"
+
+[node name="RestartButton" type="Button" parent="Root/Card/Actions" unique_id=804330006]
+layout_mode = 2
+text = "Play again"
+
+[node name="CopyStatus" type="Label" parent="Root/Card" unique_id=429428330]
+layout_mode = 2
