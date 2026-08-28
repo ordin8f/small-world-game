@@ -1,0 +1,106 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/swing.gd" id="1_swing_script"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gu87f"]
+albedo_color = Color(0.62, 0.38, 0.2, 1)
+roughness = 0.88
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_w1r5j"]
+material = SubResource("StandardMaterial3D_gu87f")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.1
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_dbma8"]
+material = SubResource("StandardMaterial3D_gu87f")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.2349498
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_m17jc"]
+material = SubResource("StandardMaterial3D_gu87f")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.2349498
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_63mc8"]
+material = SubResource("StandardMaterial3D_gu87f")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.2349498
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bu1r8"]
+material = SubResource("StandardMaterial3D_gu87f")
+top_radius = 0.07
+bottom_radius = 0.07
+height = 2.2349498
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gvx6f"]
+albedo_color = Color(0.3, 0.3, 0.32, 1)
+roughness = 0.88
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ldk7o"]
+material = SubResource("StandardMaterial3D_gvx6f")
+top_radius = 0.018
+bottom_radius = 0.018
+height = 1.55
+radial_segments = 8
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_lbs3a"]
+material = SubResource("StandardMaterial3D_gvx6f")
+top_radius = 0.018
+bottom_radius = 0.018
+height = 1.55
+radial_segments = 8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8kl0f"]
+albedo_color = Color(0.34, 0.2, 0.12, 1)
+roughness = 0.88
+
+[sub_resource type="BoxMesh" id="BoxMesh_un3h3"]
+material = SubResource("StandardMaterial3D_8kl0f")
+size = Vector3(0.34, 0.05, 0.26)
+
+[node name="Swing" type="Node3D" unique_id=368480797]
+script = ExtResource("1_swing_script")
+
+[node name="TopBar" type="MeshInstance3D" parent="." unique_id=1839199744]
+transform = Transform3D(-4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0, 0, 1, 0, 2.15, 0)
+mesh = SubResource("CylinderMesh_w1r5j")
+
+[node name="LegL_Front" type="MeshInstance3D" parent="." unique_id=1302124032]
+transform = Transform3D(0.35478175, -0.15660311, 0.9217405, 0.15660311, -0.96199036, -0.22371873, 0.9217405, 0.22371873, -0.31677198, -1.2249999, 1.075, 0.25)
+mesh = SubResource("CylinderMesh_dbma8")
+
+[node name="LegL_Back" type="MeshInstance3D" parent="." unique_id=946947782]
+transform = Transform3D(0.35478175, -0.15660311, -0.9217405, 0.15660311, -0.96199036, 0.22371873, -0.9217405, -0.22371873, -0.31677198, -1.2249999, 1.075, -0.25)
+mesh = SubResource("CylinderMesh_m17jc")
+
+[node name="LegR_Front" type="MeshInstance3D" parent="." unique_id=502776846]
+transform = Transform3D(0.35478175, 0.15660311, -0.9217405, -0.15660311, -0.96199036, -0.22371873, -0.9217405, 0.22371873, -0.31677198, 1.2249999, 1.075, 0.25)
+mesh = SubResource("CylinderMesh_63mc8")
+
+[node name="LegR_Back" type="MeshInstance3D" parent="." unique_id=356190669]
+transform = Transform3D(0.35478175, 0.15660311, 0.9217405, -0.15660311, -0.96199036, 0.22371873, 0.9217405, -0.22371873, -0.31677198, 1.2249999, 1.075, -0.25)
+mesh = SubResource("CylinderMesh_bu1r8")
+
+[node name="Pivot" type="Node3D" parent="." unique_id=1998910464]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.15, 0)
+
+[node name="ChainL" type="MeshInstance3D" parent="Pivot" unique_id=378496194]
+transform = Transform3D(1, 0, 0, 0, -1, 8.742278e-08, 0, -8.742278e-08, -1, -0.11, -0.775, 0)
+mesh = SubResource("CylinderMesh_ldk7o")
+
+[node name="ChainR" type="MeshInstance3D" parent="Pivot" unique_id=565224931]
+transform = Transform3D(1, 0, 0, 0, -1, 8.742278e-08, 0, -8.742278e-08, -1, 0.11, -0.775, 0)
+mesh = SubResource("CylinderMesh_lbs3a")
+
+[node name="Seat" type="MeshInstance3D" parent="Pivot" unique_id=1850732128]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.575, 0)
+mesh = SubResource("BoxMesh_un3h3")

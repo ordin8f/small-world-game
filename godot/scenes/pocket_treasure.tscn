@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/pocket_treasure.gd" id="1_pocket_treasure_script"]
+
+[node name="PocketTreasure" type="Node3D" unique_id=1611613948]
+script = ExtResource("1_pocket_treasure_script")
