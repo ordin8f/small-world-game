@@ -201,3 +201,58 @@ exists to prevent.
 3. The space is still a wide flat courtyard. The light is now roughly right; the
    *geometry* is not. This is the larger half of Gate 1 and it is level design.
 4. `godot/tools/shots.ps1` and the route screenshots are still in progress.
+
+
+---
+
+## Gate 1 geometry spec — read the plates, not the old courtyard
+
+Derived 2026-08-28 from `docs/concept-art/extended/`. The current courtyard is a
+wide flat field with 2.4 m walls and an open sightline; the plates are enclosed
+architecture where **the framing carries the story**. Four changes, each cheap,
+each a strong composition on its own.
+
+### 1. The player emerges through a gateway — `concept_07_circle.png`
+
+The plate's whole meaning is carried by *where the camera stands*: the child is
+in a **dark threshold passage**, framed by two massive vertical piers in near
+silhouette, looking out into a sunlit courtyard where the other three children
+play in the chalk circle. The child is outside the light and outside the group —
+the same fact, stated architecturally.
+
+Build a gateway/passage at the home end (around z ≈ 8..11) that the player walks
+out of. The first sight of the circle must be *through* it. This is the single
+highest-value geometry change in the plan: it converts the episode's premise —
+"you are not part of their game yet" — from a dialogue line into a composition.
+
+### 2. The courtyard becomes enclosed, not open
+
+Tall perimeter walls (roughly 5–7 m, not 2.4 m), a back wall with a small door,
+one large tree breaking the skyline. The chalk circle sits in the lit centre.
+Keep the footprint — this is about height and closure, not area.
+
+### 3. The garden gap becomes a low arch — `concept_06_garden_gap.png`
+
+Today the gap is a space between two wall segments. In the plate it is an
+**arched opening at ground level**, overgrown, that a child ducks through, with
+the ball glowing in golden light on the far side. Cut an arch into the garden
+wall instead of leaving a slot between pieces.
+
+The ball beyond it should be the brightest thing in that frame, seen through the
+arch before the player reaches it — the visual hook that makes the garden route
+something you *want* to take rather than something the objective text tells you
+to take.
+
+### 4. Light gets something to cut through
+
+Volumetric fog only reads when it has an edge. Gateways, an arch, a tree canopy
+and a doorway give the sun something to shaft between. The current open field
+gives it nothing, which is why the haze is currently doing so little.
+
+### Hard constraint
+
+`godot/scripts/logic/world_bounds.gd`'s **collider set must not change shape** —
+`test_garden_gap.gd` and `test_camera_never_in_geometry.gd` guard the route, and
+the walkable space is already tuned. This is a change to *visual* geometry and to
+wall **height**, plus one arch cut. Physics layers may change; collider footprints
+may not.
