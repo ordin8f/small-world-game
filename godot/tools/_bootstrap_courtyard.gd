@@ -138,6 +138,10 @@ const FOLIAGE := Color(0.18, 0.34, 0.22)
 const FOLIAGE_LIGHT := Color(0.34, 0.50, 0.28)
 const SLIDE := Color(0.80, 0.30, 0.16)
 const WARM_LIGHT := Color(1.0, 0.66, 0.28)
+## Deep stone for passage ceilings and undersides. ART_DIRECTION.md wants "warm
+## natural light with deep but readable shadow"; the pale plaster dissolves into
+## the fog at distance, so surfaces meant to read as dark need their own value.
+const SHADOW_STONE := Color(0.24, 0.21, 0.19)
 
 
 func _build_static_world(root: Node3D) -> void:
@@ -148,11 +152,40 @@ func _build_static_world(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(10.7, 3.8, -1), Vector3(1.1, 8.2, 29), PLASTER_LIGHT)
 	_mesh(root, "cube", Vector3(0, 4, -13.3), Vector3(23, 8.5, 1.1), PLASTER)
 
-	# Home threshold.
-	_mesh(root, "cube", Vector3(-3.8, 2.2, 12.0), Vector3(6.7, 4.7, 0.8), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(3.8, 2.2, 12.0), Vector3(6.7, 4.7, 0.8), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(0, 4.35, 12.0), Vector3(1.2, 1.2, 0.8), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(0, 1.7, 12.15), Vector3(2.5, 3.5, 0.18), WARM_LIGHT, Vector3.ZERO, 0.9)
+	# Home threshold, built as a PASSAGE rather than a flat wall.
+	#
+	# docs/concept-art/extended/concept_07_circle.png carries the episode's
+	# premise architecturally: the child stands inside a dark threshold, framed
+	# by two heavy piers, looking out into a sunlit courtyard where the other
+	# three play in the chalk circle. Outside the group and outside the light
+	# are the same fact, said by the framing rather than by dialogue.
+	#
+	# The piers and lintel already existed here as a thin z=12.0 wall; the player
+	# simply started 5.5 m in front of them facing away, so the opening was never
+	# in shot. Deepening them to a 2 m passage and starting the player under it
+	# (player.gd START_POSITION) is what puts the composition on screen.
+	#
+	# Opening widened from 0.9 m to 2.4 m so the child and the camera both fit
+	# through it. No collider changes: WorldBounds has no box here at all, the
+	# player is stopped by the z=12.3 bound, and the piers sit either side of the
+	# walked centre line.
+	_mesh(root, "cube", Vector3(-4.18, 2.2, 11.6), Vector3(5.95, 4.7, 2.0), PLASTER)
+	_mesh(root, "cube", Vector3(4.18, 2.2, 11.6), Vector3(5.95, 4.7, 2.0), PLASTER)
+	# Lintel + roof slab: the dark ceiling that makes it read as a passage.
+	_mesh(root, "cube", Vector3(0, 4.35, 11.6), Vector3(2.6, 1.2, 2.0), PLASTER)
+	_mesh(root, "cube", Vector3(0, 3.95, 11.6), Vector3(2.5, 0.35, 2.2), SHADOW_STONE)
+	# The warm window/porch light -- the anchor ART_DIRECTION.md asks dusk to
+	# resolve onto. Behind the player at the start, ahead of them at the end.
+	_mesh(root, "cube", Vector3(0, 1.7, 12.55), Vector3(2.5, 3.5, 0.18), WARM_LIGHT, Vector3.ZERO, 0.9)
+
+
+	# DEFERRED: the concept_07 framing gateway. It has to stand between the
+	# camera and the player, so its position depends on where the camera
+	# actually settles -- and camera_rig.gd's z clamp is being fixed right now
+	# (it currently pins the camera near z=11.05 for the whole route, so real
+	# camera-to-player distance swings 0.7 m to 16 m against an authored 12-16).
+	# Placing a framing device against a camera that is known-wrong would bake
+	# the bug into the level. Revisit once the clamp lands.
 
 	# Playground towers, bridge, and slide.
 	for x in [-3.4, 3.4]:
@@ -165,10 +198,55 @@ func _build_static_world(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(0, 2.3, -5.6), Vector3(4.8, 0.25, 1.15), WOOD)
 	_mesh(root, "cube", Vector3(-3.4, 0.95, -2.9), Vector3(1.25, 0.18, 5.2), SLIDE, Vector3(-0.54, 0, 0))
 
-	# Garden wall with one discoverable opening.
+	# Garden wall with one discoverable opening, built as an ARCH.
+	#
+	# concept_06_garden_gap.png: the way through is not a slot between two wall
+	# segments, it is a low overgrown arched opening the child ducks through,
+	# with the ball glowing in golden light on the far side. Spanning the gap
+	# turns "a hole in a wall" into something to look through -- and gives the
+	# volumetric fog an edge to shaft against, which an open slot does not.
+	#
+	# Purely visual. The two wall colliders either side of the gap
+	# (world_bounds.gd:30-31) are untouched and the opening is unchanged in
+	# plan, so test_garden_gap.gd still guards the same route.
 	_mesh(root, "cube", Vector3(5.4, 0.55, -5.9), Vector3(0.6, 1.2, 4.2), PLASTER_LIGHT)
 	_mesh(root, "cube", Vector3(5.4, 0.55, -1.1), Vector3(0.6, 1.2, 1.4), PLASTER_LIGHT)
 	_mesh(root, "cube", Vector3(8.1, 0.55, -0.8), Vector3(4.7, 1.2, 0.6), PLASTER_LIGHT)
+	# The span over the opening, plus shoulders stepping down to it -- a coarse
+	# arch, in keeping with ART_DIRECTION.md's "broad architectural planes,
+	# modest geometric detail".
+	_mesh(root, "cube", Vector3(5.4, 1.55, -2.8), Vector3(0.72, 0.8, 2.4), PLASTER)
+	_mesh(root, "cube", Vector3(5.4, 1.12, -3.55), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(5.4, 1.12, -2.05), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT)
+	# Vegetation swallowing the arch, as in the plate.
+	for creeper in [[-3.9, 0.62], [-2.9, 0.5], [-1.9, 0.58]]:
+		_mesh(root, "sphere", Vector3(5.4, 1.9, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
+
+	# A practical light in the garden pocket, over where the ball lands.
+	#
+	# docs/concept-art/extended/concept_06_garden_gap.png makes the ball the
+	# BRIGHTEST thing in its frame -- glowing in golden light through the arch,
+	# which is what makes the garden route something you want to take rather
+	# than something the objective text sends you on.
+	#
+	# It also fixes a real gameplay problem the screenshot route surfaced: the
+	# ball beat renders as a dark orange smear against near-black. FIND_BALL is
+	# the lowest-comfort state in episode_director.gd's emotional_target(), so
+	# perception.gd's lens modulation pulls exposure DOWN and fog IN during the
+	# exact beat whose objective is "find a small object". Mood and playability
+	# were pulling opposite ways. A local light resolves it without weakening the
+	# mood: the world stays dim, the thing you are looking for does not.
+	var pocket := OmniLight3D.new()
+	pocket.name = "GardenPocketLight"
+	pocket.position = Vector3(8.6, 2.6, -6.6)
+	pocket.light_color = Color(1.0, 0.82, 0.52)
+	pocket.light_energy = 4.2
+	pocket.omni_range = 11.0
+	pocket.omni_attenuation = 1.35
+	pocket.light_volumetric_fog_energy = 2.4
+	pocket.shadow_enabled = false
+	root.add_child(pocket)
+	pocket.owner = root
 
 	# Puddles, stepping stones, and bench.
 	var puddle_color := Color(0.20, 0.32, 0.37, 0.65)
@@ -188,6 +266,14 @@ func _build_static_world(root: Node3D) -> void:
 	_add_tree(root, -7.6, 1.7, 1.05)
 	_add_tree(root, 8.3, -8.2, 1.25)
 	_add_tree(root, 7.9, 6.2, 0.9)
+
+
+	# DEFERRED: the overhead canopy that frames the top of frame in
+	# concept_03/06/07. First attempt hung foliage spheres at y 6-7.5 with no
+	# trunk; from the play camera they read as floating discs, not a canopy.
+	# Doing this properly means canopy attached to real trees at the frame
+	# edges, sized against where the camera actually sits -- which is being
+	# fixed right now. Same reason as the gateway below.
 
 	# M3.2: ASSET_CREDITS.md's one featured bush_large.gltf, at the
 	# procedural bush-sphere spot nearest the bench/tree cluster (the other
