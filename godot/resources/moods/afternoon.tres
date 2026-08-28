@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="MoodPreset" format=3]
+
+[ext_resource type="Script" path="res://scripts/mood_preset.gd" id="1_brnua"]
+
+[resource]
+script = ExtResource("1_brnua")
+background_color = Color(0.7, 0.67, 0.6, 1)
+ambient_color = Color(0.46, 0.51, 0.6, 1)
+ambient_energy = 0.8
+sun_color = Color(1, 0.87, 0.68, 1)
+sun_energy = 4.0
+sun_from = Vector3(16, 10, 12)
+sun_target = Vector3(0, 1.2, -2)
+sun_volumetric_energy = 2.2
+fog_color = Color(0.76, 0.7, 0.59, 1)
+fog_begin = 14.0
+fog_end = 60.0
+volumetric_density = 0.018
+volumetric_albedo = Color(1, 0.92, 0.8, 1)
+exposure = 0.62
+tonemap_white = 2.0
+glow_intensity = 0.35
+glow_bloom = 0.1
+ssao_intensity = 1.6
+saturation = 0.95
+contrast = 1.05

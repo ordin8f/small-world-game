@@ -38,20 +38,22 @@ func _init() -> void:
 # ---------------------------------------------------------------- lighting --
 
 func _add_lighting(root: Node3D) -> void:
-	# game.mjs:41 -- scene.fog = new THREE.Fog(0x4f6070, 10, 27)
+	# The Environment and Sun are created BARE here and authored at runtime by
+	# scripts/perception.gd from resources/moods/*.tres.
+	#
+	# Lighting values deliberately do NOT live in this file any more. The previous
+	# version hardcoded a fog colour, fog range, and an ambient_light_energy of 1.6
+	# (a literal port of src/game.mjs:45's HemisphereLight) which flooded every
+	# shadow flat -- and perception.gd overwrote all of it every physics frame
+	# anyway. See the architecture note at the top of perception.gd.
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0x4f / 255.0, 0x60 / 255.0, 0x70 / 255.0)
-	env.fog_enabled = true
-	env.fog_light_color = Color(0x4f / 255.0, 0x60 / 255.0, 0x70 / 255.0)
-	env.fog_depth_begin = 10.0
-	env.fog_depth_end = 27.0
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	# game.mjs:45 -- HemisphereLight(sky 0x9fb0c0, ground 0x4a4030, 1.6). Godot's
-	# Environment ambient is a single color, not sky/ground -- use the sky tone
-	# and let the ground bounce be approximated by the directional sun's fill.
-	env.ambient_light_color = Color(0x9f / 255.0, 0xb0 / 255.0, 0xc0 / 255.0)
-	env.ambient_light_energy = 1.6
+	env.fog_enabled = true
+	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.glow_enabled = true
+	env.ssao_enabled = true
+	env.adjustment_enabled = true
 
 	var world_env := WorldEnvironment.new()
 	world_env.name = "WorldEnvironment"
@@ -59,21 +61,15 @@ func _add_lighting(root: Node3D) -> void:
 	root.add_child(world_env)
 	world_env.owner = root
 
-	# game.mjs:48-58 -- DirectionalLight(0xffd59a, 2.4) at (5.5, 10, 3.5), shadows on.
 	var sun := DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.light_color = Color(0xff / 255.0, 0xd5 / 255.0, 0x9a / 255.0)
-	sun.light_energy = 2.4
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 40.0
-	# Orient the light so it shines FROM (5.5, 10, 3.5) TOWARD the origin, matching
-	# the JS DirectionalLight's implicit target-at-origin behavior. Node3D.look_at()
-	# requires the node to already be inside the SceneTree (not true for a
-	# generator script building an unparented scene in memory) -- use
-	# look_at_from_position(), which computes the same basis without that
-	# requirement, then add the node with its transform already set.
+	sun.directional_shadow_max_distance = 60.0
+	# A sane default placement so an isolated scene (e.g. a scene-only test with no
+	# Perception node) is not pitch black. The mood presets override colour,
+	# energy and angle every physics frame in the real game.
 	sun.transform = Transform3D.IDENTITY
-	sun.look_at_from_position(Vector3(5.5, 10.0, 3.5), Vector3.ZERO, Vector3.UP)
+	sun.look_at_from_position(Vector3(18.0, 8.0, 10.0), Vector3(0.0, 1.2, -2.0), Vector3.UP)
 	root.add_child(sun)
 	sun.owner = root
 
