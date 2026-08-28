@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ball.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ball.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/ball.tscn -- Node3D with a sphere
 ## mesh (r 0.42, game.mjs's ball radius) in WorldBounds.PALETTE.ball's
 ## tone, emission enabled but at zero energy by default (ball.gd raises
@@ -48,4 +51,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ball.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

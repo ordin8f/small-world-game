@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ui/title_card.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ui/title_card.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: rebuilds scenes/ui/title_card.tscn for the Gate 0
 ## frame (S0 boot + S1 title-over-live-world + relocated feedback surface).
 ## See scripts/ui/title_card.gd's doc comment for the behavior; this only
@@ -199,6 +202,10 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ui/title_card.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
 
 
@@ -235,3 +242,4 @@ func _question(parent: VBoxContainer, scene_root: Node, group_name: String, lege
 		box.text = text
 		group.add_child(box)
 		box.owner = scene_root
+

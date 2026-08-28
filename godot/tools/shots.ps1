@@ -38,6 +38,8 @@ try {
 
     $dest = "build\shots"
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    Get-ChildItem -Path $dest -File -ErrorAction SilentlyContinue | Remove-Item -Force
+
     $pngs = Get-ChildItem -Path $shotsSrc -Filter "*.png" -ErrorAction SilentlyContinue
     if (-not $pngs) {
         Write-Error "shots.ps1: no PNGs found in $shotsSrc to copy."
@@ -49,7 +51,8 @@ try {
     Get-ChildItem $dest
 
     if ($status -ne 0) {
-        Write-Warning "shots.ps1: screenshot_route.gd exited $status -- see output above before trusting these frames."
+        Write-Error "shots.ps1: screenshot_route.gd exited $status -- see output above before trusting these frames."
+        exit $status
     }
     exit $status
 } finally {

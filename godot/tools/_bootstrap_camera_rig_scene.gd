@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/camera_rig.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/camera_rig.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/camera_rig.tscn -- Node3D pivot ->
 ## SpringArm3D -> Camera3D, matching camera_rig.gd's expected child paths
 ## ($SpringArm3D, $SpringArm3D/Camera3D).
@@ -36,4 +39,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/camera_rig.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

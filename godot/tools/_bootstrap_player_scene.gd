@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/player.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/player.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/player.tscn -- CharacterBody3D with
 ## player.gd attached, CapsuleShape3D r0.32 matching WorldBounds' player
 ## radius (world.mjs's default canMoveTo radius), and a CharacterVisual
@@ -54,4 +57,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/player.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

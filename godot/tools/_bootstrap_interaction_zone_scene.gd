@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/interaction_zone.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/interaction_zone.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/interaction_zone.tscn -- a bare
 ## Node3D template. Deliberately NOT an Area3D/CollisionShape3D: see
 ## interaction_zone.gd's doc comment for why (a physics trigger volume
@@ -23,4 +26,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/interaction_zone.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

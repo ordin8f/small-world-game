@@ -150,3 +150,4 @@ func _physics_process(delta: float) -> void:
 	if not camera.global_position.is_equal_approx(target):
 		camera.look_at(target, Vector3.UP)
 	camera.fov = CameraProfile.damp(camera.fov, fov, 5.5, delta)
+

@@ -39,6 +39,7 @@ fi
 
 DEST="build/shots"
 mkdir -p "$DEST"
+rm -f "$DEST"/*.png
 cp "$SHOTS_SRC"/*.png "$DEST/" 2>/dev/null || {
   echo "shots.sh: no PNGs found in $SHOTS_SRC to copy." >&2
   exit 1
@@ -49,5 +50,6 @@ ls -la "$DEST"
 
 if [ "$STATUS" -ne 0 ]; then
   echo "shots.sh: screenshot_route.gd exited $STATUS -- see output above before trusting these frames." >&2
+  exit "$STATUS"
 fi
 exit "$STATUS"

@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ui/pause_menu.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ui/pause_menu.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/ui/pause_menu.tscn (S8). See
 ## scripts/ui/pause_menu.gd's doc comment for behavior; this only builds
 ## the node tree its @onready paths expect.
@@ -88,4 +91,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ui/pause_menu.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

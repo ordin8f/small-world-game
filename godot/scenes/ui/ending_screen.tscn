@@ -1,6 +1,5 @@
 [gd_scene format=3]
-
-[ext_resource type="Script" uid="uid://cpumslnrda7rw" path="res://scripts/ui/ending_screen.gd" id="1_end"]
+[ext_resource type="Script" path="res://scripts/ui/ending_screen.gd" id="1_ending_screen_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_frcrr"]
 bg_color = Color(0, 0, 0, 0)
@@ -50,18 +49,18 @@ corner_radius_top_right = 13
 corner_radius_bottom_right = 13
 corner_radius_bottom_left = 13
 
-[node name="EndingScreen" type="CanvasLayer" unique_id=669963092]
-script = ExtResource("1_end")
+[node name="EndingScreen" type="CanvasLayer" unique_id=1947583291]
+script = ExtResource("1_ending_screen_script")
 layer = 10
 
-[node name="Frame" type="Panel" parent="." unique_id=1680180156]
+[node name="Frame" type="Panel" parent="." unique_id=557417792]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_frcrr")
 
-[node name="Sill" type="Panel" parent="." unique_id=1070074673]
+[node name="Sill" type="Panel" parent="." unique_id=1595823338]
 anchors_preset = -1
 anchor_top = 0.7083
 anchor_right = 1.0
@@ -69,38 +68,38 @@ anchor_bottom = 1.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_802kv")
 
-[node name="IconsCenter" type="CenterContainer" parent="Sill" unique_id=190425108]
+[node name="IconsCenter" type="CenterContainer" parent="Sill" unique_id=1202895295]
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="Icons" type="HBoxContainer" parent="Sill/IconsCenter" unique_id=1680387872]
+[node name="Icons" type="HBoxContainer" parent="Sill/IconsCenter" unique_id=2012662788]
 layout_mode = 2
 theme_override_constants/separation = 44
 
-[node name="Treasure0" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=1550013172]
+[node name="Treasure0" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=932714648]
 visible = false
 custom_minimum_size = Vector2(26, 26)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_pyjtg")
 
-[node name="Treasure1" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=255325171]
+[node name="Treasure1" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=958650784]
 visible = false
 custom_minimum_size = Vector2(26, 26)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_7f101")
 
-[node name="Treasure2" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=207894068]
+[node name="Treasure2" type="Panel" parent="Sill/IconsCenter/Icons" unique_id=772916461]
 visible = false
 custom_minimum_size = Vector2(26, 26)
 layout_mode = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_foc8m")
 
-[node name="TextArea" type="CenterContainer" parent="." unique_id=825525747]
+[node name="TextArea" type="CenterContainer" parent="." unique_id=966539993]
 anchors_preset = -1
 anchor_top = 0.7083
 anchor_right = 1.0
@@ -109,14 +108,14 @@ offset_top = 26.0
 offset_bottom = 96.0
 mouse_filter = 2
 
-[node name="LineText" type="Label" parent="TextArea" unique_id=1041142234]
+[node name="LineText" type="Label" parent="TextArea" unique_id=602102318]
 custom_minimum_size = Vector2(560, 0)
 layout_mode = 2
 theme_type_variation = &"ScreenHeading"
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="FadeToBlack" type="ColorRect" parent="." unique_id=1665592031]
+[node name="FadeToBlack" type="ColorRect" parent="." unique_id=47597674]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ui/hud.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ui/hud.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/ui/hud.tscn -- verbatim-copy of
 ## index.html's #hud (lines 32-53): objective card, Sound/Reduce-motion
 ## toggles, dialogue card, interaction prompt.
@@ -37,6 +40,10 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ui/hud.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
 
 
@@ -136,3 +143,4 @@ func _build_prompt(container: Control, root: Node) -> void:
 	prompt_text.text = "Interact"
 	prompt.add_child(prompt_text)
 	prompt_text.owner = root
+

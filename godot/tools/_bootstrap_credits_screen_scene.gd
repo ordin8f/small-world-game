@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ui/credits_screen.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ui/credits_screen.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/ui/credits_screen.tscn (S7). Credit
 ## copy is condensed from ASSET_CREDITS.md -- keep both in sync by hand if
 ## that file changes; see scripts/ui/credits_screen.gd's doc comment.
@@ -99,4 +102,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ui/credits_screen.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

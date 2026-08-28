@@ -63,6 +63,21 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		assert_float(cam_pos.y).is_greater_equal(0.6)
 		assert_float(cam_pos.x).is_between(-9.65 - CLAMP_EPSILON, 9.65 + CLAMP_EPSILON)
 		assert_float(cam_pos.z).is_between(-12.55 - CLAMP_EPSILON, 11.05 + CLAMP_EPSILON)
+		# Minimum separation. Added after an independent review found this test
+		# passed straight through a real doorway framing collapse: the camera
+		# ended up 0.69 m horizontally from the player, filling the frame with
+		# the back of the character's head, and every assertion above still
+		# held -- it was inside bounds and not embedded in a wall.
+		#
+		# Explicitly TRUE 3-D distance, not horizontal XZ separation. A previous
+		# reviewer conflated the two and reported 0.7 m for what was actually a
+		# 3.27 m camera; measuring the wrong quantity is how this class of bug
+		# stayed invisible.
+		#
+		# Explicit float type: Dictionary lookups return Variant, so `:=` cannot
+		# infer here -- the same gotcha camera_rig.gd's own doc comment records.
+		var authored_distance: float = CameraProfile.profile(player.global_position.z)["distance"]
+		assert_float(cam_pos.distance_to(player.global_position)).is_greater(authored_distance * 0.45)
 
 		var query := PhysicsRayQueryParameters3D.create(head, cam_pos)
 		query.exclude = exclude

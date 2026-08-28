@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/ui/settings_panel.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/ui/settings_panel.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/ui/settings_panel.tscn -- the shared
 ## Sound/Reduce-motion block instanced by both title_card.tscn (S1) and
 ## pause_menu.tscn (S8). See scripts/ui/settings_panel.gd's doc comment.
@@ -45,4 +48,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/ui/settings_panel.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

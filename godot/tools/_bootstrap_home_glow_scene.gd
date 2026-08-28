@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/home_glow.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/home_glow.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/home_glow.tscn -- a MeshInstance3D
 ## (PlaneMesh, positioned/rotated to stand upright at the home threshold,
 ## game.mjs:230) for home_glow.gd, which builds its own material in
@@ -25,4 +28,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/home_glow.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

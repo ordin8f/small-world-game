@@ -1,4 +1,7 @@
 extends SceneTree
+const SCENE_PATH := "res://scenes/title_camera.tscn"
+const SCENE_SCRIPT_PATH := "res://scripts/title_camera.gd"
+const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
 ## One-shot generator: builds scenes/title_camera.tscn -- the S0/S1
 ## cinematic camera (see scripts/title_camera.gd's doc comment).
 ##
@@ -25,4 +28,9 @@ func _init() -> void:
 		quit(1)
 		return
 	print("Wrote scenes/title_camera.tscn")
+	if not _BOOTSTRAP_SCENE_BINDER.bind_root_script(SCENE_PATH, SCENE_SCRIPT_PATH):
+		printerr("bootstrap scene script binding failed for ", SCENE_PATH)
+		quit(1)
+		return
 	quit()
+

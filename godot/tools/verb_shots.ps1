@@ -20,6 +20,8 @@ try {
 
     $dest = "build\verb_shots"
     New-Item -ItemType Directory -Force -Path $dest | Out-Null
+    Get-ChildItem -Path $dest -File -ErrorAction SilentlyContinue | Remove-Item -Force
+
     $pngs = Get-ChildItem -Path $shotsSrc -Filter "*.png" -ErrorAction SilentlyContinue
     if (-not $pngs) {
         Write-Error "verb_shots.ps1: no PNGs found in $shotsSrc to copy."
@@ -31,7 +33,8 @@ try {
     Get-ChildItem $dest
 
     if ($status -ne 0) {
-        Write-Warning "verb_shots.ps1: verb_shots.gd exited $status -- see output above before trusting these frames."
+        Write-Error "verb_shots.ps1: verb_shots.gd exited $status -- see output above before trusting these frames."
+        exit $status
     }
     exit $status
 } finally {
