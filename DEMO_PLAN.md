@@ -11,11 +11,12 @@ Verified on this Windows machine on 2026-08-28, not taken from commit messages:
 | Check | Result |
 |---|---|
 | Godot 4.7.2 installs, project imports | **Pass** — `--headless --import` exits 0 |
-| gdUnit4 suite | **Pass** — 24 cases / 14 suites, 0 failures, incl. a driven playthrough and a 16 s camera-collision test |
+| gdUnit4 suite | **Pass** — 26 cases / 14 suites, 0 failures, incl. a driven playthrough and a 16 s camera-collision test |
 | Game runs windowed | **Pass** — 14 s+, zero errors, Vulkan + OpenGL both fine |
 | Game renders a coherent scene | **Pass** — screenshot captured via in-engine viewport grab |
 | Forward+ renderer on this GPU | **Pass** — Vulkan 1.4, AMD Radeon 8060S; volumetric fog, SSAO, glow, ACES all available |
-| Web export | **Fail** — 15/15 CI runs abort with SIGABRT (exit 134) immediately after `savepack` |
+| Windows export | **Pass** (2026-08-28) — `SmallWorld.exe` runs standalone, Vulkan Forward+, no errors |
+| Web export | **Pass** (2026-08-28) — previously 15/15 CI runs aborted with SIGABRT after `savepack`; caused by packing the enabled gdUnit4 addon into the release. Fixed by excluding `addons/gdUnit4/*`, `tests/*`, `tools/*`. No longer the target, but no longer broken. |
 | GitHub Pages | **Never enabled** — `has_pages: false`, repo private; every deploy since 2026-08-23 404s |
 | Anyone had played it before today | **No** |
 
@@ -89,12 +90,12 @@ From `docs/ART_DIRECTION.md` and the concept sheet, as operational rules:
 - **Sparse.** One clear idea per frame. Beauty from proportion and atmosphere, not asset density.
 - **Camera low.** Never a generic adult third-person rig scaled down.
 
-**Note:** the concept sheet survives only as a **320×155 thumbnail** — a mood target, not a matchable reference. Recovering or regenerating a higher-resolution set is a prerequisite for the M2 lighting A/B.
+**Reference set:** the original concept sheet survives only as a **320×155 thumbnail**. `docs/concept-art/extended/` now holds nine plates at 1672×941 regenerating and extending its six named compositions, so frames can actually be graded. Where the plates and `docs/ART_DIRECTION.md` disagree, the document wins.
 
-## 6. Architecture change: invert the Emotional Lens
+## 6. Architecture change: invert the Emotional Lens — **DONE** (`780c690`)
 
-Today: the lens *authors* absolute lighting every frame.
-Required: the lens *modulates* an authored base.
+Was: the lens *authored* absolute lighting every frame.
+Now: the lens *modulates* an authored base.
 
 - Author three `Environment` presets as saved `.tres` resources — **afternoon**, **golden**, **dusk** — matching the three moods `ART_DIRECTION.md` already specifies.
 - `perception.gd` blends between presets by `warmth` and applies **bounded deltas only** (fog density, small exposure trim, saturation). It never writes an absolute colour.
@@ -162,3 +163,41 @@ Home interior beyond the final shot; character customization; any second episode
 - `docs/VERIFICATION.md` documents a `tools/smoke_test.py` deleted in `39dc798`. Correct it.
 - `AGENTS.md`: add the typed-GDScript exception.
 - Fold the playtest apparatus (guide, triage, checklist, data boundary, release notes) into one file. It documents a studio that doesn't exist.
+
+
+---
+
+## Progress log
+
+Kept current so this document cannot quietly drift out of date — the failure it
+exists to prevent.
+
+### 2026-08-28 — Gate 0 substantially complete, Gate 1 started
+
+**Done and verified on-machine:**
+
+- Godot 4.7.2 installed; project imports clean; **26/26** gdUnit4 cases pass.
+- **Export fixed.** Both Windows and Web now export. The SIGABRT that failed all
+  15 CI runs was the enabled gdUnit4 editor plugin being packed into the release.
+- **A double-clickable Windows build exists** and runs standalone on Vulkan
+  Forward+ (`godot/build/windows/SmallWorld.exe`, gitignored — rebuild with the
+  Windows Desktop preset).
+- **Forward+** renderer enabled; volumetric fog, SSAO, glow and ACES confirmed
+  working on the target GPU (AMD Radeon 8060S).
+- **The lens is inverted** (`780c690`). Three authored moods in
+  `godot/resources/moods/*.tres`; `perception.gd` blends them by episode state
+  and applies only bounded modulation. New test asserts the scene is complete
+  and authored with the lens disabled.
+- **Concept art regenerated** — `docs/concept-art/extended/`, nine plates.
+- **Docs reconciled** — PlayCanvas struck, art direction restored as binding,
+  superseded material archived with provenance.
+
+**Open, found by looking at frames rather than by tests:**
+
+1. The SpringArm3D camera collapses into the player at the home doorway
+   (z ≈ 10.8) — it hits the boundary wall. Gate 1 camera item.
+2. The mood values are a first pass. They were chosen by sweeping and looking,
+   but not yet against the extended concept plates with a human judging.
+3. The space is still a wide flat courtyard. The light is now roughly right; the
+   *geometry* is not. This is the larger half of Gate 1 and it is level design.
+4. `godot/tools/shots.ps1` and the route screenshots are still in progress.

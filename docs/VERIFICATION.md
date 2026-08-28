@@ -32,7 +32,7 @@ Regression coverage in `npm run verify` protects both behaviors at the state-mac
 godot/tools/verify.ps1
 ```
 
-Runs, in order: a headless project import (`godot --headless --import`), the full gdUnit4 suite (24 cases across 14 suites, including a driven playthrough and a 16-second camera-collision test), and a release export.
+Runs, in order: a headless project import (`godot --headless --import`), the full gdUnit4 suite (26 cases across 14 suites, including a driven playthrough and a 16-second camera-collision test), and a release export.
 
 ```powershell
 godot/tools/shots.ps1

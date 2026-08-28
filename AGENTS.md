@@ -44,7 +44,7 @@ For the production build under `godot/`:
 - Typed GDScript is permitted, and is in fact the production language for this track, even though rule 1 says strict TypeScript — that rule was written for an earlier PlayCanvas/TypeScript direction that was decided but never implemented (`DEMO_PLAN.md` section 2.1). `DEMO_PLAN.md` decision 1 is the record of the actual engine decision. Treat untyped GDScript the way rule 2 treats `any`: it needs a written justification.
 - Godot 4.7.2, Forward+ renderer, Windows desktop build. Web export is a later nice-to-have, not a gate (`DEMO_PLAN.md` section 8).
 - gdUnit4, vendored under `godot/addons/gdUnit4/`, is the sanctioned test framework for this track.
-- Run `godot/tools/verify.ps1` (headless import, the gdUnit4 suite, and a release export) and `godot/tools/shots.ps1` (route screenshots) before claiming a milestone complete. Rule 13 still applies: running the verification scripts is not the same as launching and playing the build yourself.
+- Run `godot/tools/verify.ps1` (headless import, the gdUnit4 suite, and a release export) and `godot/tools/shots.ps1` (route screenshots — in progress, not yet landed) before claiming a milestone complete. Rule 13 still applies: running the verification scripts is not the same as launching and playing the build yourself.
 - `DEMO_PLAN.md` is the ticket source for this track until the demo ships, including its milestone gates and kill criteria.
 
 ## The Lost Ball prototype exception
