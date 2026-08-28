@@ -238,11 +238,15 @@ func _build_static_world(root: Node3D) -> void:
 	# mood: the world stays dim, the thing you are looking for does not.
 	var pocket := OmniLight3D.new()
 	pocket.name = "GardenPocketLight"
-	pocket.position = Vector3(8.6, 2.6, -6.6)
-	pocket.light_color = Color(1.0, 0.82, 0.52)
-	pocket.light_energy = 4.2
-	pocket.omni_range = 11.0
-	pocket.omni_attenuation = 1.35
+	# Kept LOW and tight. At y=2.6 with an 11 m range it uplit the tree canopy
+	# above it into a glowing green blob -- a lamp under a tree, not a pool of
+	# late sun on the ground. Sitting it near ground level with a fast falloff
+	# keeps the light on the grass and the ball where the plate puts it.
+	pocket.position = Vector3(8.6, 0.95, -6.6)
+	pocket.light_color = Color(1.0, 0.84, 0.56)
+	pocket.light_energy = 3.4
+	pocket.omni_range = 7.0
+	pocket.omni_attenuation = 2.0
 	pocket.light_volumetric_fog_energy = 2.4
 	pocket.shadow_enabled = false
 	root.add_child(pocket)
@@ -281,7 +285,12 @@ func _build_static_world(root: Node3D) -> void:
 	# describes one specific bush, not six).
 	_prop(root, "res://assets/park/bush_large.gltf", Vector3(-8.7, 0.0, -6.5))
 
-	for bush in [[8.2, -6.1, 1.0], [7.0, -7.3, 0.8], [9.1, -3.2, 0.85], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9]]:
+	# Bushes moved clear of the ball's rest spot (8.6, -6.6) on 2026-08-28. The
+	# retuned low REVEAL camera framed the ball beat onto a bush sitting 0.64
+	# units from where the ball lands, so the character and the ball both
+	# vanished into it. Confirmed as prop placement rather than camera by
+	# rendering the identical REVEAL numbers at a clean nearby position.
+	for bush in [[6.4, -4.4, 1.0], [6.2, -8.7, 0.8], [9.4, -3.0, 0.85], [-8.8, 7.5, 1.0], [8.8, 8.6, 0.9]]:
 		var s: float = bush[2]
 		_mesh(root, "sphere", Vector3(bush[0], 0.55 * s, bush[1]), Vector3(1.3 * s, 1.0 * s, 1.1 * s), FOLIAGE)
 
