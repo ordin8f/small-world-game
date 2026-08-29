@@ -21,6 +21,26 @@ extends RefCounted
 ## Relative ordering (threshold < approach < reveal, tested by
 ## test_camera_profile.gd) is unchanged -- the world still opens up as the
 ## player moves away from home, just from a much lower vantage.
+##
+## RECONSIDERED, not changed (camera-fix task, round 2, 2026-08-29) after
+## 2ef80f1 brought boundary wall heights down to domestic proportion (home
+## 8.2->5.5 m, playground 8.2->4.2 m, garden pocket 7.0->3.0 m -- DEMO_PLAN.md's
+## scale-diagnosis entry has the reasoning). The numbers above were tuned
+## against child SCALE (concept art references, the character's own 1.08 m
+## height), not wall height -- that justification is untouched by the
+## retune, and screenshots taken after it (tools/shots.ps1, camera-fix
+## task's own report) already read as coherent at these same values without
+## touching them, once the garden-gap-seam fixes in camera_rig.gd (a
+## separate, narrower problem -- REVEAL's fixed "north" yaw throwing the
+## camera into an empty invisible collider near x=11, unrelated to wall
+## height) were in place. Raising height back toward the old adult-crane
+## numbers would fight ART_DIRECTION.md's low-camera mandate for no
+## demonstrated gain; the collision height camera-blocking walls actually
+## present to SpringArm3D (_wall_collider() in _bootstrap_courtyard.gd, a
+## flat 5.0 m regardless of a wall's RENDERED height) didn't change at all
+## in 2ef80f1, so the collision-avoidance margins these values were also
+## implicitly tuned against are unchanged too. Left alone on that evidence,
+## not by default.
 const THRESHOLD := {
 	"distance": 5.5, "height": 1.2, "target_height": 0.95, "fov": 50.0,
 	"lateral": 0.4, "lead": 0.45, "authored_yaw": -0.045,

@@ -164,3 +164,118 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 	assert_int(stats["checked_ticks"]).is_equal(ticks)
 	assert_int(stats["checked_ticks"]).is_greater(60)  # sanity floor: the route actually ran
 	assert_float(stats["min_camera_y"]).is_greater_equal(0.6)
+
+
+## Camera-fix task, round 2 (2026-08-29, after the boundary-architecture
+## scale retune). Found by a fine teleport sweep through the garden gap, NOT
+## by the drive-through test above: a player who STOPS moving inside the 2 m
+## gap (world_bounds.gd's x=11 wall, opening z in [-9,-7]) -- to mouse-look
+## around, say, now that dragging is back -- lets the damped camera fully
+## converge onto whatever SpringArm3D's shapecast settles on, which can be
+## the wrong side of the player entirely: measured 179.6 deg off-behind at
+## (11.32, -8.00), camera 1.52 m away, in front rather than behind.
+##
+## The drive-through test above never catches this: DriveRoute steers
+## continuously, and this route's own steering crosses the gap band in well
+## under the ~1s the damped position (camera_rig.gd's alpha, lambda 7.3)
+## needs to fully settle onto a collision-shortened target, so the transient
+## angle it measures each tick never gets as bad as the fully-converged one.
+## Continuous movement and "player stands still here" are different
+## regimes; a route-driven test can only ever cover the first. This test
+## covers the second directly: teleport there, hold still, let it settle.
+func test_camera_does_not_flip_in_front_of_the_player_in_the_garden_gap() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+
+	var player: Node3D = Game.player
+	var camera: Camera3D = Game.camera
+	assert_object(player).is_not_null()
+	assert_object(camera).is_not_null()
+
+	# The worst point found by the fine sweep -- x on the wall's own line,
+	# z at the gap opening's midpoint.
+	player.global_position = Vector3(11.32, 0.0, -8.0)
+	# tree.physics_frame (tests/helpers/drive.gd's own pattern, used
+	# throughout tests/play/), not simulate_frames() -- simulate_frames()
+	# awaits IDLE frames, which tick far faster than the fixed 60Hz physics
+	# rate in this headless sandbox (test_player_movement.gd's own doc
+	# comment) and, found tuning the seam fix below, don't reliably drive
+	# the same number of physics ticks from one run to the next -- this
+	# test needs the damped position (camera_rig.gd's lambda 7.3, ~1s to
+	# converge) to reach the SAME fully-settled state every time, not just
+	# "probably enough frames." 90 physics ticks is 1.5s, well past
+	# convergence.
+	var tree := Engine.get_main_loop() as SceneTree
+	for _i in range(90):
+		await tree.physics_frame
+
+	var p := player.global_position
+	var cam_pos := camera.global_position
+	var authored_yaw: float = CameraProfile.profile(p.z)["authored_yaw"]
+	var back := Vector2(sin(authored_yaw), cos(authored_yaw))
+	var horiz_offset := Vector2(cam_pos.x - p.x, cam_pos.z - p.z)
+	assert_float(horiz_offset.length()).is_greater(0.05)  # sanity: not degenerate-zero itself
+	var angle_off_behind := absf(rad_to_deg(back.angle_to(horiz_offset)))
+	assert_float(angle_off_behind).is_less_equal(45.0)
+
+
+## Camera-fix task, round 2 -- a narrower, HONEST-LIMIT regression check for
+## the garden-gap VOID fix (camera_rig.gd's own doc comment has the full
+## mechanism: REVEAL's authored `distance` can throw the desired camera
+## position past the gap into world_bounds.gd's wide invisible flank, which
+## is deliberately unrendered, so nothing composes there).
+##
+## Found tuning that fix, not by this test: a 0.7x reduction factor passed
+## the drive-through test above outright (94/94 green) while a dedicated
+## per-tick probe DRIVING the same route (tools/_probe_camera_scale.gd, not
+## committed, constructed the same way scene_runner() is internally --
+## GdUnitSceneRunnerImpl.new() -- but run directly under --script rather
+## than through GdUnitCmdTool) still caught a real single-tick raycast hit
+## at player (11.80283,-8.467648), against the garden pocket's own NORTH
+## wall (z=-4) -- a different wall than the fix was written against.
+##
+## This test does NOT reproduce that clip, and that is recorded rather than
+## hidden. Teleporting straight to that position and letting the damped
+## camera settle (exactly this test's own method, and the one that
+## correctly pins the flip-fix above) converges to a SAFE steady state at
+## both 0.7x and 0.8x -- the original hit was a transient produced by
+## CONTINUOUS motion's damping lag carrying the smoothed position somewhere
+## worse than either ratio's own settled value at that exact spot, and a
+## teleport starts that damping fresh, with no lag to carry. Reproducing a
+## motion-dependent transient needs a driven approach (DriveRoute, like the
+## suite's own drive-through test above) rather than a teleport, and the
+## drive-through test's exact sub-path through this 2 m gap does not match
+## the probe's closely enough to retrace this specific tick either -- the
+## gap between "the shipped test suite is green" and "this specific
+## transient is covered" is real and still open. What this test verifies
+## instead: the STEADY STATE at the exact position the transient was
+## observed at is not itself degenerate. That is weaker evidence than a true
+## reproduction, worth having anyway, and not worth confusing with one.
+## Confidence that 0.8x is actually safe rests on the probe (run repeatedly,
+## consistent) more than on this test passing.
+func test_camera_does_not_clip_the_pocket_wall_near_the_gap_seam() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+
+	var player: Node3D = Game.player
+	var camera: Camera3D = Game.camera
+	assert_object(player).is_not_null()
+	assert_object(camera).is_not_null()
+
+	var space_state := player.get_world_3d().direct_space_state
+	var exclude := [player.get_rid()]
+
+	# The exact point the 0.7x tuning attempt clipped at.
+	player.global_position = Vector3(11.80283, 0.0, -8.467648)
+	var tree := Engine.get_main_loop() as SceneTree
+	for _i in range(90):
+		await tree.physics_frame
+
+	var p := player.global_position
+	var cam_pos := camera.global_position
+	var head: Vector3 = p + Vector3(0.0, HEAD_HEIGHT, 0.0)
+	var query := PhysicsRayQueryParameters3D.create(head, cam_pos)
+	query.exclude = exclude
+	query.collision_mask = 2
+	var hit := space_state.intersect_ray(query)
+	assert_dict(hit).is_empty()

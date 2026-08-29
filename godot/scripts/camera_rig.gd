@@ -55,8 +55,23 @@ var _drag_active: bool = false
 const LOOK_YAW_LIMIT := 0.36     # game.mjs:322
 const LOOK_PITCH_MIN := -0.12    # game.mjs:323
 const LOOK_PITCH_MAX := 0.2      # game.mjs:323
-const LOOK_YAW_SENSITIVITY := 0.0045   # game.mjs:322 (per pixel of drag)
-const LOOK_PITCH_SENSITIVITY := 0.0025 # game.mjs:323 (per pixel of drag)
+## game.mjs:322-323 (per pixel of drag), left verbatim rather than guessed
+## at a second time (camera-fix task, round 2). Reconsidered whether to
+## rescale for this window: the source itself has no fixed reference size
+## either (game.mjs:43 builds its camera off canvas.clientWidth/
+## window.innerWidth, whatever the browser happens to be, and clamps
+## devicePixelRatio rather than assuming one) -- pixel-space sensitivity
+## was already going to feel different across browser windows in the
+## original, so there is no single "correct" original feel to port a
+## correction factor against, only a guess in one direction or the other.
+## Reaching the full +-0.36 rad cone in ~80 px does read as quick by feel
+## alone, but the mechanic is a bounded glance while exploring, not a slow
+## orbit -- quick may be the point. Changing it on that hunch risks making
+## it worse exactly as easily as better. Left alone; still genuinely
+## unverified, and the developer's own hands-on read should overrule this
+## the moment it's played.
+const LOOK_YAW_SENSITIVITY := 0.0045
+const LOOK_PITCH_SENSITIVITY := 0.0025
 const LOOK_YAW_SPRINGBACK := 2.0       # game.mjs:387
 const LOOK_PITCH_SPRINGBACK := 2.3     # game.mjs:388
 const LOOK_PITCH_HEIGHT_SCALE := 2.8   # game.mjs:397
@@ -120,6 +135,104 @@ func _physics_process(delta: float) -> void:
 	var fov: float = profile["fov"]
 	var lateral: float = profile["lateral"]
 	var lead: float = profile["lead"]
+
+	# Garden-gap flip fix (camera-fix task, round 2, 2026-08-29). Found by a
+	# fine sweep through the 2 m gap (world_bounds.gd's x=11 wall, opening
+	# z in [-9,-7]) after the boundary-architecture retune, not by this
+	# round's screenshots alone: REVEAL's lead (1.2) shifts the look-at
+	# pivot 1.2 m south of the player before the spring arm even extends
+	# north toward `desired` -- fine everywhere the arm has room, but inside
+	# the gap the arm's own collision shapecast against the NORTH wall
+	# segment (near face z=-7) can shorten it to under 1.2 m, leaving the
+	# final camera position SOUTH of the player -- in front, not behind.
+	# Measured: angle-off-behind swung to -179.6 deg (dist 1.52 m) at
+	# player (11.32,-8.00), and the driven test route passes right through
+	# this band (min_ratio 0.1240 there, same route as test_camera_never_
+	# in_geometry.gd's own ROUTE). This is a different failure mode and a
+	# different code path than the home-end pull-in fix above -- this is
+	# the ordinary unclamped branch, degenerating purely from SpringArm3D's
+	# own collision, not the manual world-envelope clamp.
+	#
+	# Fix: fade `lead` toward 0 near the gap, so the pivot stays at the
+	# player instead of starting south of them -- confirmed by re-running
+	# the same fine sweep with lead=0 in this band: angle-off-behind never
+	# exceeded ~3 deg (still a tight, close shot -- the 2 m gap genuinely
+	# doesn't fit a 10.5 m REVEAL throw -- but never on the wrong side).
+	# Smoothed (not a hard cutoff) on both axes so crossing the band during
+	# normal play is a gradual pull-in rather than a pop: `gap_x_term` fades
+	# out 2 m either side of the wall's own x=11 line; `gap_z_term` is full
+	# strength inside the opening itself and fades out 2 m past each
+	# segment's near face (z=-9/-7). Scoped narrowly (only `lead`, only
+	# this one small box) rather than touching `distance` again -- an
+	# earlier attempt at a wider place-aware patch on `distance` pulled the
+	# camera close enough to clip the wall outright (a real raycast hit at
+	# (11.35, 1.79, -7), test_camera_never_in_geometry.gd caught it) and
+	# was reverted; this is deliberately smaller and independently verified
+	# (fine sweep, the real driven route, and the full suite) before
+	# keeping it.
+	var gap_x_term := 1.0 - LensMath.smoothstep(0.0, 2.0, absf(p.x - 11.0))
+	var gap_z_dist := maxf(0.0, maxf(-9.0 - p.z, p.z + 7.0))
+	var gap_z_term := 1.0 - LensMath.smoothstep(0.0, 2.0, gap_z_dist)
+	lead = lerpf(lead, 0.0, gap_x_term * gap_z_term)
+
+	# Garden-gap VOID fix (camera-fix task, round 2, 2026-08-29) -- a
+	# different failure mode from the flip fix just above, sharing the same
+	# player-position regime but not the same mechanism, so it needs its
+	# own term rather than reusing gap_x_term/gap_z_term.
+	#
+	# The "gap" screenshot beat (player 10.46,-7.97, south of and just
+	# outside the opening) was still a dead frame after the boundary retune
+	# and the swing relocation (2ef80f1/23664c0) -- neither touched this.
+	# Raycast-identified this time, not guessed from pixels
+	# (tools/_probe_gap_raycast.gd, not committed): the camera sits at
+	# (10.17, 2.60, 2.54), 10.5 m north of the player as REVEAL's authored
+	# `distance` intends, but that lands it inside world_bounds.gd's own
+	# WIDE INVISIBLE FLANK (the lane's camera_blocks=FALSE collider sealing
+	# the lane against the playground/pocket, {"x":16.5,"z":2.0,"half_x":
+	# 13.2,"half_z":6.0} in world_bounds.gd) -- deliberately nothing
+	# rendered there (that collider's own doc comment: "there is nothing
+	# rendered out there for a camera to clip through"), which is exactly
+	# why nothing SpringArm3D-relevant stops the camera from reaching it:
+	# camera_blocks=false means layer 2 never sees it, so the arm never
+	# shortens and the full 10.5 m throw lands dead centre in the one
+	# patch of the map built to have nothing in it.
+	#
+	# An earlier attempt this same task fixed this by halving `distance`
+	# in a wide box (x in [8,12], z < -4) -- it improved this beat but the
+	# box overlapped the gap OPENING itself (z in [-9,-7]) where the
+	# player can ALSO be, and pulling the already-short REVEAL throw even
+	# shorter there put the camera close enough to clip the gap's own
+	# solid wall segment outright (a real raycast hit at (11.35, 1.79, -7),
+	# caught by test_camera_never_in_geometry.gd). Reverted at the time.
+	#
+	# This attempt is deliberately gentler and, more importantly, verified
+	# this time against the exact scenario that broke the last one: the
+	# fine sweep through the opening itself (tools/_probe_gap_detail.gd,
+	# not committed), a dedicated route-level probe checking every tick's
+	# raycast rather than trusting one gdUnit4 run
+	# (tools/_probe_camera_scale.gd, not committed), and the full suite --
+	# all before keeping it. That extra probe earned its keep: an initial
+	# 0.7x factor passed the official suite outright but the probe still
+	# caught a real (if single-tick) hit at player (11.80,-8.47), camera
+	# pulled close enough to graze the garden pocket's own NORTH wall
+	# (z=-4, a different wall than the one this fix was written against) --
+	# the official gdUnit4 run's own DriveRoute happens not to trace that
+	# exact sub-metre path through the gap, but a changed step order or
+	# timing could, so "the shipped test suite passed" wasn't good enough
+	# evidence on its own here. 0.8x reproduced cleanly hit-free across
+	# repeated probe runs and the full suite; kept with that margin rather
+	# than pushing closer to the edge for a marginally better frame.
+	# `void_x_term` reuses the same 2 m falloff as the flip fix (same wall
+	# line); `void_z_term` is deliberately DIFFERENT from `gap_z_term`
+	# above -- full strength for player z <= -4 (APPROACH/REVEAL
+	# territory, where the "throw 10.5 m north" formula is actually in
+	# effect) and fading out by z=-1 rather than reusing the opening-only
+	# band, so it also covers players approaching the seam from further
+	# inside the playground, not just standing in the opening.
+	var void_x_term := 1.0 - LensMath.smoothstep(0.0, 2.0, absf(p.x - 11.0))
+	var void_z_term := 1.0 - LensMath.smoothstep(-4.0, -1.0, p.z)
+	distance = lerpf(distance, distance * 0.8, void_x_term * void_z_term)
+
 	var s := sin(yaw)
 	var c := cos(yaw)
 
