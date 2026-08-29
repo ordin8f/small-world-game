@@ -351,3 +351,61 @@ that mutation.
 acknowledge the player played), and an ambience pass on the shape vocabulary --
 the world was expanded and re-lit but its shapes are unchanged since the original
 port.
+
+
+---
+
+## Scale diagnosis, 2026-08-29
+
+Measured, not estimated. The child is **1.08 m**. Architecture heights in the
+world as built:
+
+| Element | Height | Ratio to child |
+|---|---:|---:|
+| Lane walls | 9.1 m | 8.4 : 1 |
+| Playground perimeter walls | 8.2 m | 7.6 : 1 |
+| Garden pocket walls | 7.0 m | 6.5 : 1 |
+| Home threshold piers | 4.7 m | 4.4 : 1 |
+| Playground towers | 2.4 m | 2.2 : 1 |
+| Bench, slide, garden wall | 1.0–1.9 m | ~1.5 : 1 |
+
+For reference: a real garden wall is about 1.7 : 1 to a small child, a
+two-storey house about 5.7 : 1.
+
+**The world contains two incompatible scale systems.** Cathedral-scale boundary
+architecture (7–9 m) and honest child-scale furniture (1–2.4 m) share every
+frame. That is what "the player and other folks look disproportionate to the
+place" means: the characters are not too small, the walls are too tall relative
+to everything else that claims to be child-furniture.
+
+**This is also why the camera reads as wrong.** It sits at 1.2–2.6 m, which is
+correct per `docs/ART_DIRECTION.md` — a child's eye height. In a world with 9 m
+boundary walls, a child-height camera looks up a canyon in every direction. The
+camera is not misconfigured; it is correct for a world whose architecture is
+roughly twice too tall. Retuning it before fixing proportion would mean chasing
+it indefinitely.
+
+One nuance that survives the diagnosis: the **lane is proportionally fine**. At
+9.1 m tall and 6 m wide it is 1.5 : 1, where `concept_02_path_discovery`'s
+canyon reads nearer 2.5 : 1. The lane is the one place the plates *want*
+monumental, so it stays.
+
+### Two genuine defects found while measuring
+
+- **The slide is broken, not merely mis-oriented.** A 5.2 m plank at y=0.95
+  tilted 31 degrees runs from ~2.3 m down to **−0.4 m** — it ends below the
+  ground plane, and its top does not meet the tower deck.
+- **There is no house.** `house.gltf` sits at z=20, outside the walkable bound
+  and behind an 8.2 m wall, so "home" is a blank wall with a hole in it.
+
+### Order of work
+
+1. **Scale** — bring boundary architecture to domestic proportion, keeping
+   monumentality where the plates want it (the lane canyon, the home threshold).
+2. **Camera** — retune against a coherent world, not before.
+3. **The house** — an actual building you approach, not a wall.
+4. **Slide geometry**, and move the balance verb from the boundary wall onto a
+   low brick edging round a planting bed, which is both better storytelling and
+   what a child actually does.
+5. **Beauty pass** — largely free once proportion is right. Most of what reads
+   as ugly is scale conflict rather than missing detail.
