@@ -73,9 +73,64 @@ func _add_lighting(root: Node3D) -> void:
 	sun.owner = root
 
 
+# ------------------------------------------------------------------ surfaces --
+
+## Surface textures. Until now every material in this world was a
+## StandardMaterial3D with one flat albedo colour and nothing else -- a straight
+## port artifact from the Three.js prototype, which also used flat colours. That
+## is why the world read as a diagram rather than a place: nothing had surface.
+##
+## docs/ART_DIRECTION.md asks for exactly this and rules out only its excesses --
+## "chalky plaster; matte painted wood; worn stone; soft fabric ... slightly
+## imperfect painted playground surfaces", while avoiding "excessive gloss",
+## "plastic-looking PBR" and "ultra-sharp high-frequency textures". Texture is
+## wanted; photorealism is not.
+##
+## Triplanar, because this level is built from unwrapped primitives with no UVs --
+## triplanar projects world-space and needs none, and keeps the scale consistent
+## across boxes of wildly different sizes.
+const SURFACE_DIR := "res://assets/surfaces/"
+const SURFACES := {
+	"plaster": {"file": "plaster_wall.png", "scale": 0.35, "rough": 0.94},
+	"paving": {"file": "stone_paving.png", "scale": 0.28, "rough": 0.90},
+	"earth": {"file": "packed_earth.png", "scale": 0.20, "rough": 0.96},
+	"wood": {"file": "painted_wood.png", "scale": 0.55, "rough": 0.88},
+	"grass": {"file": "grass_tufts.png", "scale": 0.30, "rough": 0.95},
+	"soil": {"file": "garden_soil.png", "scale": 0.60, "rough": 0.97},
+}
+
+## `tint` keeps the palette authoritative: the texture supplies variation, the
+## palette supplies hue. Pulled toward white so the two multiply to roughly the
+## authored colour rather than doubling down into mud.
+func _apply_surface(mat: StandardMaterial3D, surface: String, color: Color) -> bool:
+	if surface == "cloth":
+		mat.albedo_color = color
+		mat.roughness = 0.98
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		mat.emission_enabled = true
+		mat.emission = color
+		mat.emission_energy_multiplier = 0.55
+		return true
+	if surface == "" or not SURFACES.has(surface):
+		return false
+	var data: Dictionary = SURFACES[surface]
+	var path: String = SURFACE_DIR + str(data["file"])
+	if not ResourceLoader.exists(path):
+		return false  # textures are optional; flat colour remains a valid fallback
+	var tex: Texture2D = load(path)
+	if tex == null:
+		return false
+	mat.albedo_texture = tex
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3.ONE * float(data["scale"])
+	mat.roughness = float(data["rough"])
+	mat.albedo_color = color.lerp(Color(1, 1, 1), 0.30)
+	return true
+
+
 # ------------------------------------------------------------- visual mesh --
 
-func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color: Color, rotation_rad: Vector3 = Vector3.ZERO, emissive: float = 0.0) -> void:
+func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color: Color, rotation_rad: Vector3 = Vector3.ZERO, emissive: float = 0.0, surface: String = "") -> void:
 	var mesh: Mesh
 	match kind:
 		"cube":
@@ -110,6 +165,7 @@ func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color:
 	mat.albedo_color = color
 	mat.roughness = ROUGHNESS
 	mat.metallic = 0.0
+	var textured := _apply_surface(mat, surface, color)
 	if emissive > 0.0:
 		mat.emission_enabled = true
 		mat.emission = color
@@ -124,6 +180,8 @@ func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color:
 	instance.scale = scale
 	instance.rotation = rotation_rad
 	instance.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+	if textured and surface == "cloth":
+		instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 # Palette (src/world.mjs) as Color(0..1) -- no hex round-trip needed.
@@ -177,8 +235,8 @@ func _build_static_world(root: Node3D) -> void:
 	# width, continued through home -- reads as the route the child has
 	# already walked many times, per ART_DIRECTION.md's "wet footprints
 	# near a puddle" style of small concrete detail.
-	_mesh(root, "cube", Vector3(3, -0.28, -2), Vector3(42, 0.5, 40), GROUND)
-	_mesh(root, "cube", Vector3(0, -0.01, 6.0), Vector3(6.4, 0.08, 20.0), PATH)
+	_mesh(root, "cube", Vector3(3, -0.28, -2), Vector3(42, 0.5, 40), GROUND, Vector3.ZERO, 0.0, "earth")
+	_mesh(root, "cube", Vector3(0, -0.01, 6.0), Vector3(6.4, 0.08, 20.0), PATH, Vector3.ZERO, 0.0, "paving")
 
 	_build_home(root)
 	_build_garden_bed(root)
@@ -200,7 +258,7 @@ func _build_static_world(root: Node3D) -> void:
 		_mesh(root, "sphere", Vector3(p[0], p[1], p[2]), Vector3(p[3], p[4], p[5]), puddle_color)
 	for stone in [[11.7, -7.7, 0.45], [12.5, -8.4, 0.52], [13.3, -9.1, 0.48], [14.0, -9.9, 0.55]]:
 		var s: float = stone[2]
-		_mesh(root, "sphere", Vector3(stone[0], 0.05, stone[1]), Vector3(s, 0.14, s * 0.85), PATH)
+		_mesh(root, "sphere", Vector3(stone[0], 0.05, stone[1]), Vector3(s, 0.14, s * 0.85), PATH, Vector3.ZERO, 0.0, "paving")
 	# M3.2: real bench.gltf, near the chalk circle -- same offset from
 	# Group (0, -11) the single-room version held from its own Group.
 	_kind(root, Vector3(-7.0, 0.0, -8.0), "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, 0.0, "Bench")
@@ -226,6 +284,12 @@ func _build_static_world(root: Node3D) -> void:
 	# -- concept_07's "one large tree breaking the skyline" over the watching
 	# child and the group beyond.
 	_add_tree(root, -2.5, -16.5, 1.4)
+	# Lane-flank tree, camera-fix task round 3: matches world_bounds.gd's
+	# new (9.5,4.5) camera-blocking collider exactly -- see that file's own
+	# doc comment for why. Gives the REVEAL-zone camera something real to
+	# settle in front of when a player near the garden-gap seam sends it
+	# north into what was, until this round, an empty invisible flank.
+	_add_tree(root, 9.5, 2.5, 1.6)
 
 	# Gap 1 (ambience pass): a silhouette layer beyond the playable walls --
 	# see _add_distant_layer()'s own doc comment.
@@ -244,7 +308,7 @@ func _build_static_world(root: Node3D) -> void:
 	# they don't read as one rigid strip.
 	_mesh(root, "cylinder", Vector3(0.0, 2.5, 10.3), Vector3(0.02, 14.0, 0.02), SHADOW_STONE, Vector3(0, 0, deg_to_rad(90.0)))
 	for cloth in [[-3.4, CLOTH_PALE, 0.12], [-0.6, CLOTH_MUTED_BLUE, -0.16], [2.5, CLOTH_PALE, 0.10]]:
-		_mesh(root, "cube", Vector3(cloth[0], 2.15, 10.3 + cloth[2]), Vector3(0.55, 0.6, 0.03), cloth[1], Vector3(0, 0, deg_to_rad(4.0)))
+		_mesh(root, "cube", Vector3(cloth[0], 2.15, 10.3 + cloth[2]), Vector3(0.55, 0.6, 0.03), cloth[1], Vector3(0, 0, deg_to_rad(4.0)), 0.0, "cloth")
 
 	# M3.2: ASSET_CREDITS.md's one featured bush_large.gltf, near the bench/
 	# tree cluster (west playground, same relative offset as the
@@ -285,23 +349,23 @@ func _build_static_world(root: Node3D) -> void:
 ## 2.4 m doorway opening through -- matches world_bounds.gd's COLLIDERS
 ## for this room exactly.
 func _build_home(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER)
-	_mesh(root, "cube", Vector3(7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(-7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
 	# The piers: heavy, tall, framing the doorway. Widened from the
 	# single-room version's freestanding pair (which had open flanks either
 	# side, x to +-10.7) to run flush out to the new x=+-7 side walls above.
-	_mesh(root, "cube", Vector3(-4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER)
-	_mesh(root, "cube", Vector3(4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER)
+	_mesh(root, "cube", Vector3(-4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	# Lintel + roof slab: the dark ceiling that makes it read as a passage.
-	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(2.6, 1.2, 2.0), PLASTER)
+	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(2.6, 1.2, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	_mesh(root, "cube", Vector3(0, 3.95, 15.0), Vector3(2.5, 0.35, 2.2), SHADOW_STONE)
 	# Back cap, just past the piers -- the world's true south edge here.
 	# Kept as a plain backdrop slab: _build_house() below stands in front of
 	# it and is the real facade now, but the slab still shows past the
 	# house's own width (it spans the room's full x[-7,7]; the house is
 	# narrower) so there is never a gap in the world's true boundary.
-	_mesh(root, "cube", Vector3(0, 2.75, 16.3), Vector3(14.4, 5.5, 0.3), PLASTER)
+	_mesh(root, "cube", Vector3(0, 2.75, 16.3), Vector3(14.4, 5.5, 0.3), PLASTER, Vector3.ZERO, 0.0, "plaster")
 
 	# DEFERRED: the concept_07 framing gateway. It has to stand between the
 	# camera and the player, so its position depends on where the camera
@@ -400,10 +464,10 @@ func _build_house(root: Node3D) -> void:
 	# level (top at y=0.14), well under the camera's height range, so it
 	# can sit proud of the wall toward the player without the clearance
 	# concern above.
-	_mesh(root, "cube", Vector3(0.0, 0.07, 15.85), Vector3(3.4, 0.14, 0.9), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(0.0, 0.07, 15.85), Vector3(3.4, 0.14, 0.9), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
 	# A potted plant beside the step -- concept_01/05's flanking planters.
-	_mesh(root, "cylinder", Vector3(1.9, 0.18, 15.75), Vector3(0.22, 0.36, 0.22), WOOD)
+	_mesh(root, "cylinder", Vector3(1.9, 0.18, 15.75), Vector3(0.22, 0.36, 0.22), WOOD, Vector3.ZERO, 0.0, "wood")
 	_mesh(root, "sphere", Vector3(1.9, 0.44, 15.75), Vector3(0.32, 0.28, 0.32), FOLIAGE)
 
 
@@ -437,7 +501,7 @@ func _primitive_house(root: Node3D, position: Vector3, scale: float, _rotation_y
 	var wall_height := 3.6 * scale
 	var rise := 2.6 * scale
 	var depth := 5.0 * scale
-	_mesh(root, "cube", position + Vector3(0.0, wall_height * 0.5, depth * 0.5), Vector3(half_width * 2.0, wall_height, depth), PLASTER_LIGHT)
+	_mesh(root, "cube", position + Vector3(0.0, wall_height * 0.5, depth * 0.5), Vector3(half_width * 2.0, wall_height, depth), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	_gable_roof(root, position + Vector3(0.0, wall_height, depth * 0.5), half_width, rise, depth + 0.6 * scale, 0.18 * scale, SHADOW_STONE)
 
 	# Chimney, off-centre, based part-way up the near roof slope so it
@@ -448,7 +512,7 @@ func _primitive_house(root: Node3D, position: Vector3, scale: float, _rotation_y
 
 	# Door, offset from centre -- the universal window dressing in
 	# _build_house() owns the doorway's own centreline.
-	_mesh(root, "cube", position + Vector3(1.8 * scale, 1.075 * scale, -0.05 * scale), Vector3(1.1, 2.15, 0.12) * scale, WOOD_LIGHT)
+	_mesh(root, "cube", position + Vector3(1.8 * scale, 1.075 * scale, -0.05 * scale), Vector3(1.1, 2.15, 0.12) * scale, WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 
 
 ## GARDEN BED (home west flank): outer footprint x[-6.3,-3.5], z[10.45,
@@ -521,9 +585,9 @@ func _build_lane(root: Node3D) -> void:
 	# unchanged), and the player's own 0.32m collision radius can never
 	# bring their rendered body closer to it than the wall face itself.
 	_mesh(root, "cube", Vector3(-3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
-	_mesh(root, "cube", Vector3(-3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER)
+	_mesh(root, "cube", Vector3(-3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	_mesh(root, "cube", Vector3(3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
-	_mesh(root, "cube", Vector3(3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# Deliberately nothing else in here -- ART_DIRECTION.md's "avoid filling
 	# every space with props" and the brief's own "keep it sparse": the two
 	# puddles already at x[-1.5,2.1] (see caller) are the lane's only detail,
@@ -538,12 +602,12 @@ func _build_lane(root: Node3D) -> void:
 ## either side (x 5..16 roughly) are left open and ungrouped -- room for
 ## another agent's swing and sandbox, per the brief.
 func _build_playground(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-16.0, 2.1, -12.0), Vector3(1.1, 4.2, 16.0), PLASTER)
+	_mesh(root, "cube", Vector3(-16.0, 2.1, -12.0), Vector3(1.1, 4.2, 16.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	# East wall only for the deep end (z -20..-16); south of that the garden
 	# wall (x=11, _build_garden_pocket) is the real boundary, and rendering
 	# a second wall out at x=16 alongside it there would look like a second,
 	# redundant room. Deliberately absent for z > -16 for that reason.
-	_mesh(root, "cube", Vector3(16.0, 2.1, -18.0), Vector3(1.1, 4.2, 4.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(16.0, 2.1, -18.0), Vector3(1.1, 4.2, 4.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# South wall, as a blind arcade instead of one flat cube -- Gap 2 of the
 	# ambience pass. concept_03_playground_scale.png is literally a row of
 	# arches in a weathered wall; before this the build had exactly one arch
@@ -552,13 +616,13 @@ func _build_playground(root: Node3D) -> void:
 	_build_arcade_wall(root, 0.0, -20.0, 33.0, 1.1, 8.2, [-10.0, 0.0, 10.0])
 
 	for x in [-3.4, 3.4]:
-		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT)
-		_mesh(root, "cube", Vector3(x, 2.75, -12.8), Vector3(2.7, 0.25, 2.7), WOOD)
-		_mesh(root, "cone", Vector3(x, 4.0, -12.8), Vector3(2.0, 1.8, 2.0), WOOD_LIGHT)
+		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+		_mesh(root, "cube", Vector3(x, 2.75, -12.8), Vector3(2.7, 0.25, 2.7), WOOD, Vector3.ZERO, 0.0, "wood")
+		_mesh(root, "cone", Vector3(x, 4.0, -12.8), Vector3(2.0, 1.8, 2.0), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 		for dx in [-0.8, 0.8]:
 			for dz in [-0.8, 0.8]:
-				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD)
-	_mesh(root, "cube", Vector3(0, 2.3, -12.8), Vector3(4.8, 0.25, 1.15), WOOD)
+				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD, Vector3.ZERO, 0.0, "wood")
+	_mesh(root, "cube", Vector3(0, 2.3, -12.8), Vector3(4.8, 0.25, 1.15), WOOD, Vector3.ZERO, 0.0, "wood")
 
 	# The slide. Scale diagnosis (DEMO_PLAN.md, 2026-08-29): the previous
 	# plank (a bare Vector3(-0.54,0,0)-tilted box) ran from ~2.3 m down to
@@ -607,20 +671,20 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# gap between them. (No longer the balance-verb wall -- that affordance
 	# now lives on the garden-bed edging in _build_garden_bed(); this stays
 	# a plain boundary, matching WorldBounds.COLLIDERS exactly as before.)
-	_mesh(root, "cube", Vector3(11.0, 0.55, -12.5), Vector3(0.6, 1.2, 7.0), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(11.0, 0.55, -5.5), Vector3(0.6, 1.2, 3.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(11.0, 0.55, -12.5), Vector3(0.6, 1.2, 7.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 0.55, -5.5), Vector3(0.6, 1.2, 3.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# North/south/east walls seal the rest of the pocket.
-	_mesh(root, "cube", Vector3(16.5, 1.5, -16.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(16.5, 1.5, -4.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(22.0, 1.5, -10.0), Vector3(0.7, 3.0, 12.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(16.5, 1.5, -16.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(16.5, 1.5, -4.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(22.0, 1.5, -10.0), Vector3(0.7, 3.0, 12.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
 	# The span over the opening, plus shoulders stepping down to it -- a
 	# coarse arch, in keeping with ART_DIRECTION.md's "broad architectural
 	# planes, modest geometric detail". Centred on the gap's own midpoint
 	# (z=-8, halfway between the -9/-7 segment edges).
-	_mesh(root, "cube", Vector3(11.0, 1.55, -8.0), Vector3(0.72, 0.8, 2.4), PLASTER)
-	_mesh(root, "cube", Vector3(11.0, 1.12, -8.75), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(11.0, 1.12, -7.25), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(11.0, 1.55, -8.0), Vector3(0.72, 0.8, 2.4), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 1.12, -8.75), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 1.12, -7.25), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# Vegetation swallowing the arch, as in the plate.
 	for creeper in [[-9.1, 0.62], [-8.1, 0.5], [-7.1, 0.58]]:
 		_mesh(root, "sphere", Vector3(11.0, 1.9, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
@@ -640,8 +704,8 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# BallEnd at x=14,z=-12) so it doesn't compete with GardenPocketLight's
 	# carefully-tuned "ball is the brightest thing in frame" below.
 	for fx in range(13, 20):
-		_mesh(root, "cylinder", Vector3(float(fx), 0.28, -4.6), Vector3(0.05, 0.56, 0.05), WOOD)
-	_mesh(root, "cube", Vector3(16.0, 0.54, -4.6), Vector3(7.4, 0.06, 0.06), WOOD_LIGHT)
+		_mesh(root, "cylinder", Vector3(float(fx), 0.28, -4.6), Vector3(0.05, 0.56, 0.05), WOOD, Vector3.ZERO, 0.0, "wood")
+	_mesh(root, "cube", Vector3(16.0, 0.54, -4.6), Vector3(7.4, 0.06, 0.06), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 
 	# A practical light in the garden pocket, over where the ball lands.
 	#
@@ -983,7 +1047,7 @@ func _kind(root: Node3D, position: Vector3, detailed_path: String, detailed_scal
 ## trunk + two FOLIAGE tiers, apex ~4.65m at scale 1.0) to read as the
 ## same kind of thing standing in the same spot.
 func _primitive_tree(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
-	_mesh(root, "cylinder", position + Vector3(0.0, 1.5 * scale, 0.0), Vector3(0.22, 3.0, 0.22) * scale, WOOD)
+	_mesh(root, "cylinder", position + Vector3(0.0, 1.5 * scale, 0.0), Vector3(0.22, 3.0, 0.22) * scale, WOOD, Vector3.ZERO, 0.0, "wood")
 	_mesh(root, "sphere", position + Vector3(0.0, 3.2 * scale, 0.0), Vector3(1.6, 1.4, 1.6) * scale, FOLIAGE)
 	_mesh(root, "sphere", position + Vector3(0.0, 4.1 * scale, 0.0), Vector3(1.1, 1.1, 1.1) * scale, FOLIAGE_LIGHT)
 
@@ -1000,9 +1064,9 @@ func _primitive_bush(root: Node3D, position: Vector3, scale: float, _rotation_y:
 ## two legs), in the playground's existing WOOD/WOOD_LIGHT tones.
 func _primitive_bench(root: Node3D, position: Vector3, scale: float, rotation_y: float) -> void:
 	var rot := Vector3(0.0, rotation_y, 0.0)
-	_mesh(root, "cube", position + Vector3(0.0, 0.20 * scale, 0.0), Vector3(1.5, 0.4, 0.45) * scale, WOOD, rot)
-	_mesh(root, "cube", position + Vector3(0.0, 0.46 * scale, 0.0), Vector3(1.7, 0.12, 0.55) * scale, WOOD_LIGHT, rot)
-	_mesh(root, "cube", position + Vector3(0.0, 0.80 * scale, -0.20 * scale), Vector3(1.7, 0.55, 0.12) * scale, WOOD_LIGHT, rot)
+	_mesh(root, "cube", position + Vector3(0.0, 0.20 * scale, 0.0), Vector3(1.5, 0.4, 0.45) * scale, WOOD, rot, 0.0, "wood")
+	_mesh(root, "cube", position + Vector3(0.0, 0.46 * scale, 0.0), Vector3(1.7, 0.12, 0.55) * scale, WOOD_LIGHT, rot, 0.0, "wood")
+	_mesh(root, "cube", position + Vector3(0.0, 0.80 * scale, -0.20 * scale), Vector3(1.7, 0.55, 0.12) * scale, WOOD_LIGHT, rot, 0.0, "wood")
 
 
 ## Primitive-mode fallback for the street lantern: a dark pole plus a
@@ -1019,7 +1083,7 @@ func _primitive_lamp(root: Node3D, position: Vector3, scale: float, _rotation_y:
 ## shared with world_affordances.gd -- see the NOTE above stone_spots in
 ## _build_static_world()).
 func _primitive_rock(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
-	_mesh(root, "sphere", position + Vector3(0.0, 0.05, 0.0), Vector3(scale, 0.14, scale * 0.85), PATH)
+	_mesh(root, "sphere", position + Vector3(0.0, 0.05, 0.0), Vector3(scale, 0.14, scale * 0.85), PATH, Vector3.ZERO, 0.0, "paving")
 
 
 ## Kenney Nature Kit's CC0 flat rocks (ASSET_CREDITS.md), re-materialed
