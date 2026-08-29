@@ -2,21 +2,17 @@ extends SceneTree
 const SCENE_PATH := "res://scenes/home_glow.tscn"
 const SCENE_SCRIPT_PATH := "res://scripts/home_glow.gd"
 const _BOOTSTRAP_SCENE_BINDER := preload("res://tools/scene_script_binder.gd")
-## One-shot generator: builds scenes/home_glow.tscn -- a MeshInstance3D
-## (PlaneMesh, positioned/rotated to stand upright at the home threshold,
-## game.mjs:230) for home_glow.gd, which builds its own material in
-## _ready().
+## One-shot generator: builds scenes/home_glow.tscn -- an OmniLight3D at
+## the porch for home_glow.gd, which sets its own light properties in _ready().
+## Was a translucent PlaneMesh at z=11.82 until the world expansion left it
+## adrift mid-courtyard and walkable-through -- see home_glow.gd.
 ##
 ## Run with: godot --headless --path godot --script res://tools/_bootstrap_home_glow_scene.gd
 
 func _init() -> void:
-	var root := MeshInstance3D.new()
+	var root := OmniLight3D.new()
 	root.name = "HomeGlow"
-	var plane := PlaneMesh.new()
-	plane.size = Vector2(2.0, 3.0)
-	root.mesh = plane
-	root.position = Vector3(0.0, 1.7, 11.82)
-	root.rotation.x = PI / 2.0  # PlaneMesh lies flat (XZ) by default; stand it upright to face the player
+	root.position = Vector3(0.0, 2.05, 15.55)
 	# NOTE: script deliberately NOT attached here -- same reason as
 	# perception.tscn's generator.
 

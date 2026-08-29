@@ -83,7 +83,7 @@ layer = 10
 
 [node name="Fireflies" type="Node3D" parent="." unique_id=782116458 instance=ExtResource("12_y6deb")]
 
-[node name="HomeGlow" type="MeshInstance3D" parent="." unique_id=546062445 instance=ExtResource("13_og1vs")]
+[node name="HomeGlow" type="OmniLight3D" parent="." unique_id=546062445 instance=ExtResource("13_og1vs")]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 1.7, 11.82)
 mesh = SubResource("PlaneMesh_dpsxx")
 

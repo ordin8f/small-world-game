@@ -1,11 +1,6 @@
 [gd_scene format=3]
-
 [ext_resource type="Script" path="res://scripts/home_glow.gd" id="1_home_glow_script"]
 
-[sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
-size = Vector2(2, 3)
-
-[node name="HomeGlow" type="MeshInstance3D" unique_id=546062445]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 1.7, 11.82)
-mesh = SubResource("PlaneMesh_dpsxx")
+[node name="HomeGlow" type="OmniLight3D" unique_id=29529883]
 script = ExtResource("1_home_glow_script")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 15.55)
