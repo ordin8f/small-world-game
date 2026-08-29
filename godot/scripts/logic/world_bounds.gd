@@ -31,7 +31,7 @@ const PALETTE := {
 ##
 ## Four places (2026-08-28 world expansion -- see GODOT_REBUILD_PLAN.md's
 ## successor task, "expand the world"): HOME (porch/doorway, x[-7,7]
-## z[8,16]) -> LANE (narrow walled passage, x[-3,3] z[-4,8]) -> PLAYGROUND
+## z[8,16]) -> LANE (walled passage, x[-5,5] z[-4,8]) -> PLAYGROUND
 ## (open, x[-16,16] z[-20,-4], stepping in to x[-16,11] for z in [-16,-4]
 ## where the garden sits alongside it) -> GARDEN POCKET, through the wall
 ## gap (x[11,22] z[-16,-4]). Each place's own doc block below explains its
@@ -49,13 +49,29 @@ const COLLIDERS := [
 	# unlike the old single-room version, home is now narrow enough that the
 	# player can actually walk sideways into the piers' own footprint, so
 	# unlike that version's "no collider, purely decorative" doorway these
-	# need real collision). 2.4 m opening between them, matching the old gap.
-	{"x": -4.1, "z": 15.0, "half_x": 2.9, "half_z": 1.0, "camera_blocks": true},
-	{"x": 4.1, "z": 15.0, "half_x": 2.9, "half_z": 1.0, "camera_blocks": true},
+	# need real collision). 3.6 m opening between them, widened from 2.4
+	# (openness pass, 2026-08-29): at 2.4 this was the tightest passage in
+	# the world -- 1.76 m of clearance once the player's own 0.32 m radius
+	# is taken off either side -- and it is the very first thing the player
+	# walks through, so it set the whole world's sense of scale. 3.6 leaves
+	# 2.96 m clear, wide enough to walk through without aiming, and still
+	# reads as a doorway rather than a missing wall.
+	{"x": -4.4, "z": 15.0, "half_x": 2.6, "half_z": 1.0, "camera_blocks": true},
+	{"x": 4.4, "z": 15.0, "half_x": 2.6, "half_z": 1.0, "camera_blocks": true},
 	# Back cap just past the piers -- same role as the old single-room
 	# version's z=12.3 cap (a real collider at the world's true edge so the
 	# camera's spring arm respects it too, not just can_move_to()).
 	{"x": 0.0, "z": 16.3, "half_x": 7.2, "half_z": 0.05, "camera_blocks": true},
+	# Shoulders at the home/lane seam (openness pass). Home is 12.8 m wide
+	# between its side walls and the lane below is 10 m, so the two rooms
+	# meet in a step. Before this pass that step was part of the lane's own
+	# wide invisible flank (below) and so stopped the player with nothing
+	# rendered on it; these give it a real footprint that
+	# _bootstrap_courtyard.gd draws a matching wall on. half_x 1.3 spans
+	# from the lane wall's outer face (x=5.3) to just past home's inner
+	# face (x=6.4), so neither seam can leave a sliver gap.
+	{"x": -6.0, "z": 8.0, "half_x": 1.3, "half_z": 0.35, "camera_blocks": true},
+	{"x": 6.0, "z": 8.0, "half_x": 1.3, "half_z": 0.35, "camera_blocks": true},
 
 	# --- LANE: narrow passage (x[-3,3], z[-4,8]) -----------------------------
 	# The rendered walls are a thin pair at x=+-3 (see
@@ -83,10 +99,19 @@ const COLLIDERS := [
 	#     bigger invisible volume for the same reason. Extended out to +-30
 	#     (well past every other room's own extent) purely so no seam with
 	#     a neighboring room's wall can leave a sliver gap.
-	{"x": -3.0, "z": 2.0, "half_x": 0.3, "half_z": 6.0, "camera_blocks": true},
-	{"x": 3.0, "z": 2.0, "half_x": 0.3, "half_z": 6.0, "camera_blocks": true},
-	{"x": -16.5, "z": 2.0, "half_x": 13.2, "half_z": 6.0},
-	{"x": 16.5, "z": 2.0, "half_x": 13.2, "half_z": 6.0},
+	#
+	# Openness pass (2026-08-29): the thin pair moved from x=+-3 to x=+-5,
+	# taking the lane's walkable width from 4.76 m to 8.76 m. At 4.76 the
+	# lane was 12 m of corridor barely wider than the player is tall, with
+	# 9.5 m walls -- a headless flood of the real physics world
+	# (tools/_probe_reachability.gd) measured a 3.9 m median sightline
+	# here, the tightest anywhere in the game including inside the house.
+	# The wide flanks below step out to match (inner face 5.3, so they
+	# still seal flush against the thin pair's outer face).
+	{"x": -5.0, "z": 2.0, "half_x": 0.3, "half_z": 6.0, "camera_blocks": true},
+	{"x": 5.0, "z": 2.0, "half_x": 0.3, "half_z": 6.0, "camera_blocks": true},
+	{"x": -17.5, "z": 2.0, "half_x": 12.2, "half_z": 6.0},
+	{"x": 17.5, "z": 2.0, "half_x": 12.2, "half_z": 6.0},
 
 	# --- PLAYGROUND: open ground (x[-16,16], z[-20,-4]) ----------------------
 	{"x": -16.0, "z": -12.0, "half_x": 0.6, "half_z": 8.0, "camera_blocks": true},
@@ -96,6 +121,23 @@ const COLLIDERS := [
 	# it. Garden's own north wall closes the corner this step leaves open.
 	{"x": 16.0, "z": -18.0, "half_x": 0.6, "half_z": 2.0, "camera_blocks": true},
 	{"x": 0.0, "z": -20.0, "half_x": 16.6, "half_z": 0.6, "camera_blocks": true},
+	# North boundary (openness pass, 2026-08-29). Movement along z=-4 was
+	# already sealed by the LANE's wide invisible flanks above; these add
+	# nothing to that. What they add is CAMERA collision, matching the wall
+	# _bootstrap_courtyard.gd now draws on this line exactly.
+	#
+	# Shipping the wall without them was wrong, and the "gap" screenshot
+	# beat showed it immediately: with the flanks camera_blocks=false and
+	# no other layer-2 geometry here, a REVEAL-zone spring arm behind a
+	# player standing at the garden gap (z=-8) threw the camera clean over
+	# this wall to z=+0.8, and the frame came back shooting THROUGH it --
+	# a pale slab across two thirds of the image with the player behind it.
+	# That is the precise case _wall_collider()'s own doc comment exists
+	# for ("the camera must not clip through rendered geometry"); the
+	# flanks stay camera_blocks=false because they are still unrendered,
+	# and this is not them.
+	{"x": -10.9, "z": -3.6, "half_x": 5.6, "half_z": 0.4, "camera_blocks": true},
+	{"x": 8.25, "z": -3.6, "half_x": 3.25, "half_z": 0.4, "camera_blocks": true},
 	# Towers (unchanged footprint/size from the single-room version, just
 	# relocated -- WorldAffordances.TOWER_X/TOWER_Z mirror these).
 	{"x": -3.4, "z": -12.8, "half_x": 1.35, "half_z": 1.35},
@@ -147,8 +189,18 @@ const COLLIDERS := [
 	# geometry too; that affordance has since moved to a garden-bed edging
 	# by the home threshold -- see world_affordances.gd's own doc comment
 	# -- so this remains purely a boundary from here on.)
-	{"x": 11.0, "z": -12.5, "half_x": 0.35, "half_z": 3.5, "camera_blocks": true},
-	{"x": 11.0, "z": -5.5, "half_x": 0.35, "half_z": 1.5, "camera_blocks": true},
+	# Gap widened from 2.0 m to 3.4 m (openness pass, 2026-08-29). At 2.0
+	# the clear opening was 1.36 m once the player's radius came off either
+	# side, and _bootstrap_courtyard.gd's arch span sat at y 1.15-1.95 --
+	# directly across the eyeline of a child who is 1.2 m tall. The probe
+	# measured every sightline into this pocket as blocked by that lintel,
+	# from the playground, the swing and the lane mouth alike: the one
+	# place in the game the concept art (concept_06_garden_gap.png) makes
+	# the most inviting was the one you could not see into. The gap's
+	# midpoint stays at z=-8, so every authored route and test waypoint
+	# through it is unaffected.
+	{"x": 11.0, "z": -12.85, "half_x": 0.35, "half_z": 3.15, "camera_blocks": true},
+	{"x": 11.0, "z": -5.15, "half_x": 0.35, "half_z": 1.15, "camera_blocks": true},
 	# North/south/east walls seal the pocket everywhere except that gap --
 	# "the garden gap must still be the only way through" (brief). North
 	# wall's x-span [11,22] deliberately overlaps the playground's own deep
