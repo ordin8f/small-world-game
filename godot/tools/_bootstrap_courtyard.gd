@@ -289,7 +289,7 @@ func _build_static_world(root: Node3D) -> void:
 	# doc comment for why. Gives the REVEAL-zone camera something real to
 	# settle in front of when a player near the garden-gap seam sends it
 	# north into what was, until this round, an empty invisible flank.
-	_add_tree(root, 9.5, 2.5, 1.6)
+	_add_tree(root, 9.5, 1.3, 1.6)
 
 	# Gap 1 (ambience pass): a silhouette layer beyond the playable walls --
 	# see _add_distant_layer()'s own doc comment.

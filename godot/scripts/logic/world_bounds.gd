@@ -136,7 +136,7 @@ const COLLIDERS := [
 	# Moved closer and widened (half_x/half_z 1.0 -> 1.5) so its near face
 	# sits well inside the range of z values the unfixed throw actually
 	# produces across the seam, rather than past the far end of it.
-	{"x": 9.5, "z": 2.5, "half_x": 1.5, "half_z": 1.5, "camera_blocks": true},
+	{"x": 9.5, "z": 1.3, "half_x": 1.5, "half_z": 1.3, "camera_blocks": true},
 
 	# --- GARDEN POCKET, through the wall gap (x[11,22], z[-16,-4]) ----------
 	# West wall (the shared boundary with the playground) in two segments
