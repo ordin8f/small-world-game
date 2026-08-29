@@ -179,6 +179,7 @@ func _run() -> void:
 
 	_collect_occluders(courtyard)
 	_report_sightlines()
+	_report_invisible_walls(courtyard, free, STEP * STEP)
 	quit(0)
 
 
@@ -511,3 +512,120 @@ func _report_sightlines() -> void:
 		print("%-18s %9.1fm %9.1fm %9.1fm %10d" % [
 			point[0], distances[FAN_RAYS / 2], total / FAN_RAYS, distances[FAN_RAYS - 1], long_rays,
 		])
+
+
+# -------------------------------------------------------- invisible walls --
+# The third failure mode, and the one that most directly produces "all
+# places are not reachable": collision with nothing rendered above it. The
+# ground mesh is a single 42x40 m plane covering every room and the space
+# between them, so a player standing at the lane mouth sees open ground
+# running east and west and walks into a wall that isn't there. Such a cell
+# is neither "reachable" nor "dead space" -- it reads as solid to the
+# physics probe and as floor to the eye, so it appears in neither table
+# above. It needs its own.
+
+
+## Blocked cells inside the envelope with no rendered geometry standing on
+## them. `_occluders` only holds meshes crossing EYE_Y, so this builds its
+## own footprint list: anything at least KNEE_Y tall, which keeps the ground
+## plane and the path strip out while catching low walls and plinths.
+func _report_invisible_walls(root: Node, free: PackedByteArray, cell_area: float) -> void:
+	const KNEE_Y := 0.5
+	var footprints: Array[Rect2] = []
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		for child in node.get_children():
+			stack.append(child)
+		if not (node is GeometryInstance3D):
+			continue
+		var local: AABB = (node as GeometryInstance3D).get_aabb()
+		if local.size == Vector3.ZERO:
+			continue
+		var box: AABB = (node as GeometryInstance3D).global_transform * local
+		if box.end.y < KNEE_Y:
+			continue
+		footprints.append(Rect2(box.position.x, box.position.z, box.size.x, box.size.z))
+
+	var invisible := PackedByteArray()
+	invisible.resize(free.size())
+	var total := 0
+	for i in range(free.size()):
+		if free[i] == 1:
+			continue
+		var p := _world_of(Vector2i(i % X_CELLS, i / X_CELLS))
+		if not _in_envelope(p):
+			continue
+		var covered := false
+		for rect in footprints:
+			# grow() by the capsule radius: a cell is blocked when the
+			# capsule touches a wall, which happens up to one radius short
+			# of the wall's own face. Without this every real wall would
+			# report a one-cell invisible fringe.
+			if rect.grow(_params.shape.radius).has_point(p):
+				covered = true
+				break
+		if not covered:
+			invisible[i] = 1
+			total += 1
+
+	# Frontage is the number that actually corresponds to the felt defect.
+	# The deep interior of an invisible slab is unreachable and unseeable and
+	# therefore harmless; what the player experiences is the SURFACE of it --
+	# every step of the walkable region's perimeter where they see floor
+	# continue and are stopped by nothing. Measured in metres of edge, not
+	# square metres of volume.
+	var frontage := 0.0
+	for i in range(free.size()):
+		if free[i] == 0:
+			continue
+		var cell := Vector2i(i % X_CELLS, i / X_CELLS)
+		if not _in_envelope(_world_of(cell)):
+			continue
+		for delta in NEIGHBORS:
+			var next: Vector2i = cell + delta
+			if next.x < 0 or next.x >= X_CELLS or next.y < 0 or next.y >= Z_CELLS:
+				continue
+			if invisible[_index(next)] == 1:
+				frontage += STEP
+
+	print("")
+	print("=== INVISIBLE WALLS (blocked, inside envelope, nothing rendered on them) ===")
+	print("frontage walked into: %.1f m of walkable perimeter  <- the felt defect" % frontage)
+	print("total volume:         %d cells (%.1f m^2)" % [total, total * cell_area])
+	var seen := PackedByteArray()
+	seen.resize(free.size())
+	var components := 0
+	for start_index in range(invisible.size()):
+		if invisible[start_index] == 0 or seen[start_index] == 1:
+			continue
+		var queue: Array[Vector2i] = [Vector2i(start_index % X_CELLS, start_index / X_CELLS)]
+		seen[start_index] = 1
+		var head := 0
+		var count := 0
+		var min_p := Vector2(INF, INF)
+		var max_p := Vector2(-INF, -INF)
+		while head < queue.size():
+			var cell: Vector2i = queue[head]
+			head += 1
+			count += 1
+			var p := _world_of(cell)
+			min_p = Vector2(minf(min_p.x, p.x), minf(min_p.y, p.y))
+			max_p = Vector2(maxf(max_p.x, p.x), maxf(max_p.y, p.y))
+			for delta in NEIGHBORS:
+				var next: Vector2i = cell + delta
+				if next.x < 0 or next.x >= X_CELLS or next.y < 0 or next.y >= Z_CELLS:
+					continue
+				var next_index := _index(next)
+				if invisible[next_index] == 0 or seen[next_index] == 1:
+					continue
+				seen[next_index] = 1
+				queue.append(next)
+		if count < 4:
+			continue
+		components += 1
+		print("  #%d  %6.1f m^2   x[%.1f, %.1f]  z[%.1f, %.1f]" % [
+			components, count * cell_area, min_p.x, max_p.x, min_p.y, max_p.y,
+		])
+	if components == 0:
+		print("  (none)")
