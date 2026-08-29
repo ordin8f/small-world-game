@@ -694,9 +694,17 @@ func _build_playground(root: Node3D) -> void:
 	for run in [[-10.9, 11.2], [8.25, 6.5]]:
 		_mesh(root, "cube", Vector3(run[0], 0.8, -3.6), Vector3(run[1], 1.6, 0.8), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	# Creepers along its top, the same trick the garden arch already uses to
-	# keep a low wall from reading as a bare kerb.
+	# keep a low wall from reading as a bare kerb. Kept strictly INSIDE the
+	# wall's own z footprint (z -3.75..-3.25 against the wall's -4.0..-3.2)
+	# rather than straddling it: the first version was 0.9 deep and centred
+	# on the wall, so it hung 0.05 m past the south face -- into exactly the
+	# sliver of air where the REVEAL spring arm parks when it stops against
+	# this wall. The "gap" screenshot beat came back with the camera
+	# literally inside the creeper at x=10.4, seeing the frame from within a
+	# bush. Decoration on a wall must not overhang the face the camera can
+	# reach.
 	for creeper_x in [-14.5, -9.0, -6.2, 7.0, 10.4]:
-		_mesh(root, "sphere", Vector3(creeper_x, 1.7, -3.6), Vector3(1.5, 0.5, 0.9), FOLIAGE)
+		_mesh(root, "sphere", Vector3(creeper_x, 1.7, -3.5), Vector3(1.5, 0.5, 0.5), FOLIAGE)
 
 	for x in [-3.4, 3.4]:
 		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
@@ -763,8 +771,27 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# this pocket is only 11 m across, so 3.0 closed the sky out of the one
 	# beat whose whole subject is warm light coming from somewhere else.
 	_mesh(root, "cube", Vector3(16.5, 1.2, -16.0), Vector3(11.0, 2.4, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(16.5, 1.2, -4.0), Vector3(11.0, 2.4, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# The z=-4 side goes lower still, to 1.6 -- it is no longer this
+	# pocket's own wall in isolation. _build_playground()'s new north
+	# boundary runs the same line from x=-16.5 to x=11.5, so from x=11 out
+	# to x=22 this simply continues it, and the two should be one wall
+	# rather than a 1.6 m run that steps up to 2.4 partway along.
+	#
+	# It also fixes the "gap" screenshot beat directly. With the camera
+	# collision added along z=-4 the REVEAL spring arm now stops INSIDE the
+	# playground (z=-4.0 rather than sailing to z=+0.8), which is right,
+	# but that parks it about half a metre west of this wall's own end --
+	# so at 2.4 m the wall stood taller than the camera and filled the
+	# right of frame edge-on. At 1.6 m the camera looks over it into the
+	# pocket, which is the shot that beat is for.
+	_mesh(root, "cube", Vector3(16.5, 0.8, -4.0), Vector3(11.0, 1.6, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	_mesh(root, "cube", Vector3(22.0, 1.2, -10.0), Vector3(0.7, 2.4, 12.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# Creepers carried along the lowered run, matching the playground
+	# boundary's own so the join between them does not read as a seam --
+	# including its "stay inside the wall's own footprint" rule, for the
+	# same reason (see _build_playground()).
+	for creeper_x in [13.0, 17.5, 20.5]:
+		_mesh(root, "sphere", Vector3(creeper_x, 1.7, -3.95), Vector3(1.5, 0.5, 0.5), FOLIAGE)
 
 	# The span over the opening, plus shoulders stepping down to it -- a
 	# coarse arch, in keeping with ART_DIRECTION.md's "broad architectural

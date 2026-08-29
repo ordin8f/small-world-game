@@ -121,6 +121,23 @@ const COLLIDERS := [
 	# it. Garden's own north wall closes the corner this step leaves open.
 	{"x": 16.0, "z": -18.0, "half_x": 0.6, "half_z": 2.0, "camera_blocks": true},
 	{"x": 0.0, "z": -20.0, "half_x": 16.6, "half_z": 0.6, "camera_blocks": true},
+	# North boundary (openness pass, 2026-08-29). Movement along z=-4 was
+	# already sealed by the LANE's wide invisible flanks above; these add
+	# nothing to that. What they add is CAMERA collision, matching the wall
+	# _bootstrap_courtyard.gd now draws on this line exactly.
+	#
+	# Shipping the wall without them was wrong, and the "gap" screenshot
+	# beat showed it immediately: with the flanks camera_blocks=false and
+	# no other layer-2 geometry here, a REVEAL-zone spring arm behind a
+	# player standing at the garden gap (z=-8) threw the camera clean over
+	# this wall to z=+0.8, and the frame came back shooting THROUGH it --
+	# a pale slab across two thirds of the image with the player behind it.
+	# That is the precise case _wall_collider()'s own doc comment exists
+	# for ("the camera must not clip through rendered geometry"); the
+	# flanks stay camera_blocks=false because they are still unrendered,
+	# and this is not them.
+	{"x": -10.9, "z": -3.6, "half_x": 5.6, "half_z": 0.4, "camera_blocks": true},
+	{"x": 8.25, "z": -3.6, "half_x": 3.25, "half_z": 0.4, "camera_blocks": true},
 	# Towers (unchanged footprint/size from the single-room version, just
 	# relocated -- WorldAffordances.TOWER_X/TOWER_Z mirror these).
 	{"x": -3.4, "z": -12.8, "half_x": 1.35, "half_z": 1.35},
