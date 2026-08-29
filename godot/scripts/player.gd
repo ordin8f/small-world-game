@@ -12,7 +12,7 @@ extends CharacterBody3D
 ## available/tested as the reference data, not re-invoked here).
 ##
 ## GATE 0 VERBS -- climbing the left playground tower, sliding down from its
-## platform, and balancing along the garden wall are short SCRIPTED or
+## platform, and balancing along a garden bed's brick edging are short SCRIPTED or
 ## constrained excursions from the baseline walk/run loop above, entered
 ## automatically by proximity (world_affordances.gd) rather than a new input
 ## binding -- ART_DIRECTION.md asks for "very small contextual prompts only
@@ -21,7 +21,7 @@ extends CharacterBody3D
 ## baseline code path below unchanged, so test_player_movement.gd's and
 ## test_playthrough.gd's numbers can't be touched by any of this unless a
 ## verb actually triggers -- and none of their authored routes pass near
-## the tower or the wall.
+## the tower or the edging.
 
 @export var walk_speed: float = 2.65
 @export var run_speed: float = 4.1
@@ -195,14 +195,14 @@ static func _angle_delta(target: float, current: float) -> float:
 # ----------------------------------------------------------- verb triggers --
 
 ## Checked every GROUND tick, moving or not -- walking (or simply standing)
-## into the tower's base or the wall's base is the entire input vocabulary
+## into the tower's base or the edging's base is the entire input vocabulary
 ## for these two verbs, matching ART_DIRECTION.md's "very small contextual
 ## prompts only when necessary" by needing no prompt at all.
 func _check_verb_triggers() -> void:
 	var p := global_position
 	if WorldAffordances.near_climb_trigger(p.x, p.z):
 		_start_climb()
-	elif WorldAffordances.near_wall_mount(p.x, p.z):
+	elif WorldAffordances.near_edging_mount(p.x, p.z):
 		_start_wall_mount()
 
 
@@ -318,7 +318,7 @@ func _process_slide(delta: float) -> void:
 		global_position = end
 
 
-# ------------------------------------------------------------- garden wall --
+# ----------------------------------------------------------- garden edging --
 
 func _start_wall_mount() -> void:
 	verb = Verb.WALL_MOUNTING
@@ -333,7 +333,7 @@ func _process_wall_mount(delta: float) -> void:
 	_verb_time += delta
 	var t := clampf(_verb_time / WALL_MOUNT_SECONDS, 0.0, 1.0)
 	var eased := 1.0 - pow(1.0 - t, 2.0)
-	var target := Vector3(WorldAffordances.WALL_X, WorldAffordances.WALL_TOP_Y, _verb_from.z)
+	var target := Vector3(WorldAffordances.EDGING_X, WorldAffordances.EDGING_TOP_Y, _verb_from.z)
 	global_position = _verb_from.lerp(target, eased)
 	if t >= 1.0:
 		verb = Verb.WALL_WALKING
@@ -348,7 +348,7 @@ func _process_wall_mount(delta: float) -> void:
 ## only moves from sustained sideways INPUT, so the wobble alone can never
 ## cause a fall, and stepping off is always a deliberate, player-driven
 ## choice -- "impossible to fail in a punishing way" per the brief. Walking
-## off either end of a wall segment dismounts the same way, just as
+## off either end of the edging's run dismounts the same way, just as
 ## gently: this is not a failure state, it's just being on the ground again.
 func _process_wall_walk(delta: float) -> void:
 	var input_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
@@ -357,7 +357,7 @@ func _process_wall_walk(delta: float) -> void:
 	running = false
 	character_visual.set_motion(moving, false)
 
-	var segment := WorldAffordances.wall_segment_at_z(global_position.z)
+	var segment := WorldAffordances.edging_segment_at_z(global_position.z)
 	if segment.is_empty():
 		_start_wall_dismount()
 		return
@@ -369,7 +369,7 @@ func _process_wall_walk(delta: float) -> void:
 
 		var next_z: float = clampf(global_position.z + direction["z"] * WALL_WALK_SPEED * delta, segment["z_min"] - 0.1, segment["z_max"] + 0.1)
 		global_position.z = next_z
-		_wall_offset_x = clampf(_wall_offset_x + direction["x"] * WALL_LEAN_SPEED * delta, -WorldAffordances.WALL_HALF_WIDTH - 0.5, WorldAffordances.WALL_HALF_WIDTH + 0.5)
+		_wall_offset_x = clampf(_wall_offset_x + direction["x"] * WALL_LEAN_SPEED * delta, -WorldAffordances.EDGING_HALF_WIDTH - 0.5, WorldAffordances.EDGING_HALF_WIDTH + 0.5)
 
 		if absf(direction["z"]) > 0.01:
 			var target_heading: float = PI if direction["z"] > 0.0 else 0.0
@@ -380,14 +380,14 @@ func _process_wall_walk(delta: float) -> void:
 	else:
 		_wall_offset_x = move_toward(_wall_offset_x, 0.0, delta * 0.35)
 
-	global_position.x = WorldAffordances.WALL_X + _wall_offset_x
-	global_position.y = WorldAffordances.WALL_TOP_Y
+	global_position.x = WorldAffordances.EDGING_X + _wall_offset_x
+	global_position.y = WorldAffordances.EDGING_TOP_Y
 
 	_wall_wobble_time += delta
 	var wobble := sin(_wall_wobble_time * 2.6) * 0.045
 	character_visual.rotation.z = wobble - _wall_offset_x * 0.5
 
-	if absf(_wall_offset_x) > WorldAffordances.WALL_HALF_WIDTH:
+	if absf(_wall_offset_x) > WorldAffordances.EDGING_HALF_WIDTH:
 		_start_wall_dismount()
 
 
@@ -396,16 +396,16 @@ func _start_wall_dismount() -> void:
 	_verb_time = 0.0
 	_verb_from = global_position
 	var landing_x := global_position.x
-	# A lean-caused dismount (exceeded WALL_HALF_WIDTH) must land clearly
-	# outside WorldAffordances.near_wall_mount()'s wider WALL_MOUNT_X_RANGE,
+	# A lean-caused dismount (exceeded EDGING_HALF_WIDTH) must land clearly
+	# outside WorldAffordances.near_edging_mount()'s wider EDGING_MOUNT_X_RANGE,
 	# not just past the half-width -- landing anywhere inside that range
 	# means the very next GROUND tick's _check_verb_triggers() sees the
-	# wall again and re-mounts immediately, so "stepping off" would
+	# edging again and re-mounts immediately, so "stepping off" would
 	# silently do nothing. A segment-end dismount doesn't need this: z
-	# alone already clears wall_segment_at_z(), so x is left as-is.
-	if absf(_wall_offset_x) > WorldAffordances.WALL_HALF_WIDTH:
+	# alone already clears edging_segment_at_z(), so x is left as-is.
+	if absf(_wall_offset_x) > WorldAffordances.EDGING_HALF_WIDTH:
 		var side := signf(_wall_offset_x)
-		landing_x = WorldAffordances.WALL_X + side * (WorldAffordances.WALL_MOUNT_X_RANGE + 0.3)
+		landing_x = WorldAffordances.EDGING_X + side * (WorldAffordances.EDGING_MOUNT_X_RANGE + 0.3)
 	_verb_to = Vector3(landing_x, locked_y, global_position.z)
 	character_visual.rotation.z = 0.0
 	_wall_offset_x = 0.0

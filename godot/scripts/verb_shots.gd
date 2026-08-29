@@ -1,6 +1,6 @@
 extends SceneTree
 ## Gate 0: windowed screenshot capture for the four new playground verbs --
-## climb+slide, garden-wall balance, stepping-stones imagination cue, and
+## climb+slide, garden-edging balance, stepping-stones imagination cue, and
 ## the puddle splash. Same technique as scripts/screenshot_route.gd
 ## (in-engine Viewport capture; headless never renders a frame to grab),
 ## but these verbs live off the authored 7-event route, so this drives
@@ -73,15 +73,15 @@ func _run() -> void:
 	await _wait_ticks(10)
 	await _capture("slide_landed")
 
-	# --- 2. Garden wall: mount and balance along the top -------------------
-	# WALL_X relocated to 11.0 for the 2026-08-28 world expansion
-	# (world_bounds.gd's own doc comment); same offset test_player_verbs.gd
-	# uses.
-	_player.global_position = Vector3(10.3, 0.0, -13.0)
+	# --- 2. Garden bed edging: mount and balance along the top -------------
+	# Balance verb moved off the tall boundary wall onto a low brick edging
+	# by the home threshold (world_affordances.gd's own doc comment); same
+	# offset test_player_verbs.gd uses.
+	_player.global_position = Vector3(-4.15, 0.0, 13.2)
 	await _wait_for_verb("WALL_WALKING", 60)
 	_runner.simulate_action_press("move_forward")
 	await _wait_ticks(45)
-	await _capture("wall_balancing")
+	await _capture("edging_balancing")
 	_runner.simulate_action_release("move_forward")
 	await _wait_ticks(10)
 
