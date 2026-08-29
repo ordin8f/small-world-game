@@ -71,7 +71,7 @@ const LANDMARKS := [
 	["TowerEastApproach", 3.4, -11.05, 0.75],
 	["Swing", 6.5, -8.0, 1.3],
 	["Sandbox", -10.5, -8.0, 1.6],
-	["Bench", -7.0, -8.0, 0.9],
+	["Bench", -7.0, -9.8, 0.9],
 	["BushFeature", -8.7, -13.7, 0.9],
 	["Treasure:Marble", 9.2, -5.0, 1.1],
 	["Treasure:Stone", 18.0, -8.0, 1.1],
@@ -146,6 +146,7 @@ var _params: PhysicsShapeQueryParameters3D
 var _capsule_y := 0.54
 var _occluders: Array = []
 var _skyline: Array = []
+var _all_boxes: Array = []
 
 
 func _initialize() -> void:
@@ -195,6 +196,7 @@ func _run() -> void:
 	_report_dead_space_visibility(free, dist, STEP * STEP, EYE_Y, "child eye")
 	_report_dead_space_visibility(free, dist, STEP * STEP, CAMERA_Y, "REVEAL camera")
 	_report_geometry_in_walkable_space(dist)
+	_report_frame_occupancy()
 	quit(0)
 
 
@@ -436,6 +438,7 @@ func _collect_occluders(root: Node) -> void:
 		if local.size == Vector3.ZERO:
 			continue
 		var box: AABB = (node as GeometryInstance3D).global_transform * local
+		_all_boxes.append({"name": str(node.name), "box": box})
 		# Anything rising above the eye at all feeds the horizon metric --
 		# including things whose base is above eye height, like a canopy.
 		if box.end.y > EYE_Y:
@@ -853,3 +856,105 @@ func _report_geometry_in_walkable_space(dist: PackedInt32Array) -> void:
 	])
 	for name in offenders:
 		print("    %-22s %s" % [name, offenders[name]])
+
+
+# ------------------------------------------------- what fills the frame --
+# A sightline test asks "does a ray from A reach B". It says nothing about
+# how much of the SCREEN the thing beside the ray takes up, so a beat can
+# score as perfectly clear while 40% of the picture is one flat wall face
+# at two metres. That is not a hypothetical: it is what the gap beat did,
+# through two rounds of this pass, while every ray-based number here said
+# it was fine. This is the metric that catches it.
+#
+# Camera and player positions below are RECORDED, not simulated -- they are
+# what scripts/screenshot_route.gd itself printed on its last run, because
+# where the camera actually ends up depends on SpringArm3D collision that
+# this headless probe does not reproduce. Refresh them with:
+#   godot --path godot --script res://scripts/screenshot_route.gd
+# and paste the camera=/player= pairs it prints. A stale row here measures
+# a frame nobody is shooting, so the numbers are only as current as this
+# list.
+
+## name, camera x/y/z, player x/z, vertical fov (camera_profile.gd's own
+## value for that beat's z, after the THRESHOLD/APPROACH/REVEAL blend).
+const FRAMES := [
+	["01_threshold", 0.30, 1.28, 15.90, 0.00, 10.00, 50.0],
+	["02_watch", -0.42, 2.56, 2.83, -0.19, -7.55, 58.0],
+	["03_gap", 10.40, 1.79, -4.03, 10.46, -7.97, 58.0],
+	["04_ball", 13.63, 2.17, -4.37, 13.81, -11.54, 58.0],
+	["05_circle", 0.16, 2.60, 0.39, 0.45, -10.11, 58.0],
+	["06_door", 0.25, 1.20, 15.90, 0.16, 12.56, 50.0],
+]
+
+const FRAME_COLS := 64
+const FRAME_ROWS := 36
+const ASPECT := 1280.0 / 720.0
+## Anything closer than this is "in your face" rather than "in the scene".
+const NEAR_M := 6.0
+## camera_rig.gd aims at the player's target_height, not their feet.
+const AIM_Y := 1.1
+
+
+func _report_frame_occupancy() -> void:
+	print("")
+	print("=== WHAT FILLS THE FRAME (%dx%d ray grid, recorded camera positions) ===" % [
+		FRAME_COLS, FRAME_ROWS,
+	])
+	print("near%% = share of the picture taken by geometry within %.0f m of the camera." % NEAR_M)
+	print("A single object over ~25%% is a slab in the way, however clear the sightline is.")
+	print("%-14s %8s %8s   %s" % ["beat", "near%", "top obj", "largest contributors"])
+	print("-".repeat(78))
+
+	for frame in FRAMES:
+		var eye := Vector3(frame[1], frame[2], frame[3])
+		var aim := Vector3(frame[4], AIM_Y, frame[5])
+		var forward := (aim - eye).normalized()
+		var right := forward.cross(Vector3.UP).normalized()
+		var up := right.cross(forward).normalized()
+		var half_v: float = tan(deg_to_rad(float(frame[6]) * 0.5))
+		var half_h: float = half_v * ASPECT
+
+		var near_hits := 0
+		var shares := {}
+		var nearest := {}
+		for row in range(FRAME_ROWS):
+			# +0.5 samples each cell's centre rather than its corner.
+			var v: float = (2.0 * (row + 0.5) / FRAME_ROWS - 1.0) * half_v
+			for col in range(FRAME_COLS):
+				var h: float = (2.0 * (col + 0.5) / FRAME_COLS - 1.0) * half_h
+				var dir := (forward + right * h + up * v).normalized()
+				var best := INF
+				var who := ""
+				for entry in _all_boxes:
+					var t := _ray_box(eye, dir, entry["box"])
+					if t >= 0.0 and t < best:
+						best = t
+						who = entry["name"]
+				if best > NEAR_M:
+					continue
+				near_hits += 1
+				shares[who] = shares.get(who, 0) + 1
+				if not nearest.has(who) or best < nearest[who]:
+					nearest[who] = best
+
+		var total := FRAME_COLS * FRAME_ROWS
+		var ranked: Array = []
+		for key in shares:
+			ranked.append([key, shares[key]])
+		ranked.sort_custom(func(a, b): return a[1] > b[1])
+		var top_share: float = 0.0 if ranked.is_empty() else 100.0 * float(ranked[0][1]) / total
+		print("%-14s %7.0f%% %7.0f%%" % [frame[0], 100.0 * near_hits / total, top_share])
+		for i in range(mini(5, ranked.size())):
+			var key: String = ranked[i][0]
+			var pct: float = 100.0 * float(ranked[i][1]) / total
+			if pct < 2.0:
+				break
+			var box := AABB()
+			for entry in _all_boxes:
+				if entry["name"] == key:
+					box = entry["box"]
+					break
+			print("                 %5.1f%%  %-20s %4.1f m  y[%.1f,%.1f] x[%.1f,%.1f] z[%.1f,%.1f]" % [
+				pct, key, nearest[key], box.position.y, box.end.y,
+				box.position.x, box.end.x, box.position.z, box.end.z,
+			])

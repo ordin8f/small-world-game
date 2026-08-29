@@ -264,7 +264,15 @@ func _build_static_world(root: Node3D) -> void:
 		_mesh(root, "sphere", Vector3(stone[0], 0.05, stone[1]), Vector3(s, 0.14, s * 0.85), PATH, Vector3.ZERO, 0.0, "paving")
 	# M3.2: real bench.gltf, near the chalk circle -- same offset from
 	# Group (0, -11) the single-room version held from its own Group.
-	_kind(root, Vector3(-7.0, 0.0, -8.0), "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, 0.0, "Bench")
+	# Moved from (-7, -8) to (-7, -9.8) in the openness pass. The old spot
+	# sat exactly on z=-8, the straight line from the swing to the sandbox --
+	# the two furthest-apart activities in the playground -- and the bench's
+	# own AABB crosses child eye height, so it was the only thing blocking
+	# that sightline across 17 m of otherwise open ground. A prop standing
+	# in a sightline is a placement problem, not a fact. It reads better
+	# here too: set back on the chalk circle's west side facing it, rather
+	# than floating in open ground halfway to the sandbox.
+	_kind(root, Vector3(-7.0, 0.0, -9.8), "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, 0.0, "Bench")
 
 	# Trees flanking the lane's home-side mouth (concept_02's "narrow
 	# passage... light at the far end" reads better with something framing
@@ -878,23 +886,37 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# 2.1 m clear, so the arch frames the view through it the way
 	# concept_06_garden_gap.png does instead of guillotining it. Still
 	# unmistakably an arch to duck through, still the only way in.
-	_mesh(root, "cube", Vector3(11.0, 2.35, -8.0), Vector3(0.72, 0.5, 3.6), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	# Shoulders bridge wall-top (1.15) to span-bottom (2.1), buttressing up
-	# to the span. They sit on the WALL SEGMENTS (z <= -9.7 and z >= -6.3),
-	# NOT at the opening's edges: a first version centred them on -9.35 and
-	# -6.65, which put them inside the opening itself, and since the
+	_mesh(root, "cube", Vector3(11.0, 2.05, -8.0), Vector3(0.72, 0.4, 3.6), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# Corbels carrying the span's ends, on the WALL SEGMENTS (z <= -9.7 and
+	# z >= -6.3) rather than at the opening's edges: a version centred on
+	# -9.35 and -6.65 put them inside the opening itself, and since the
 	# traversable band through a 3.4 m gap is z[-9.38, -6.62] once the
-	# player's radius is taken off, the player could walk head-first into
-	# them. Caught by tools/_probe_reachability.gd's head-height check, not
-	# by looking -- from outside the gap they looked exactly right.
-	_mesh(root, "cube", Vector3(11.0, 1.63, -10.05), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(11.0, 1.63, -5.95), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# player's radius comes off, the player could walk head-first into them.
+	# Caught by _probe_reachability.gd's head-height check, not by looking.
+	#
+	# Small brackets, not piers. They were 0.95 m tall and 0.7 m deep,
+	# bridging the whole wall-top-to-span gap, and the frame-occupancy pass
+	# measured the south one alone at 13% of the gap beat's picture from
+	# 1.6 m away -- stacked with the wall below and the span above, one dark
+	# 26% column with the player half behind it. That is the "sightline is
+	# clear but the frame is a wall" case, invisible to every ray test here.
+	# Dropping the span to 1.85-2.25 and shrinking these to 0.3 x 0.4 takes
+	# about 80% off that column (measured 13.2% -> 3.3%) while keeping
+	# 1.85 m of headroom and the same corbelled arch reading.
+	_mesh(root, "cube", Vector3(11.0, 1.70, -10.0), Vector3(0.66, 0.3, 0.4), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 1.70, -6.0), Vector3(0.66, 0.3, 0.4), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# Vegetation swallowing the arch, as in the plate -- carried up onto the
 	# raised span so it still reads as overgrown, and kept clear of the
 	# opening itself so it cannot re-block what raising the span just
 	# opened.
-	for creeper in [[-9.6, 0.62], [-8.0, 0.5], [-6.4, 0.58]]:
-		_mesh(root, "sphere", Vector3(11.0, 2.75, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
+	# Kept inboard of the span's own ends (z -9.8..-6.2). At -9.6/-6.4 the
+	# outer two overhung the wall segments either side, and the southern one
+	# measured 6% of the gap beat's frame from 1.9 m -- a dark mass hanging
+	# directly over where the camera parks against the boundary. Same rule
+	# as the boundary wall's own creepers: decoration stays inside the
+	# footprint of the thing it decorates.
+	for creeper in [[-8.8, 0.62], [-8.0, 0.5], [-7.2, 0.58]]:
+		_mesh(root, "sphere", Vector3(11.0, 2.4, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
 
 	# Gap 4 (ambience pass): a shallow sill at the arch's own threshold --
 	# ground relief the locked-Y player (player.gd) can still walk over
@@ -1031,13 +1053,13 @@ func _add_distant_layer(root: Node3D) -> void:
 	# check now fails on this class of mistake rather than leaving it to
 	# whoever looks at the next screenshot.
 	for mass in [
-		[-10.5, 0.5, 6.0, 7.5], [-14.0, 4.0, 7.0, 8.5], [-12.5, 7.5, 6.5, 8.0],
-		[13.0, 0.5, 6.0, 7.5], [18.5, 4.0, 6.5, 8.0], [11.0, 7.0, 6.0, 7.5],
+		[-10.5, 0.5, 6.0, 5.5], [-14.0, 4.0, 7.0, 6.0], [-12.5, 7.5, 6.5, 5.5],
+		[13.0, 0.5, 6.0, 5.5], [18.5, 4.0, 6.5, 6.0], [11.0, 7.0, 6.0, 5.5],
 		# Near-east: without this one a viewer at (6, -6) still had a clear
 		# line over the boundary wall to unreachable ground at (8, 9).
 		# Placed north of the lane-flank tree at (9.5, 1.3) rather than on
 		# top of it -- that tree is a camera fix's own composition anchor.
-		[8.5, 4.5, 5.0, 7.0],
+		[8.5, 4.5, 5.0, 5.0],
 	]:
 		_treeline_mass(root, mass[0], mass[1], mass[2], mass[3])
 	# Rooftops on the ground beside home itself (x beyond +-7.5, z 8.5..16),
