@@ -179,7 +179,7 @@ func _run() -> void:
 
 	_collect_occluders(courtyard)
 	_report_sightlines()
-	_report_invisible_walls(courtyard, free, STEP * STEP)
+	_report_invisible_walls(courtyard, free, dist, STEP * STEP)
 	quit(0)
 
 
@@ -529,7 +529,7 @@ func _report_sightlines() -> void:
 ## them. `_occluders` only holds meshes crossing EYE_Y, so this builds its
 ## own footprint list: anything at least KNEE_Y tall, which keeps the ground
 ## plane and the path strip out while catching low walls and plinths.
-func _report_invisible_walls(root: Node, free: PackedByteArray, cell_area: float) -> void:
+func _report_invisible_walls(root: Node, free: PackedByteArray, dist: PackedInt32Array, cell_area: float) -> void:
 	const KNEE_Y := 0.5
 	var footprints: Array[Rect2] = []
 	var stack: Array[Node] = [root]
@@ -576,8 +576,14 @@ func _report_invisible_walls(root: Node, free: PackedByteArray, cell_area: float
 	# continue and are stopped by nothing. Measured in metres of edge, not
 	# square metres of volume.
 	var frontage := 0.0
+	var frontage_at: Array[Vector2] = []
 	for i in range(free.size()):
-		if free[i] == 0:
+		# REACHABLE, not merely free. An earlier version tested free[i] and
+		# so counted the perimeter of the unreachable pockets beside home
+		# as well -- 23.5 m of "defect" along a boundary no player can ever
+		# stand next to. Frontage only means anything measured from ground
+		# the player can actually be standing on.
+		if dist[i] < 0:
 			continue
 		var cell := Vector2i(i % X_CELLS, i / X_CELLS)
 		if not _in_envelope(_world_of(cell)):
@@ -588,11 +594,19 @@ func _report_invisible_walls(root: Node, free: PackedByteArray, cell_area: float
 				continue
 			if invisible[_index(next)] == 1:
 				frontage += STEP
+				frontage_at.append(_world_of(next))
 
 	print("")
 	print("=== INVISIBLE WALLS (blocked, inside envelope, nothing rendered on them) ===")
 	print("frontage walked into: %.1f m of walkable perimeter  <- the felt defect" % frontage)
 	print("total volume:         %d cells (%.1f m^2)" % [total, total * cell_area])
+	# The exact spots, not just the count -- a frontage number you can't
+	# locate is a number you can't act on.
+	if not frontage_at.is_empty():
+		var listed := PackedStringArray()
+		for p in frontage_at:
+			listed.append("(%.1f, %.1f)" % [p.x, p.y])
+		print("  at: %s" % ", ".join(listed))
 	var seen := PackedByteArray()
 	seen.resize(free.size())
 	var components := 0

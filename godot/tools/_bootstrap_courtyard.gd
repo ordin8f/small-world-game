@@ -231,10 +231,13 @@ func _build_static_world(root: Node3D) -> void:
 	# Ground, generous enough to cover all four rooms' combined extent
 	# (x[-16.6,22.6], z[-20.3,16.3], world_bounds.gd's can_move_to envelope)
 	# with margin. Worn path strip from the playground mouth through the
-	# lane to the doorway (x +-3.2, z[-4,16]) -- the lane's own walkable
-	# width, continued through home -- reads as the route the child has
-	# already walked many times, per ART_DIRECTION.md's "wet footprints
-	# near a puddle" style of small concrete detail.
+	# lane to the doorway (x +-3.2, z[-4,16]) reads as the route the child
+	# has already walked many times, per ART_DIRECTION.md's "wet footprints
+	# near a puddle" style of small concrete detail. It used to be exactly
+	# the lane's walkable width; since the openness pass widened the lane to
+	# 8.76 m the path is narrower than the space it runs through, which is
+	# what a worn path actually looks like -- kept at 6.4 for that reason
+	# rather than widened to match.
 	_mesh(root, "cube", Vector3(3, -0.28, -2), Vector3(42, 0.5, 40), GROUND, Vector3.ZERO, 0.0, "earth")
 	_mesh(root, "cube", Vector3(0, -0.01, 6.0), Vector3(6.4, 0.08, 20.0), PATH, Vector3.ZERO, 0.0, "paving")
 
@@ -349,23 +352,45 @@ func _build_static_world(root: Node3D) -> void:
 ## 2.4 m doorway opening through -- matches world_bounds.gd's COLLIDERS
 ## for this room exactly.
 func _build_home(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# Side walls dropped from 5.5 m to 4.0 m (openness pass, 2026-08-29).
+	# Home is 12.8 m wide between them, so at 5.5 the walls were nearly half
+	# the room's own width and there was no angle from inside the porch that
+	# put anything but plaster above the horizon. 4.0 is still far too tall
+	# to see over from inside (the eye would have to be 15 m back), so the
+	# dead ground beyond home stays hidden exactly as before -- what changes
+	# is how much sky the frame gets.
+	_mesh(root, "cube", Vector3(-7.0, 2.0, 11.0), Vector3(1.1, 4.0, 6.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(7.0, 2.0, 11.0), Vector3(1.1, 4.0, 6.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
 	# The piers: heavy, tall, framing the doorway. Widened from the
 	# single-room version's freestanding pair (which had open flanks either
 	# side, x to +-10.7) to run flush out to the new x=+-7 side walls above.
-	_mesh(root, "cube", Vector3(-4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(4.1, 2.2, 15.0), Vector3(5.8, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# The opening between them is 3.6 m as of the openness pass, up from
+	# 2.4 -- see world_bounds.gd's matching colliders for why.
+	_mesh(root, "cube", Vector3(-4.4, 2.2, 15.0), Vector3(5.2, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(4.4, 2.2, 15.0), Vector3(5.2, 4.7, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	# Lintel + roof slab: the dark ceiling that makes it read as a passage.
-	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(2.6, 1.2, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(0, 3.95, 15.0), Vector3(2.5, 0.35, 2.2), SHADOW_STONE)
+	# Both widened with the opening so they still span it corner to corner.
+	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(3.8, 1.2, 2.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(0, 3.95, 15.0), Vector3(3.7, 0.35, 2.2), SHADOW_STONE)
 	# Back cap, just past the piers -- the world's true south edge here.
 	# Kept as a plain backdrop slab: _build_house() below stands in front of
 	# it and is the real facade now, but the slab still shows past the
 	# house's own width (it spans the room's full x[-7,7]; the house is
-	# narrower) so there is never a gap in the world's true boundary.
-	_mesh(root, "cube", Vector3(0, 2.75, 16.3), Vector3(14.4, 5.5, 0.3), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# narrower) so there is never a gap in the world's true boundary. Only
+	# lightly lowered (5.5 -> 4.6, less than the side walls above): it has
+	# to stay taller than the house it backs or the house gets a halo of
+	# sky where the slab used to be.
+	_mesh(root, "cube", Vector3(0, 2.3, 16.3), Vector3(14.4, 4.6, 0.3), PLASTER, Vector3.ZERO, 0.0, "plaster")
+
+	# Shoulders at the home/lane seam (openness pass), matching
+	# world_bounds.gd's own new colliders there. Home is 12.8 m wide and the
+	# lane below is 10 m, and until this pass that 1.4 m step per side was
+	# part of the lane's wide INVISIBLE flank -- a player walking south
+	# along home's east side simply stopped, on open rendered ground, at
+	# nothing. Drawing the step is the fix; the collision was always there.
+	for shoulder_x in [-6.0, 6.0]:
+		_mesh(root, "cube", Vector3(shoulder_x, 2.0, 8.0), Vector3(2.6, 4.0, 0.7), PLASTER, Vector3.ZERO, 0.0, "plaster")
 
 	# DEFERRED: the concept_07 framing gateway. It has to stand between the
 	# camera and the player, so its position depends on where the camera
@@ -563,15 +588,24 @@ func _build_garden_bed(root: Node3D) -> void:
 		_mesh(root, "sphere", Vector3(flower[0], 0.52, flower[1]), Vector3(0.14, 0.1, 0.14), bed_flower_color, Vector3.ZERO, 0.15)
 
 
-## LANE: the new narrow passage, x[-3,3] z[-4,8] -- concept_02_path_
+## LANE: the walled passage, x[-5,5] z[-4,8] -- concept_02_path_
 ## discovery.png, and the piece GODOT_REBUILD_PLAN.md's successor task
 ## found completely missing: "a narrow passage between tall walls, reading
 ## as a canyon, light at the far end". Rendered walls are a thin pair right
-## at the walkable edge (x=+-3); the much wider invisible collider flanking
+## at the walkable edge (x=+-5); the much wider invisible collider flanking
 ## each one (world_bounds.gd) is what actually prevents walking around the
-## outside of them. Taller than the other rooms' walls (9.5 m vs 8.2 m) --
-## the only place in this pass that goes taller rather than wider, since a
-## canyon read needs the height/width ratio, not just enclosure.
+## outside of them.
+##
+## Openness pass (2026-08-29): +-3 -> +-5 and 9.5 m -> 7.0 m tall. The
+## original went taller rather than wider on the reasoning that "a canyon
+## read needs the height/width ratio" -- true, but it was pushed to 2.0
+## (9.5 over a 4.76 m walkable width) for a passage the player spends a
+## quarter of the demo walking down, and it measured as the most enclosed
+## spot in the game. 7.0 over 8.76 m is 0.80: still unmistakably a walled
+## passage with light at the far end, no longer a slot the player has to
+## thread. The plate itself is a SHORT passage opening into light, and
+## home's own doorway piers (with their lintel and dark ceiling, see
+## _build_home) already carry that beat at the scale the plate shows it.
 func _build_lane(root: Node3D) -> void:
 	# Each wall is split into a dark plinth (y 0..0.4) and the tall plaster
 	# above it, in place of one flat cube -- Gap 4 of the ambience pass
@@ -584,10 +618,10 @@ func _build_lane(root: Node3D) -> void:
 	# wall's own existing footprint (world_bounds.gd's LANE colliders,
 	# unchanged), and the player's own 0.32m collision radius can never
 	# bring their rendered body closer to it than the wall face itself.
-	_mesh(root, "cube", Vector3(-3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
-	_mesh(root, "cube", Vector3(-3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(3.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
-	_mesh(root, "cube", Vector3(3.0, 4.95, 2.0), Vector3(0.5, 9.1, 12.4), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(-5.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(-5.0, 3.7, 2.0), Vector3(0.5, 6.6, 12.4), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(5.0, 0.2, 2.0), Vector3(0.5, 0.4, 12.4), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(5.0, 3.7, 2.0), Vector3(0.5, 6.6, 12.4), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# Deliberately nothing else in here -- ART_DIRECTION.md's "avoid filling
 	# every space with props" and the brief's own "keep it sparse": the two
 	# puddles already at x[-1.5,2.1] (see caller) are the lane's only detail,
@@ -602,18 +636,67 @@ func _build_lane(root: Node3D) -> void:
 ## either side (x 5..16 roughly) are left open and ungrouped -- room for
 ## another agent's swing and sandbox, per the brief.
 func _build_playground(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-16.0, 2.1, -12.0), Vector3(1.1, 4.2, 16.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# Side walls dropped 4.2 -> 3.2 m (openness pass, 2026-08-29).
+	# concept_03_playground_scale.png and concept_09_overall.png both bound
+	# this space with a wall the eye clears easily -- treetops, haze and
+	# rooflines above it, which is the entire reason _add_distant_layer()
+	# exists. At 4.2 the wall's top edge sat above the horizon from
+	# everywhere in the playground and hid the layer built to be seen.
+	_mesh(root, "cube", Vector3(-16.0, 1.6, -12.0), Vector3(1.1, 3.2, 16.0), PLASTER, Vector3.ZERO, 0.0, "plaster")
 	# East wall only for the deep end (z -20..-16); south of that the garden
 	# wall (x=11, _build_garden_pocket) is the real boundary, and rendering
 	# a second wall out at x=16 alongside it there would look like a second,
 	# redundant room. Deliberately absent for z > -16 for that reason.
-	_mesh(root, "cube", Vector3(16.0, 2.1, -18.0), Vector3(1.1, 4.2, 4.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(16.0, 1.6, -18.0), Vector3(1.1, 3.2, 4.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# South wall, as a blind arcade instead of one flat cube -- Gap 2 of the
 	# ambience pass. concept_03_playground_scale.png is literally a row of
 	# arches in a weathered wall; before this the build had exactly one arch
 	# anywhere (the garden gap). See _build_arcade_wall()'s own doc comment
 	# for why these are blind niches, not punch-throughs.
-	_build_arcade_wall(root, 0.0, -20.0, 33.0, 1.1, 8.2, [-10.0, 0.0, 10.0])
+	#
+	# 8.2 -> 4.6 m (openness pass). This is the backdrop of the watch and
+	# circle beats -- the wall behind the children -- and at 8.2 it was
+	# taller than the house and filled the upper half of every frame shot
+	# from the chalk circle. The niches are 2.8 m tall (ARCH_SPRING_Y plus
+	# the arch radius), so 4.6 still leaves a 1.8 m parapet band above
+	# them, keeping the plate's "arches partway up a taller wall" reading
+	# with roughly the plate's own proportion.
+	_build_arcade_wall(root, 0.0, -20.0, 33.0, 1.1, 4.6, [-10.0, 0.0, 10.0])
+
+	# North boundary (openness pass). The playground's own north edge, at
+	# the lane/playground seam z=-4, had NO rendered geometry at all for
+	# the 22 m either side of the lane mouth: collision came from the lane's
+	# wide invisible flanks (world_bounds.gd), and the ground plane is a
+	# single 42x40 m slab that runs on regardless. So a player standing
+	# anywhere along the playground's north edge saw open ground continuing
+	# north and walked into nothing -- 41 m of the walkable perimeter
+	# measured as invisible wall (tools/_probe_reachability.gd). That is
+	# the "all places are not reachable" complaint in its literal form:
+	# not an unreachable ROOM, an unreachable-looking floor.
+	#
+	# Deliberately LOW (1.6 m) rather than matching the side walls. Two
+	# reasons. It has to be seen over -- the point of the openness pass is
+	# that this edge reads as a garden wall with a world beyond it, as in
+	# concept_06_garden_gap.png, not as another slab. And no collider is
+	# added with it (the flank already collides), so the camera can pass
+	# over it; at 1.6 m it is below REVEAL's own 2.6 m camera height, so
+	# that pass reads as looking over a low wall rather than clipping
+	# through a tall one. Its SOUTH face lands exactly on z=-4 so the wall
+	# sits entirely inside the existing collider's footprint and never
+	# pokes into walkable ground.
+	#
+	# Two runs, skipping the lane mouth (x -5..5, where the lane's own walls
+	# take over) and ending at x=11.5, overlapping the garden pocket's own
+	# wall on that line so the two read as one continuous boundary out to
+	# x=22. Centred at z=-3.6 with 0.8 depth, so the face the player sees
+	# lands exactly on z=-4, the flank collider's own edge, and no part of
+	# the wall stands on ground the player can still walk on.
+	for run in [[-10.9, 11.2], [8.25, 6.5]]:
+		_mesh(root, "cube", Vector3(run[0], 0.8, -3.6), Vector3(run[1], 1.6, 0.8), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# Creepers along its top, the same trick the garden arch already uses to
+	# keep a low wall from reading as a bare kerb.
+	for creeper_x in [-14.5, -9.0, -6.2, 7.0, 10.4]:
+		_mesh(root, "sphere", Vector3(creeper_x, 1.7, -3.6), Vector3(1.5, 0.5, 0.9), FOLIAGE)
 
 	for x in [-3.4, 3.4]:
 		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
@@ -667,27 +750,49 @@ func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickn
 ## sides (world_bounds.gd's own doc comment: "the garden gap must still be
 ## the only way through").
 func _build_garden_pocket(root: Node3D) -> void:
-	# West wall (shared with the playground), two segments with the 2 m
+	# West wall (shared with the playground), two segments with the 3.4 m
 	# gap between them. (No longer the balance-verb wall -- that affordance
 	# now lives on the garden-bed edging in _build_garden_bed(); this stays
 	# a plain boundary, matching WorldBounds.COLLIDERS exactly as before.)
-	_mesh(root, "cube", Vector3(11.0, 0.55, -12.5), Vector3(0.6, 1.2, 7.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(11.0, 0.55, -5.5), Vector3(0.6, 1.2, 3.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	# North/south/east walls seal the rest of the pocket.
-	_mesh(root, "cube", Vector3(16.5, 1.5, -16.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(16.5, 1.5, -4.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(22.0, 1.5, -10.0), Vector3(0.7, 3.0, 12.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# Segment z-spans follow world_bounds.gd's widened gap (3.4 m, was 2.0).
+	_mesh(root, "cube", Vector3(11.0, 0.55, -12.85), Vector3(0.6, 1.2, 6.3), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 0.55, -5.15), Vector3(0.6, 1.2, 2.3), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# North/south/east walls seal the rest of the pocket. 3.0 -> 2.4 m
+	# (openness pass): concept_06_garden_gap.png's own wall is barely over
+	# an adult's head with trees and light plainly visible above it, and
+	# this pocket is only 11 m across, so 3.0 closed the sky out of the one
+	# beat whose whole subject is warm light coming from somewhere else.
+	_mesh(root, "cube", Vector3(16.5, 1.2, -16.0), Vector3(11.0, 2.4, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(16.5, 1.2, -4.0), Vector3(11.0, 2.4, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(22.0, 1.2, -10.0), Vector3(0.7, 2.4, 12.0), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
 	# The span over the opening, plus shoulders stepping down to it -- a
 	# coarse arch, in keeping with ART_DIRECTION.md's "broad architectural
 	# planes, modest geometric detail". Centred on the gap's own midpoint
-	# (z=-8, halfway between the -9/-7 segment edges).
-	_mesh(root, "cube", Vector3(11.0, 1.55, -8.0), Vector3(0.72, 0.8, 2.4), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(11.0, 1.12, -8.75), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(11.0, 1.12, -7.25), Vector3(0.66, 0.5, 0.75), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	# Vegetation swallowing the arch, as in the plate.
-	for creeper in [[-9.1, 0.62], [-8.1, 0.5], [-7.1, 0.58]]:
-		_mesh(root, "sphere", Vector3(11.0, 1.9, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
+	# (z=-8, unchanged -- it is halfway between the widened -9.7/-6.3
+	# segment edges exactly as it was between the old -9/-7 pair, so every
+	# authored route and test waypoint through the gap still lands in open
+	# ground).
+	#
+	# RAISED (openness pass): the span used to sit at y 1.15-1.95, so the
+	# opening was 1.15 m of clear height and the lintel crossed the eyeline
+	# of a 1.2 m child dead centre. tools/_probe_reachability.gd measured
+	# every sightline into this pocket -- from the playground, the swing,
+	# the lane mouth -- as blocked by this one box. It is now at y 2.1-2.6:
+	# 2.1 m clear, so the arch frames the view through it the way
+	# concept_06_garden_gap.png does instead of guillotining it. Still
+	# unmistakably an arch to duck through, still the only way in.
+	_mesh(root, "cube", Vector3(11.0, 2.35, -8.0), Vector3(0.72, 0.5, 3.6), PLASTER, Vector3.ZERO, 0.0, "plaster")
+	# Shoulders now bridge wall-top (1.15) to span-bottom (2.1) at the
+	# opening's own edges, rather than stepping down into the opening.
+	_mesh(root, "cube", Vector3(11.0, 1.63, -9.35), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 1.63, -6.65), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# Vegetation swallowing the arch, as in the plate -- carried up onto the
+	# raised span so it still reads as overgrown, and kept clear of the
+	# opening itself so it cannot re-block what raising the span just
+	# opened.
+	for creeper in [[-9.6, 0.62], [-8.0, 0.5], [-6.4, 0.58]]:
+		_mesh(root, "sphere", Vector3(11.0, 2.75, creeper[0]), Vector3(1.05, 0.55, creeper[1] * 1.6), FOLIAGE)
 
 	# Gap 4 (ambience pass): a shallow sill at the arch's own threshold --
 	# ground relief the locked-Y player (player.gd) can still walk over
@@ -696,7 +801,7 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# Unlike the lane's plinth above, this one IS crossed underfoot -- kept
 	# to that same shallow precedent rather than a real riser for that
 	# reason.
-	_mesh(root, "cube", Vector3(11.0, 0.04, -8.0), Vector3(0.8, 0.08, 2.0), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(11.0, 0.04, -8.0), Vector3(0.8, 0.08, 3.4), SHADOW_STONE)
 
 	# A low garden fence along the pocket's bare south wall (x[13,19],
 	# z=-4.6) -- Gap 3, thin things a low sun draws. Kept well clear of the
