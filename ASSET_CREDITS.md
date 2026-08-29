@@ -62,27 +62,113 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
 - License: CC0 1.0 Universal (`License.txt` inside the downloaded pack
   states "Creative Commons Zero, CC0";
   http://creativecommons.org/publicdomain/zero/1.0/)
-- Use: 3 flat rock variants, used for the courtyard's 4 stepping-stone
-  positions (detailed-assets toggle, see below) — the same spots
-  `tools/_bootstrap_courtyard.gd`'s primitive fallback and
+- Use: the courtyard's vegetation and small garden dressing, resolved by
+  kind through `scripts/prop_library.gd` (detailed-assets toggle, see
+  below). 3 flat rock variants for the 4 stepping-stone positions — the
+  same spots `tools/_bootstrap_courtyard.gd`'s primitive fallback and
   `scripts/logic/world_affordances.gd`'s `stone_index_at()` already used
-- Runtime files: `godot/assets/nature/rock_smallFlatA.glb`,
-  `rock_smallFlatB.glb`, `rock_smallFlatC.glb` (Godot only; not used by
-  `src/`), selected from Models/GLTF format/ in the official zip
-- Modified before vendoring: the stock files carry two materials named
-  "dirt" (tan) and "grass" (a bright, saturated teal-green placeholder
-  colour, not this project's own grass tone) at `roughnessFactor: 1,
-  metallicFactor: 1`. Per `docs/ART_DIRECTION.md`'s restrained-palette/
-  no-shiny-PBR rule, both materials were rewritten in place (glTF JSON
-  chunk only — mesh/binary data untouched) to this project's own
-  `PATH`/`FOLIAGE` palette constants (`tools/_bootstrap_courtyard.gd`) at
-  `roughness 0.92, metallic 0` before the files were added to the repo,
-  so they already match the environment's matte floor with no runtime
-  dependency. The unmodified originals are not vendored anywhere in this
-  repository.
-- Reason for selection: CC0, tiny (3-4.5 KB each, no external texture),
-  and a genuinely better-defined flat-stone silhouette than the
-  primitive fallback's squashed sphere, at the same footprint.
+  — plus, added in the models pass: 6 tree species (replacing five
+  instances of one repeated Tiny Treats tree), 3 bushes, 3 flowers, 2
+  grass tufts, a 1 m fence panel, 2 plant pots, a stump and a log.
+- Runtime files (Godot only; not used by `src/`), all selected from
+  `Models/GLTF format/` in the official zip:
+  - `godot/assets/nature/rock_smallFlatA.glb`, `rock_smallFlatB.glb`,
+    `rock_smallFlatC.glb`
+  - `godot/assets/kenney_nature/` — `tree_default.glb`, `tree_oak.glb`,
+    `tree_detailed.glb`, `tree_tall.glb`, `tree_thin.glb`,
+    `tree_plateau.glb`, `plant_bush.glb`, `plant_bushDetailed.glb`,
+    `plant_bushLarge.glb`, `fence_simple.glb`, `fence_planks.glb`,
+    `pot_large.glb`, `pot_small.glb`, `flower_redA.glb`,
+    `flower_yellowA.glb`, `flower_purpleA.glb`, `grass.glb`,
+    `grass_large.glb`, `stump_round.glb`, `log.glb`
+  Only the GLB files actually referenced were vendored; the pack's OBJ
+  and FBX copies of the same models, and the ~300 models this project
+  does not use, were not added to the repository.
+- Modified before vendoring: the stock files carry flat material colours
+  in an unrelated stylised palette — "grass"/"leafsGreen" are a bright
+  saturated teal-green, "woodBark"/"wood" a salmon-orange — at
+  `roughnessFactor: 1, metallicFactor: 1`. Per `docs/ART_DIRECTION.md`'s
+  restrained-palette/no-shiny-PBR rule, every material was rewritten in
+  place (glTF JSON chunk only — mesh/binary data untouched) to this
+  project's own palette constants from `tools/_bootstrap_courtyard.gd`
+  (`FOLIAGE`, `WOOD`, `WOOD_LIGHT`, `PATH`, `PLASTER`, and the same
+  `flower_color` the primitive flowers use) at `roughness 0.92,
+  metallic 0`. The unmodified originals are not vendored anywhere in
+  this repository.
+- Colour space: glTF `baseColorFactor` is LINEAR, while the palette
+  constants are sRGB values assigned straight to `albedo_color` by
+  `_mesh()`. The palette therefore has to be converted before it is
+  written into a `.glb`, or the model imports far too light — verified by
+  probing the imported `StandardMaterial3D`, where an un-converted
+  `FOLIAGE` of `0.18, 0.34, 0.22` came back as `0.461, 0.618, 0.506`, a
+  pale sage instead of a deep green. The three rock files predate the
+  models pass and had exactly this defect; they were re-materialed with
+  the conversion applied at the same time as the new files, so all 23
+  models now import to `albedo_color` values identical to the palette the
+  primitive fallbacks use.
+- Reason for selection: CC0, tiny (4-30 KB each, no external texture —
+  336 KB for all 20 new models), one coherent low-poly style across every
+  kind the world needed, and genuinely better-defined silhouettes than
+  the primitive fallbacks (a trunk with real branches instead of two
+  spheres on a stick; a tuft of bent blades instead of a cone).
+
+### Kenney — Fantasy Town Kit 2.0
+
+- Original source: https://kenney.nl/assets/fantasy-town-kit
+- License: CC0 1.0 Universal (`License.txt` inside the downloaded pack states
+  "License: (Creative Commons Zero, CC0)";
+  http://creativecommons.org/publicdomain/zero/1.0/)
+- Use: the built structures, as opposed to the planting the Nature Kit
+  covers. Currently the two play-tower roofs, replacing bare `CylinderMesh`
+  cones. `wall-door.glb`, `wall-window-shutters.glb` and
+  `stairs-wood-handrail.glb` are vendored and registered as the `door`,
+  `window` and `stairs` kinds but are NOT yet placed — see the note on the
+  house below.
+- Runtime files: `godot/assets/kenney_town/roof-high-point.glb`,
+  `wall-door.glb`, `wall-window-shutters.glb`, `stairs-wood-handrail.glb`,
+  **and `godot/assets/kenney_town/Textures/colormap.png`** (Godot only),
+  selected from `Models/GLB format/` in the official zip. 115 KB for all five;
+  the pack's OBJ/FBX copies and its other ~160 models were not vendored.
+- The atlas is REQUIRED, not optional. These models do not embed their
+  texture — each declares `images: [{"uri": "Textures/colormap.png"}]`,
+  resolved relative to the .glb — and they share one 512x512 atlas between
+  them, which is why a single file serves all four. glTF has no albedo colour
+  to fall back on when a `baseColorTexture` fails to resolve, so a model
+  vendored without it imports pure white; with this scene's glow pass on top,
+  the two tower roofs rendered as glowing white lampshades. Note that
+  `godot/assets/kenney/Textures/colormap.png` is a DIFFERENT atlas (Mini
+  Characters, verified by checksum) — pointing these models at it would land
+  every UV on the wrong swatch.
+- Vendoring the atlas is necessary but not sufficient: Godot keys its import
+  cache on the model file, so a .glb first imported while the texture was
+  absent stays untextured through later `--import` runs. Its `.import`
+  sibling has to be deleted to force a reimport. `tools/verify.ps1`'s
+  `== assets ==` step (`tools/_check_asset_textures.gd`) now fails the build
+  on both conditions.
+- NOT re-materialed before vendoring, and deliberately so: unlike the Nature
+  Kit these carry a texture rather than a `baseColorFactor`, so the
+  sRGB-to-linear palette rewrite described above does not apply to them and
+  must not be attempted. Their stock terracotta/stone/wood already sits close
+  to this world's warm palette.
+- Reason for selection: CC0, small, and the only surveyed kit with the
+  vocabulary this courtyard is actually built from — pointed roofs, arches,
+  stone and plaster walls, doorways, stairs with handrails.
+
+### Playground equipment — no CC0 source found
+
+The slide and the swing frame have no vendored model and are built from
+primitives. This is a search result, not an oversight: kenney.nl's full 3D
+catalogue and quaternius.com's complete pack list were both checked, and
+neither has a playground kit. The web results for "CC0 playground slide
+swing" are aggregator sites whose per-model licences are unverifiable, which
+is not a basis for vendoring into this repository.
+
+The slide is additionally one this project should not replace with a stock
+model even if one appeared: its geometry is derived from
+`WorldAffordances.PLATFORM_TOP_Y` and `SLIDE_END`, which is what keeps the
+visual plank and the scripted ride from drifting apart. Its side rails and
+end kicker are built from those same two authored points, through the same
+`_slide_plank()`, for the same reason.
 
 ## Detailed vs primitive assets
 
@@ -90,17 +176,28 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
 by the `AssetMode` toggle (`godot/scripts/logic/asset_mode.gd`):
 
 - **detailed** (default): the vendored glTF/glb props above, for
-  tree/bush/bench/lamp/rock;
+  tree/bush/rock/fence_post/flower/grass_tuft/flowerpot/bench/lamp;
 - **primitive**: today's `BoxMesh`/`SphereMesh`/`CylinderMesh` shapes for
-  those same 5 "kinds", at the same positions — for fast iteration when
-  the exact look doesn't matter.
+  those same kinds, at the same positions — for fast iteration when the
+  exact look doesn't matter.
+
+Which model a kind resolves to, and the scale that makes it come out the
+size the primitive was, live in `godot/scripts/prop_library.gd`. That
+file also carries a second, code-level switch, `PropLibrary.USE_MODELS`,
+for flipping models off without touching ProjectSettings; either switch
+being false yields primitives.
 
 Both modes build a complete, playable level from the same generator;
 detailed mode falls back to the primitive shape (with a console warning,
-never a crash) if a listed asset is ever missing. Nothing else in the
-scene — the courtyard shell, playground, walls, grass, puddles — has a
-detailed equivalent; per `docs/ART_DIRECTION.md` those are meant to stay
-plain geometry regardless of this toggle.
+never a crash) if a listed asset is ever missing. Some kinds are
+deliberately primitive in BOTH modes and have no vendored model at all —
+the house's door and windows (no CC0 modular equivalent was found), the
+swing frame (likewise), and the slide, whose geometry is derived from
+`WorldAffordances.PLATFORM_TOP_Y`/`SLIDE_END` so the visual plank and the
+scripted ride cannot drift apart. `PropLibrary.KINDS_WITHOUT_MODELS`
+lists them. Nothing else in the scene — the courtyard shell, playground
+towers, walls, puddles — has a detailed equivalent either; per
+`docs/ART_DIRECTION.md` those are meant to stay plain geometry.
 
 To switch: edit `godot/project.godot`'s `[small_world]` section
 (`assets/use_detailed=true` or `false`), or set

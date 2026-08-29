@@ -316,28 +316,45 @@ func _build_static_world(root: Node3D) -> void:
 	_kind(root, Vector3(-8.7, 0.0, -13.7), "res://assets/park/bush_large.gltf", 1.0, Callable(self, "_primitive_bush"), 1.0, 0.0, "BushFeature")
 
 	# Generic scattered shrubbery -- garden-pocket cluster (relocated with
-	# that pocket) plus the two flanking the home/lane mouth.
+	# that pocket) plus the two flanking the home/lane mouth. These five were
+	# the last raw _mesh() spheres standing in for planting; they now go
+	# through the same _kind_of() path as everything else, so the sphere
+	# survives as _primitive_bush()'s fallback rather than as the only option.
+	# Positions and scales are untouched -- PropLibrary normalises "bush" on
+	# width to 1.3 m, which is exactly the X scale these spheres already had.
+	var bush_index := 0
 	for bush in [[12.0, -9.6, 1.0], [11.8, -13.9, 0.8], [15.0, -8.2, 0.85], [-5.5, 12.0, 1.0], [5.5, 12.5, 0.9]]:
-		var s: float = bush[2]
-		_mesh(root, "sphere", Vector3(bush[0], 0.55 * s, bush[1]), Vector3(1.3 * s, 1.0 * s, 1.1 * s), FOLIAGE)
+		var bx: float = bush[0]
+		var bz: float = bush[1]
+		_kind_of(root, "bush", Vector3(bx, 0.0, bz), bush[2], Callable(self, "_primitive_bush"), fmod(absf(bx * 2.9 + bz * 1.3), TAU), "Bush", bush_index)
+		bush_index += 1
 
-	var flower_color := Color(0.85, 0.72, 0.42)
+	# The library's flowers come in three colours, so the detailed branch gets
+	# the mixed planting the single-colour primitive could not. 0.6 m is the
+	# primitive's own overall height (a 0.5 m stem with its head sitting at
+	# 0.52), so both branches stand the same height out of the bed.
+	var flower_index := 0
 	for flower in [[11.8, -10.7], [12.3, -11.5], [14.4, -10.8], [14.6, -12.2], [-4.5, 10.5], [-4.5, 12.0]]:
-		_mesh(root, "cylinder", Vector3(flower[0], 0.25, flower[1]), Vector3(0.035, 0.5, 0.035), FOLIAGE_LIGHT)
-		_mesh(root, "sphere", Vector3(flower[0], 0.52, flower[1]), Vector3(0.14, 0.1, 0.14), flower_color, Vector3.ZERO, 0.15)
+		var fx: float = flower[0]
+		var fz: float = flower[1]
+		_kind_of(root, "flower", Vector3(fx, 0.0, fz), 0.6, Callable(self, "_primitive_flower"), fmod(absf(fx * 4.1 + fz * 2.7), TAU), "Flower", flower_index)
+		flower_index += 1
 
 	# Sparse grass blades dress the playground's open flanks (x 5..15,
 	# mirrored, avoiding the circle/tower cluster near the centreline) --
 	# deliberately NOT scattered into the lane or home (kept bare per the
 	# brief: "a bigger world that's empty reads worse than a small one
 	# that's dense... bigger means more places, not more clutter").
+	# Same 48 positions and the same per-blade heights; a real grass tuft
+	# (several bent blades) instead of one smooth cone each. Cones were the
+	# most obviously placeholder thing at ground level -- at this size the eye
+	# reads the perfect circular base immediately.
 	for index in range(48):
 		var side: float = -1.0 if index % 2 == 0 else 1.0
 		var z: float = -19.0 + fmod(index * 0.83, 15.0)
 		var x: float = side * (5.0 + fmod(index * 1.91, 10.0))
 		var height: float = 0.32 + (index % 5) * 0.07
-		var blade_color := FOLIAGE_LIGHT if index % 3 == 0 else FOLIAGE
-		_mesh(root, "cone", Vector3(x, height * 0.48, z), Vector3(0.12, height, 0.12), blade_color)
+		_kind_of(root, "grass_tuft", Vector3(x, 0.0, z), height, Callable(self, "_primitive_grass_blade"), fmod(absf(x * 3.7 + z * 5.1), TAU), "Grass", index)
 
 
 ## HOME: the porch and doorway passage, x[-7,7] z[8,16] -- already existed
@@ -466,8 +483,12 @@ func _build_house(root: Node3D) -> void:
 	# concern above.
 	_mesh(root, "cube", Vector3(0.0, 0.07, 15.85), Vector3(3.4, 0.14, 0.9), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 
-	# A potted plant beside the step -- concept_01/05's flanking planters.
-	_mesh(root, "cylinder", Vector3(1.9, 0.18, 15.75), Vector3(0.22, 0.36, 0.22), WOOD, Vector3.ZERO, 0.0, "wood")
+	# A potted plant beside the step -- concept_01/05's flanking planters. The
+	# POT is a model now; the plant in it stays the same FOLIAGE sphere in both
+	# modes, because pot_small.glb is an empty pot and this pot is meant to
+	# have something growing in it. Sized to the primitive cylinder it replaces
+	# (0.44 m across, top at 0.36) so the sphere still sits in its mouth.
+	_kind_of(root, "flowerpot", Vector3(1.9, 0.0, 15.75), 0.44, Callable(self, "_primitive_flowerpot"), 0.0, "PorchPot")
 	_mesh(root, "sphere", Vector3(1.9, 0.44, 15.75), Vector3(0.32, 0.28, 0.32), FOLIAGE)
 
 
@@ -618,7 +639,14 @@ func _build_playground(root: Node3D) -> void:
 	for x in [-3.4, 3.4]:
 		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 		_mesh(root, "cube", Vector3(x, 2.75, -12.8), Vector3(2.7, 0.25, 2.7), WOOD, Vector3.ZERO, 0.0, "wood")
-		_mesh(root, "cone", Vector3(x, 4.0, -12.8), Vector3(2.0, 1.8, 2.0), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+		# The tower roof. A bare CylinderMesh cone was the most obviously
+		# placeholder thing left in this frame once the planting had real
+		# models beside it -- a smooth untextured funnel where the rest of the
+		# world had grown surface. roof-high-point.glb occupies the SAME volume
+		# (2.0 m across, 1.82 m tall against the cone's 1.8) and, because the
+		# model's origin is at its base while a CylinderMesh's is at its
+		# centre, sits at the cone's base rather than its centre: y 4.0 - 1.8/2.
+		_kind_of(root, "roof_point", Vector3(x, 3.1, -12.8), 2.0, Callable(self, "_primitive_tower_roof"), 0.0, "TowerRoof")
 		for dx in [-0.8, 0.8]:
 			for dz in [-0.8, 0.8]:
 				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD, Vector3.ZERO, 0.0, "wood")
@@ -639,6 +667,40 @@ func _build_playground(root: Node3D) -> void:
 	var slide_bottom := Vector3(WorldAffordances.SLIDE_END.x, 0.05, WorldAffordances.SLIDE_END.z)
 	_slide_plank(root, slide_top, slide_bottom, 1.25, 0.18)
 
+	# Side rails. The developer has called the slide out twice as "not properly
+	# oriented"; the geometry was fixed to derive from the two authored points
+	# above, but a bare 1.25 m plank still reads as an orange SLAB from the
+	# play camera, with nothing to say which way it runs or which face you go
+	# down. Rails are what make a slide legible as a slide.
+	#
+	# No CC0 slide model exists (kenney.nl and quaternius.com both checked in
+	# full), so these are primitives -- but primitives built from the SAME two
+	# points as the bed, through the same _slide_plank(), so they cannot drift
+	# from it or from the ride. See _slide_rail() for why the offset has to be
+	# taken along the plank's own local up rather than straight up in world Y.
+	for side in [-1.0, 1.0]:
+		_slide_rail(root, slide_top, slide_bottom, side * 0.60, 0.16, 0.12, 0.34)
+	# A kicker at the foot, where SLIDE_END's launch hop lands -- the small
+	# upturned lip a real slide finishes with, and a full-width visual full
+	# stop at the bottom end so the run reads as having a direction.
+	_mesh(root, "cube", slide_bottom + Vector3(0.0, 0.10, 0.28), Vector3(1.25, 0.30, 0.14), SLIDE, Vector3(deg_to_rad(-18.0), 0.0, 0.0), 0.0, "wood")
+
+
+## A plank parallel to the from->to run, shifted `lateral` metres sideways and
+## `up` metres clear of it. Delegates to _slide_plank() with shifted endpoints,
+## so a rail can never end up at a different angle from the bed it guards.
+##
+## `up` is measured along the PLANK's own local up, not world Y. The run is
+## tilted about X by theta, so its local up is (0, cos theta, sin theta);
+## offsetting straight up in world Y instead would slide the rail along the
+## bed's length as well as away from it, leaving it proud at the top and sunk
+## at the bottom. `lateral` needs no such correction -- X is the rotation axis,
+## so world X and the plank's local X are the same direction.
+func _slide_rail(root: Node3D, from: Vector3, to: Vector3, lateral: float, up: float, width: float, thickness: float) -> void:
+	var theta := atan2(-(to.y - from.y), to.z - from.z)
+	var offset := Vector3(lateral, cos(theta) * up, sin(theta) * up)
+	_slide_plank(root, from + offset, to + offset, width, thickness)
+
 
 ## A plank between two world points that share an X (so the box's local Z
 ## is the only axis that needs rotating away from world Z), tilted about
@@ -649,13 +711,20 @@ func _build_playground(root: Node3D) -> void:
 ## Vector3(-0.54,0,0) rotation exactly -- so the fix here is purely the
 ## two input points (deck edge to SLIDE_END, not two arbitrary floating
 ## numbers), not a new rotation trick.
-func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float) -> void:
+##
+## Textured, unlike the version before this pass. The slide was the ONLY large
+## surface in the playground still carrying a bare palette colour -- the towers
+## are "wood", the walls and piers "plaster" -- and a 3.7 x 1.25 m field of flat
+## SLIDE orange is exactly what read as untextured cardboard beside the
+## vegetation once that had real models. It is painted wood like everything
+## else the children climb on, so it takes the same surface.
+func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float, surface: String = "wood") -> void:
 	var dy := to.y - from.y
 	var dz := to.z - from.z
 	var run_len := sqrt(dy * dy + dz * dz)
 	var theta := atan2(-dy, dz)
 	var mid := (from + to) * 0.5
-	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0))
+	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0), 0.0, surface)
 
 
 ## GARDEN POCKET, through the wall gap: x[11,22] z[-16,-4] --
@@ -703,9 +772,23 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# gap->ball sightline (the player's route from the arch at x=11 to
 	# BallEnd at x=14,z=-12) so it doesn't compete with GardenPocketLight's
 	# carefully-tuned "ball is the brightest thing in frame" below.
-	for fx in range(13, 20):
-		_mesh(root, "cylinder", Vector3(float(fx), 0.28, -4.6), Vector3(0.05, 0.56, 0.05), WOOD, Vector3.ZERO, 0.0, "wood")
-	_mesh(root, "cube", Vector3(16.0, 0.54, -4.6), Vector3(7.4, 0.06, 0.06), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+	#
+	# A whole RUN, so unlike every other prop here the fallback is the run and
+	# not a per-item swap -- going through _kind_of() panel by panel would have
+	# had to move the primitive posts onto the panel centres to line them up,
+	# and these seven posts' own x[13,19] is the thing worth preserving. The
+	# library's fence model carries its posts AND rail in one 1 m panel; five
+	# of them at scale 1.2 span exactly 13.0 to 19.0, and stand 0.42 m instead
+	# of the primitive's 0.56 m -- still a low garden border, still the same
+	# silhouette along the same sightline.
+	var fence_panel := PropLibrary.path_for("fence_post")
+	if fence_panel != "":
+		for panel_x in [13.6, 14.8, 16.0, 17.2, 18.4]:
+			_prop(root, fence_panel, Vector3(panel_x, 0.0, -4.6), PropLibrary.scale_for("fence_post", 1.2), 0.0, "GardenFence")
+	else:
+		for fx in range(13, 20):
+			_mesh(root, "cylinder", Vector3(float(fx), 0.28, -4.6), Vector3(0.05, 0.56, 0.05), WOOD, Vector3.ZERO, 0.0, "wood")
+		_mesh(root, "cube", Vector3(16.0, 0.54, -4.6), Vector3(7.4, 0.06, 0.06), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 
 	# A practical light in the garden pocket, over where the ball lands.
 	#
@@ -891,11 +974,26 @@ func _csg_material(color: Color) -> StandardMaterial3D:
 	return mat
 
 
-## M3.2: real tree_large.gltf, replacing the 3-primitive trunk+foliage
-## composition -- same positions and the same per-tree scale factors
-## (1.05/1.25/0.9) game.mjs's addTree() used for size variety.
+## A tree. Positions and per-tree scale factors are UNCHANGED from M3.2; what
+## changed is that "a tree" is now one of PropLibrary's six species rather
+## than tree_large.gltf five times over. Five identical trees was the single
+## most artificial thing left in the world -- real planting is never a clone
+## stamp, and the eye reads the repeat long before it reads the shape.
+##
+## Species cycles through the library in call order rather than hashing x/z.
+## Both are deterministic (this generator must produce the same scene every
+## run), but with only five trees a hash collides: the first attempt here put
+## tree_default at BOTH lane-mouth trees and tree_plateau at two more, which
+## is three species doing the work of five. A counter cannot collide until
+## the sixth tree. Yaw stays position-derived -- it wants to look arbitrary,
+## and it is what stops two trees of the same species reading as a pair.
+var _tree_count := 0
+
 func _add_tree(root: Node3D, x: float, z: float, s: float) -> void:
-	_kind(root, Vector3(x, 0.0, z), "res://assets/park/tree_large.gltf", s, Callable(self, "_primitive_tree"), s, 0.0, "Tree")
+	var variant := _tree_count
+	_tree_count += 1
+	var yaw := fmod(absf(x * 1.7 + z * 2.3), TAU)
+	_kind_of(root, "tree", Vector3(x, 0.0, z), s, Callable(self, "_primitive_tree"), yaw, "Tree", variant)
 
 
 ## Instances a glTF PackedScene as a purely visual prop -- WorldBounds'
@@ -1040,6 +1138,32 @@ func _kind(root: Node3D, position: Vector3, detailed_path: String, detailed_scal
 	primitive_fallback.call(root, position, primitive_scale, rotation_y)
 
 
+## _kind() by KIND rather than by file path -- the same detailed/primitive
+## split, with scripts/prop_library.gd choosing the file and working out the
+## scale that makes it come out `scale` metres on its kind's own axis.
+##
+## Prefer this over _kind() for anything the library knows about. Two things
+## it buys that a hardcoded path cannot: a kind can have several models and
+## vary by `variant` (six tree species where there was one repeated
+## tree_large.gltf), and the size correction _add_rock() had to spell out by
+## hand as `s / ROCK_NATIVE_WIDTH` becomes the library's job for every kind.
+##
+## `scale` means the same thing in BOTH branches here -- unlike _kind(),
+## whose two scale parameters differ precisely because the caller was left to
+## do that correction itself. PropLibrary.scale_for() has already done it.
+func _kind_of(root: Node3D, kind: String, position: Vector3, scale: float, primitive_fallback: Callable, rotation_y: float = 0.0, name_hint: String = "", variant: int = 0) -> void:
+	var path := PropLibrary.path_for(kind, variant)
+	if path != "":
+		_prop(root, path, position, PropLibrary.scale_for(kind, scale, variant), rotation_y, name_hint)
+		return
+	# Silent when models are simply switched off; loud when they were wanted
+	# and the file is not there -- same split _kind() makes above, and the
+	# reason PropLibrary separates models_enabled() from path_for().
+	if PropLibrary.models_enabled() and PropLibrary.variant_count(kind) > 0:
+		push_warning("Detailed asset missing for kind '%s', using primitive fallback" % kind)
+	primitive_fallback.call(root, position, scale, rotation_y)
+
+
 ## Primitive-mode fallback for _add_tree(): the 3-primitive trunk+foliage
 ## composition M3.2's tree_large.gltf replaced, restored here as the
 ## toggle's "today's boxes" side. Not a precise match to tree_large.gltf's
@@ -1057,6 +1181,43 @@ func _primitive_tree(root: Node3D, position: Vector3, scale: float, _rotation_y:
 ## always-primitive bushes used before M4, now shared by all 6.
 func _primitive_bush(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
 	_mesh(root, "sphere", position + Vector3(0.0, 0.55 * scale, 0.0), Vector3(1.3, 1.0, 1.1) * scale, FOLIAGE)
+
+
+## Primitive-mode fallback for the garden flowers: exactly the stem-plus-head
+## pair this file used before, with `scale` as the flower's overall height so
+## it matches what the "flower" kind's target of 1.0 means on the model side.
+func _primitive_flower(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	var stem := scale / 0.6  # the old numbers were authored at a 0.6 m flower
+	_mesh(root, "cylinder", position + Vector3(0.0, 0.25 * stem, 0.0), Vector3(0.035, 0.5, 0.035) * stem, FOLIAGE_LIGHT)
+	_mesh(root, "sphere", position + Vector3(0.0, 0.52 * stem, 0.0), Vector3(0.14, 0.1, 0.14) * stem, Color(0.85, 0.72, 0.42), Vector3.ZERO, 0.15)
+
+
+## Primitive-mode fallback for the play towers' roofs: the bare CylinderMesh
+## cone they had before. `position` is the roof's BASE (the model's own origin
+## convention), so the cone -- which a CylinderMesh centres -- is lifted half
+## its height to occupy the same volume. Height tracks `scale` at the authored
+## 2.0-wide / 1.8-tall proportion rather than being a second loose constant.
+func _primitive_tower_roof(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	var height := scale * 0.9
+	_mesh(root, "cone", position + Vector3(0.0, height * 0.5, 0.0), Vector3(scale, height, scale), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+
+
+## Primitive-mode fallback for the porch pot: the plain WOOD cylinder this
+## file used before, with `scale` as the pot's width so it matches what the
+## "flowerpot" kind's target of 1.0 means on the model side.
+func _primitive_flowerpot(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	_mesh(root, "cylinder", position + Vector3(0.0, 0.18, 0.0), Vector3(scale * 0.5, 0.36, scale * 0.5), WOOD, Vector3.ZERO, 0.0, "wood")
+
+
+## Primitive-mode fallback for the scattered grass: one cone, as before.
+## The two-tone FOLIAGE/FOLIAGE_LIGHT alternation the loop used to do by
+## `index % 3` is derived from position here instead -- _kind_of() hands a
+## fallback only (root, position, scale, rotation), and position is the one
+## input that keeps this deterministic without threading an index through
+## every caller for the sake of one colour.
+func _primitive_grass_blade(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	var lighter := int(absf(position.x * 2.0 + position.z * 3.0)) % 3 == 0
+	_mesh(root, "cone", position + Vector3(0.0, scale * 0.48, 0.0), Vector3(0.12, scale, 0.12), FOLIAGE_LIGHT if lighter else FOLIAGE)
 
 
 ## Primitive-mode fallback for the bench spot: the "cube trio" bench.gltf
