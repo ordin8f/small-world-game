@@ -278,8 +278,8 @@ func _build_static_world(root: Node3D) -> void:
 ## 2.4 m doorway opening through -- matches world_bounds.gd's COLLIDERS
 ## for this room exactly.
 func _build_home(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-7.0, 4.0, 11.0), Vector3(1.1, 8.2, 6.0), PLASTER)
-	_mesh(root, "cube", Vector3(7.0, 4.0, 11.0), Vector3(1.1, 8.2, 6.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(-7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER)
+	_mesh(root, "cube", Vector3(7.0, 2.75, 11.0), Vector3(1.1, 5.5, 6.0), PLASTER_LIGHT)
 
 	# The piers: heavy, tall, framing the doorway. Widened from the
 	# single-room version's freestanding pair (which had open flanks either
@@ -290,7 +290,7 @@ func _build_home(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(2.6, 1.2, 2.0), PLASTER)
 	_mesh(root, "cube", Vector3(0, 3.95, 15.0), Vector3(2.5, 0.35, 2.2), SHADOW_STONE)
 	# Back cap, just past the piers -- the world's true south edge here.
-	_mesh(root, "cube", Vector3(0, 4.0, 16.3), Vector3(14.4, 8.2, 0.3), PLASTER)
+	_mesh(root, "cube", Vector3(0, 2.75, 16.3), Vector3(14.4, 5.5, 0.3), PLASTER)
 	# The warm window/porch light -- the anchor ART_DIRECTION.md asks dusk to
 	# resolve onto. Behind the player at the start, ahead of them at the end.
 	_mesh(root, "cube", Vector3(0, 1.7, 15.95), Vector3(2.5, 3.5, 0.18), WARM_LIGHT, Vector3.ZERO, 0.9)
@@ -349,12 +349,12 @@ func _build_lane(root: Node3D) -> void:
 ## either side (x 5..16 roughly) are left open and ungrouped -- room for
 ## another agent's swing and sandbox, per the brief.
 func _build_playground(root: Node3D) -> void:
-	_mesh(root, "cube", Vector3(-16.0, 4.0, -12.0), Vector3(1.1, 8.2, 16.0), PLASTER)
+	_mesh(root, "cube", Vector3(-16.0, 2.1, -12.0), Vector3(1.1, 4.2, 16.0), PLASTER)
 	# East wall only for the deep end (z -20..-16); south of that the garden
 	# wall (x=11, _build_garden_pocket) is the real boundary, and rendering
 	# a second wall out at x=16 alongside it there would look like a second,
 	# redundant room. Deliberately absent for z > -16 for that reason.
-	_mesh(root, "cube", Vector3(16.0, 4.0, -18.0), Vector3(1.1, 8.2, 4.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(16.0, 2.1, -18.0), Vector3(1.1, 4.2, 4.0), PLASTER_LIGHT)
 	# South wall, as a blind arcade instead of one flat cube -- Gap 2 of the
 	# ambience pass. concept_03_playground_scale.png is literally a row of
 	# arches in a weathered wall; before this the build had exactly one arch
@@ -387,9 +387,9 @@ func _build_garden_pocket(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(11.0, 0.55, -12.5), Vector3(0.6, 1.2, 7.0), PLASTER_LIGHT)
 	_mesh(root, "cube", Vector3(11.0, 0.55, -5.5), Vector3(0.6, 1.2, 3.0), PLASTER_LIGHT)
 	# North/south/east walls seal the rest of the pocket.
-	_mesh(root, "cube", Vector3(16.5, 3.5, -16.0), Vector3(11.0, 7.0, 0.7), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(16.5, 3.5, -4.0), Vector3(11.0, 7.0, 0.7), PLASTER_LIGHT)
-	_mesh(root, "cube", Vector3(22.0, 3.5, -10.0), Vector3(0.7, 7.0, 12.0), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(16.5, 1.5, -16.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(16.5, 1.5, -4.0), Vector3(11.0, 3.0, 0.7), PLASTER_LIGHT)
+	_mesh(root, "cube", Vector3(22.0, 1.5, -10.0), Vector3(0.7, 3.0, 12.0), PLASTER_LIGHT)
 
 	# The span over the opening, plus shoulders stepping down to it -- a
 	# coarse arch, in keeping with ART_DIRECTION.md's "broad architectural
