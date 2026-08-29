@@ -106,6 +106,37 @@ const COLLIDERS := [
 	{"x": -6.0, "z": 9.5, "half_x": 0.65, "half_z": 0.65},
 	# Deep garden tree.
 	{"x": 13.9, "z": -13.4, "half_x": 1.0, "half_z": 1.0},
+	# Lane-flank tree, camera-fix task round 3 (2026-08-30). Sits inside the
+	# LANE's own wide invisible flank (below, {x:16.5,z:2.0,half_x:13.2,
+	# half_z:6.0}, camera_blocks=false) rather than modifying that entry's
+	# settled footprint -- an addition, not a change to it. That flank is
+	# deliberately unrendered ("nothing rendered out there for a camera to
+	# clip through," its own doc comment) so a normal REVEAL-zone throw from
+	# a player near the garden-gap seam (world_bounds.gd's x=11 wall) can
+	# reach 10.5 m into it with nothing to stop it and nothing to compose --
+	# raycast-confirmed dead frame at the "gap" screenshot beat across two
+	# prior rounds (camera_rig.gd's own doc comment has the full history,
+	# including a same-task attempt to fix this by redirecting the camera's
+	# YAW instead of adding geometry, abandoned after it reliably clipped
+	# the gap wall's own corners from several different directions).
+	# camera_blocks=true gives SpringArm3D a real, ordinary thing to stop
+	# against here -- the same mechanism that already handles every other
+	# wall in the game, rather than a hand-tuned distance override -- and
+	# the paired visual tree (_bootstrap_courtyard.gd's own call) gives the
+	# stopped shot something to actually compose against instead of open
+	# ground. x=9.5 keeps it safely west of the x=11 gap wall, so it can
+	# never be confused with part of it. z=2.5, half_z=1.5 (near face
+	# z=1.0) rather than sitting right where the unfixed throw used to
+	# land (z~2.5-4 depending on exact player position) -- a first attempt
+	# at the far edge of that range (z=4.5) missed most real desired points
+	# outright, because SpringArm3D only shapecasts along the arm's OWN
+	# authored length; a ray that lands at z=2.54 (measured, the "gap"
+	# screenshot beat's own raw desired point) never reaches a collider
+	# starting at z=3.5 in the first place, regardless of x-alignment.
+	# Moved closer and widened (half_x/half_z 1.0 -> 1.5) so its near face
+	# sits well inside the range of z values the unfixed throw actually
+	# produces across the seam, rather than past the far end of it.
+	{"x": 9.5, "z": 2.5, "half_x": 1.5, "half_z": 1.5, "camera_blocks": true},
 
 	# --- GARDEN POCKET, through the wall gap (x[11,22], z[-16,-4]) ----------
 	# West wall (the shared boundary with the playground) in two segments
