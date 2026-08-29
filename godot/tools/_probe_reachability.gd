@@ -130,10 +130,17 @@ const VIEWPOINTS := [
 	["BallEnd", 14.0, -12.0],
 ]
 
+## A direction counts as open when nothing along it rises more than this
+## far above the horizontal. 15 degrees is roughly "a 3 m wall at 7 m, or a
+## 1.6 m garden wall at 1.5 m" -- past it the thing in the way is filling
+## enough of the view to close the space down.
+const OPEN_HORIZON_DEG := 15.0
+
 var _space: PhysicsDirectSpaceState3D
 var _params: PhysicsShapeQueryParameters3D
 var _capsule_y := 0.54
 var _occluders: Array = []
+var _skyline: Array = []
 
 
 func _initialize() -> void:
@@ -421,11 +428,40 @@ func _collect_occluders(root: Node) -> void:
 		if local.size == Vector3.ZERO:
 			continue
 		var box: AABB = (node as GeometryInstance3D).global_transform * local
+		# Anything rising above the eye at all feeds the horizon metric --
+		# including things whose base is above eye height, like a canopy.
+		if box.end.y > EYE_Y:
+			_skyline.append(box)
 		if box.position.y > EYE_Y or box.end.y < EYE_Y:
 			continue
 		_occluders.append({"name": str(node.name), "box": box})
 	print("")
-	print("occluders spanning eye height (y=%.2f): %d" % [EYE_Y, _occluders.size()])
+	print("occluders spanning eye height (y=%.2f): %d, rising above it: %d" % [
+		EYE_Y, _occluders.size(), _skyline.size(),
+	])
+
+
+## How high, in degrees above the horizontal, the tallest thing along this
+## direction rises. This is the honest openness question, and a flat
+## "distance to first blocker" answers it badly: a 1.6 m garden wall 4 m
+## away stops a horizontal eye-height ray exactly as a 7 m canyon wall 4 m
+## away does, but you look straight over the first and not the second. The
+## whole point of lowering a wall is that it stops closing the view while
+## still bounding the space, and a metric that cannot see that difference
+## would score every lowered wall as no improvement at all.
+func _horizon_deg(origin: Vector3, dir: Vector3) -> float:
+	var highest := 0.0
+	for box in _skyline:
+		if box.has_point(origin):
+			continue
+		var t := _ray_box(origin, dir, box)
+		if t < 0.0 or t > SIGHT_MAX:
+			continue
+		var rise: float = box.end.y - EYE_Y
+		var angle := rad_to_deg(atan2(rise, maxf(t, 0.01)))
+		if angle > highest:
+			highest = angle
+	return highest
 
 
 ## Distance along `dir` at which the view from `origin` first meets
@@ -492,25 +528,33 @@ func _report_sightlines() -> void:
 	print("clear: %d / %d" % [clear_count, SIGHTLINES.size()])
 
 	print("")
-	print("=== OPENNESS FAN (%d rays, capped at %.0f m) ===" % [FAN_RAYS, SIGHT_MAX])
-	print("%-18s %10s %10s %10s %10s" % ["viewpoint", "median", "mean", "max", ">15m rays"])
-	print("-".repeat(64))
+	print("=== OPENNESS FAN (%d rays) ===" % FAN_RAYS)
+	print("median dist = how far you see along the ground; horizon = how high")
+	print("the tallest thing in each direction rises; open = share of the 360")
+	print("where that stays under %.0f deg. Openness is the horizon columns." % OPEN_HORIZON_DEG)
+	print("%-18s %10s %10s %12s %12s %8s" % [
+		"viewpoint", "med dist", "max dist", "med horizon", "max horizon", "open",
+	])
+	print("-".repeat(76))
 	for point in VIEWPOINTS:
 		var origin := Vector3(point[1], EYE_Y, point[2])
 		var distances: Array[float] = []
-		var long_rays := 0
+		var horizons: Array[float] = []
+		var open_rays := 0
 		for i in range(FAN_RAYS):
 			var angle := TAU * float(i) / float(FAN_RAYS)
-			var d := _first_hit(origin, Vector3(sin(angle), 0.0, cos(angle)))["dist"] as float
-			distances.append(d)
-			if d > 15.0:
-				long_rays += 1
+			var dir := Vector3(sin(angle), 0.0, cos(angle))
+			distances.append(_first_hit(origin, dir)["dist"] as float)
+			var horizon := _horizon_deg(origin, dir)
+			horizons.append(horizon)
+			if horizon < OPEN_HORIZON_DEG:
+				open_rays += 1
 		distances.sort()
-		var total := 0.0
-		for d in distances:
-			total += d
-		print("%-18s %9.1fm %9.1fm %9.1fm %10d" % [
-			point[0], distances[FAN_RAYS / 2], total / FAN_RAYS, distances[FAN_RAYS - 1], long_rays,
+		horizons.sort()
+		print("%-18s %9.1fm %9.1fm %11.1fd %11.1fd %7d%%" % [
+			point[0], distances[FAN_RAYS / 2], distances[FAN_RAYS - 1],
+			horizons[FAN_RAYS / 2], horizons[FAN_RAYS - 1],
+			round(100.0 * open_rays / FAN_RAYS),
 		])
 
 
