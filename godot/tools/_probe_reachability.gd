@@ -94,6 +94,11 @@ const LANDMARKS := [
 ## from this one" is a question about the world's proportions, and the
 ## camera's own height is a separate, tunable thing.
 const EYE_Y := 1.2
+## REVEAL's authored camera height (camera_profile.gd), the highest the view
+## ever gets. Used only by the dead-space visibility pass -- the sightline
+## and horizon metrics stay at EYE_Y, since "can you see the next place" is
+## a question about the world's proportions rather than about this camera.
+const CAMERA_Y := 2.6
 const SIGHT_MAX := 45.0
 const FAN_RAYS := 72
 
@@ -187,6 +192,9 @@ func _run() -> void:
 	_collect_occluders(courtyard)
 	_report_sightlines()
 	_report_invisible_walls(courtyard, free, dist, STEP * STEP)
+	_report_dead_space_visibility(free, dist, STEP * STEP, EYE_Y, "child eye")
+	_report_dead_space_visibility(free, dist, STEP * STEP, CAMERA_Y, "REVEAL camera")
+	_report_geometry_in_walkable_space(dist)
 	quit(0)
 
 
@@ -687,3 +695,161 @@ func _report_invisible_walls(root: Node, free: PackedByteArray, dist: PackedInt3
 		])
 	if components == 0:
 		print("  (none)")
+
+
+# ------------------------------------------------- dead space, seen or not --
+# "No dead space the player can SEE but never stand in" is a conditional, and
+# the condition is the whole question. The three unreachable pockets this
+# world has all sit outside a room's own wall, which is either fine (nobody
+# can see them, they are just the gap between the rooms' shapes and the
+# bounding box) or the exact defect the brief names -- and reasoning about
+# wall heights from a chair cannot tell the two apart. This measures it.
+
+
+## For each unreachable pocket, whether any of it can be seen from anywhere
+## the player can actually stand. Rays go from a standing eye to near ground
+## level over the dead cell, because the thing that would look wrong is
+## seeing FLOOR you cannot walk on, not seeing the air above it.
+## `view_y` is the height the WORLD IS SEEN FROM, and it is deliberately run
+## twice by the caller: once at the child's own eye height and once at
+## REVEAL's authored camera height (camera_profile.gd), which is more than
+## twice as high. The player does not look through the child's eyes -- they
+## look through a camera that rises to 2.6 m -- so testing only at eye
+## height would understate what is visible and could clear dead space that
+## the actual game shows.
+func _report_dead_space_visibility(free: PackedByteArray, dist: PackedInt32Array, cell_area: float, view_y: float, label: String) -> void:
+	const VIEWER_STRIDE := 4  # sample standing positions every 2 m
+	const TARGET_STRIDE := 2  # and dead ground every 1 m
+	const TARGET_Y := 0.3
+
+	var viewers: Array[Vector2] = []
+	for zi in range(0, Z_CELLS, VIEWER_STRIDE):
+		for xi in range(0, X_CELLS, VIEWER_STRIDE):
+			if dist[zi * X_CELLS + xi] >= 0:
+				viewers.append(_world_of(Vector2i(xi, zi)))
+
+	print("")
+	print("=== DEAD SPACE: VISIBLE FROM ANYWHERE THE PLAYER CAN STAND? (%s, y=%.2f) ===" % [label, view_y])
+	print("%d standing positions sampled (every %.1f m), dead ground every %.1f m" % [
+		viewers.size(), VIEWER_STRIDE * STEP, TARGET_STRIDE * STEP,
+	])
+
+	var seen := PackedByteArray()
+	seen.resize(free.size())
+	var components := 0
+	for start_index in range(free.size()):
+		if seen[start_index] == 1 or free[start_index] == 0 or dist[start_index] >= 0:
+			continue
+		var start := Vector2i(start_index % X_CELLS, start_index / X_CELLS)
+		if not _in_envelope(_world_of(start)):
+			continue
+		var cells: Array[Vector2i] = [start]
+		seen[start_index] = 1
+		var head := 0
+		while head < cells.size():
+			var cell: Vector2i = cells[head]
+			head += 1
+			for delta in NEIGHBORS:
+				var next: Vector2i = cell + delta
+				if next.x < 0 or next.x >= X_CELLS or next.y < 0 or next.y >= Z_CELLS:
+					continue
+				var next_index := _index(next)
+				if seen[next_index] == 1 or free[next_index] == 0 or dist[next_index] >= 0:
+					continue
+				if not _in_envelope(_world_of(next)):
+					continue
+				seen[next_index] = 1
+				cells.append(next)
+		if cells.size() < 4:
+			continue
+		components += 1
+
+		var exposed := 0
+		var tested := 0
+		var witness := ""
+		for cell in cells:
+			if cell.x % TARGET_STRIDE != 0 or cell.y % TARGET_STRIDE != 0:
+				continue
+			tested += 1
+			var target_2d := _world_of(cell)
+			var target := Vector3(target_2d.x, TARGET_Y, target_2d.y)
+			for viewer_2d in viewers:
+				var origin := Vector3(viewer_2d.x, view_y, viewer_2d.y)
+				var to_target := target - origin
+				var span := to_target.length()
+				if span < 0.01:
+					continue
+				if _first_hit(origin, to_target / span)["dist"] >= span - 0.05:
+					exposed += 1
+					if witness == "":
+						witness = "ground (%.1f, %.1f) seen from (%.1f, %.1f)" % [
+							target_2d.x, target_2d.y, viewer_2d.x, viewer_2d.y,
+						]
+					break
+		var verdict := "NOT VISIBLE" if exposed == 0 else "VISIBLE"
+		print("  #%d  %6.1f m^2  %-12s %d of %d sampled cells%s" % [
+			components, cells.size() * cell_area, verdict, exposed, tested,
+			"" if witness == "" else "  -- e.g. " + witness,
+		])
+	if components == 0:
+		print("  (no dead space)")
+
+
+# ------------------------------------------ things you would walk head-first into --
+# The mirror image of the invisible-wall check: not collision with nothing
+# rendered on it, but something rendered where the player can stand. The
+# world is full of decoration with no collider of its own -- creepers,
+# bushes, treeline masses, the arch's own shoulders -- and none of it is
+# constrained by anything except whoever typed its coordinates. A foliage
+# sphere reaching 0.2 m through a wall costs nothing at runtime and looks
+# like a bug; an arch shoulder standing in its own opening is one.
+
+
+## Rendered geometry hanging at head height over ground the player can stand
+## on. The band matters: only boxes whose BOTTOM sits between HEAD_MIN and
+## HEAD_MAX count.
+##
+## Below HEAD_MIN and an axis-aligned box is a poor description of the thing
+## anyway -- a tree's AABB is its whole canopy and starts at the ground, a
+## tilted slide plank's AABB is several times the plank -- so ground-level
+## objects would report constantly and mean nothing. Above HEAD_MAX the
+## player walks underneath, which is what the home lintel and the garden
+## arch's raised span are FOR, and flagging those would punish the fix this
+## pass just made.
+##
+## What is left is exactly the defect class worth catching: something at
+## the height of a child's head, standing where a child can stand.
+func _report_geometry_in_walkable_space(dist: PackedInt32Array) -> void:
+	const HEAD_MIN := 0.9
+	const HEAD_MAX := 1.6
+	var offenders := {}
+	var hits := 0
+	for i in range(dist.size()):
+		if dist[i] < 0:
+			continue
+		var p := _world_of(Vector2i(i % X_CELLS, i / X_CELLS))
+		for box_data in _occluders:
+			var box: AABB = box_data["box"]
+			if box.position.y < HEAD_MIN or box.position.y > HEAD_MAX:
+				continue
+			if p.x < box.position.x or p.x > box.end.x:
+				continue
+			if p.y < box.position.z or p.y > box.end.z:
+				continue
+			hits += 1
+			var key: String = box_data["name"]
+			if not offenders.has(key):
+				offenders[key] = "at (%.1f, %.1f), box x[%.1f,%.1f] y[%.1f,%.1f] z[%.1f,%.1f]" % [
+					p.x, p.y, box.position.x, box.end.x, box.position.y, box.end.y,
+					box.position.z, box.end.z,
+				]
+	print("")
+	print("=== THINGS YOU WOULD WALK HEAD-FIRST INTO (y %.1f-%.1f m) ===" % [HEAD_MIN, HEAD_MAX])
+	if offenders.is_empty():
+		print("  (none) -- nothing hangs at head height over ground the player can stand on")
+		return
+	print("  %d reachable cells sit under head-height geometry, across %d objects:" % [
+		hits, offenders.size(),
+	])
+	for name in offenders:
+		print("    %-22s %s" % [name, offenders[name]])

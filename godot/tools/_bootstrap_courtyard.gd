@@ -879,10 +879,16 @@ func _build_garden_pocket(root: Node3D) -> void:
 	# concept_06_garden_gap.png does instead of guillotining it. Still
 	# unmistakably an arch to duck through, still the only way in.
 	_mesh(root, "cube", Vector3(11.0, 2.35, -8.0), Vector3(0.72, 0.5, 3.6), PLASTER, Vector3.ZERO, 0.0, "plaster")
-	# Shoulders now bridge wall-top (1.15) to span-bottom (2.1) at the
-	# opening's own edges, rather than stepping down into the opening.
-	_mesh(root, "cube", Vector3(11.0, 1.63, -9.35), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
-	_mesh(root, "cube", Vector3(11.0, 1.63, -6.65), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	# Shoulders bridge wall-top (1.15) to span-bottom (2.1), buttressing up
+	# to the span. They sit on the WALL SEGMENTS (z <= -9.7 and z >= -6.3),
+	# NOT at the opening's edges: a first version centred them on -9.35 and
+	# -6.65, which put them inside the opening itself, and since the
+	# traversable band through a 3.4 m gap is z[-9.38, -6.62] once the
+	# player's radius is taken off, the player could walk head-first into
+	# them. Caught by tools/_probe_reachability.gd's head-height check, not
+	# by looking -- from outside the gap they looked exactly right.
+	_mesh(root, "cube", Vector3(11.0, 1.63, -10.05), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
+	_mesh(root, "cube", Vector3(11.0, 1.63, -5.95), Vector3(0.66, 0.95, 0.7), PLASTER_LIGHT, Vector3.ZERO, 0.0, "plaster")
 	# Vegetation swallowing the arch, as in the plate -- carried up onto the
 	# raised span so it still reads as overgrown, and kept clear of the
 	# opening itself so it cannot re-block what raising the span just
@@ -994,6 +1000,52 @@ func _add_distant_layer(root: Node3D) -> void:
 	# already promises up close.
 	_roofline(root, 29.0, -9.0, 5.5, 10.0)
 	_treeline_mass(root, 30.0, -14.5, 6.5, 8.5)
+
+	# The lane's own flanks and the ground beside home (openness pass,
+	# 2026-08-29). Unlike everything above, this band is INSIDE the
+	# can_move_to envelope -- but it is not inside the walkable world, and
+	# that is the point.
+	#
+	# The playground's new north boundary is deliberately only 1.6 m so it
+	# can be seen over. Measuring what that exposes (see
+	# tools/_probe_reachability.gd's dead-space visibility pass, run at
+	# REVEAL's 2.6 m camera height rather than the child's 1.2 m eye) found
+	# 194 m2 of unreachable ground fully visible from the playground: a
+	# grazing ray clears the wall top by ~0.1 m and then runs 16 m up the
+	# bare ground plane beside home. That is exactly "space the player can
+	# see but never stand in", and the honest fix is not to raise the wall
+	# back up -- it is to give what you see over the wall something to be.
+	# Foliage and rooftops read as a world continuing; bare dirt reads as a
+	# level that ran out.
+	#
+	# All of it is _mesh()/_treeline_mass()/_roofline() output: no collider,
+	# no physics layer, so none of it changes where anyone can walk. But
+	# "no collider" is not the same as "out of the way": a first pass put
+	# these closer in and the offset second sphere _treeline_mass() builds
+	# reached 0.2 m THROUGH the lane's west wall, showing up in the
+	# threshold shot as a flat green disc stuck on the plaster. Each mass
+	# below is placed so its full reach -- centre + 0.66 * width, which is
+	# where that offset sphere's far edge lands -- clears the lane walls'
+	# outer faces (x=+-5.25) and home's side walls (x=+-7.55, z 8..14).
+	# tools/_probe_reachability.gd's "geometry standing in walkable space"
+	# check now fails on this class of mistake rather than leaving it to
+	# whoever looks at the next screenshot.
+	for mass in [
+		[-10.5, 0.5, 6.0, 7.5], [-14.0, 4.0, 7.0, 8.5], [-12.5, 7.5, 6.5, 8.0],
+		[13.0, 0.5, 6.0, 7.5], [18.5, 4.0, 6.5, 8.0], [11.0, 7.0, 6.0, 7.5],
+		# Near-east: without this one a viewer at (6, -6) still had a clear
+		# line over the boundary wall to unreachable ground at (8, 9).
+		# Placed north of the lane-flank tree at (9.5, 1.3) rather than on
+		# top of it -- that tree is a camera fix's own composition anchor.
+		[8.5, 4.5, 5.0, 7.0],
+	]:
+		_treeline_mass(root, mass[0], mass[1], mass[2], mass[3])
+	# Rooftops on the ground beside home itself (x beyond +-7.5, z 8.5..16),
+	# the two largest unreachable pockets -- so the porch reads as backing
+	# onto neighbouring houses rather than onto nothing.
+	_roofline(root, -12.5, 11.5, 5.5, 8.5)
+	_roofline(root, 13.0, 12.0, 6.0, 9.0)
+	_roofline(root, 19.0, 10.5, 5.0, 7.5)
 
 
 ## One roofline mass: a plain block plus a shallow cone roof. SHADOW_STONE
