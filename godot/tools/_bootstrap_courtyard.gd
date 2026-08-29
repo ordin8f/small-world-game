@@ -149,6 +149,12 @@ const SHADOW_STONE := Color(0.24, 0.21, 0.19)
 ## disappearing into it. Both still muted, not toy-box.
 const CLOTH_PALE := Color(0.80, 0.76, 0.66)
 const CLOTH_MUTED_BLUE := Color(0.44, 0.49, 0.54)
+## Scale-diagnosis pass (2026-08-29): the home's garden bed and its low
+## brick edging (_build_garden_bed()), and the house's primitive chimney
+## (_primitive_house()). BRICK is warmer/redder than WOOD_LIGHT so a brick
+## course still reads as masonry, not another timber rail.
+const BRICK := Color(0.55, 0.26, 0.19)
+const SOIL := Color(0.22, 0.15, 0.11)
 
 
 ## 2026-08-28 world expansion: one cramped 20x24.5 m room -> four connected
@@ -175,6 +181,7 @@ func _build_static_world(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(0, -0.01, 6.0), Vector3(6.4, 0.08, 20.0), PATH)
 
 	_build_home(root)
+	_build_garden_bed(root)
 	_build_lane(root)
 	_build_playground(root)
 	_build_garden_pocket(root)
@@ -290,24 +297,206 @@ func _build_home(root: Node3D) -> void:
 	_mesh(root, "cube", Vector3(0, 4.35, 15.0), Vector3(2.6, 1.2, 2.0), PLASTER)
 	_mesh(root, "cube", Vector3(0, 3.95, 15.0), Vector3(2.5, 0.35, 2.2), SHADOW_STONE)
 	# Back cap, just past the piers -- the world's true south edge here.
+	# Kept as a plain backdrop slab: _build_house() below stands in front of
+	# it and is the real facade now, but the slab still shows past the
+	# house's own width (it spans the room's full x[-7,7]; the house is
+	# narrower) so there is never a gap in the world's true boundary.
 	_mesh(root, "cube", Vector3(0, 2.75, 16.3), Vector3(14.4, 5.5, 0.3), PLASTER)
-	# The warm window/porch light -- the anchor ART_DIRECTION.md asks dusk to
-	# resolve onto. Behind the player at the start, ahead of them at the end.
-	_mesh(root, "cube", Vector3(0, 1.7, 15.95), Vector3(2.5, 3.5, 0.18), WARM_LIGHT, Vector3.ZERO, 0.9)
 
 	# DEFERRED: the concept_07 framing gateway. It has to stand between the
 	# camera and the player, so its position depends on where the camera
 	# actually settles. Revisit once the retuned camera clamp (this pass)
 	# has been screenshot-verified.
 
-	# M3.2: ASSET_CREDITS.md's own "one distant house model", beyond the
-	# world's true south edge (z=16.3) -- glimpsed through the doorway gap,
-	# never reachable (can_move_to's z<=16.3 bound).
-	_prop(root, "res://assets/house/house.gltf", Vector3(0.0, 0.0, 20.0))
+	_build_house(root)
+
 	# Street lantern, beside the path near the doorway -- unmoved by this
 	# pass, its old (4.5, 9.2) position already sits inside the new home
 	# room clear of every wall and the camera's authored clamps.
 	_kind(root, Vector3(4.5, 0.0, 9.2), "res://assets/park/street_lantern.gltf", 1.0, Callable(self, "_primitive_lamp"), 1.0, 0.0, "StreetLantern")
+
+
+## Scale diagnosis (DEMO_PLAN.md, 2026-08-29): "There is no house.
+## house.gltf sits at z=20, outside the walkable bound and behind an
+## 8.2 m wall, so 'home' is a blank wall with a hole in it." This builds a
+## real, approachable facade at the world's true south edge (z=16.3 -- the
+## same world_bounds.gd collider as before, UNCHANGED; only what stands
+## visually beyond it changes): a door, windows, a roof, a chimney, a
+## porch, matching concept_05_return_safety.png's dusk composition -- a
+## lit window as the single warm anchor, a small porch light over the
+## door, steps, a pot. Works in both AssetMode states via the same
+## _kind() detailed/primitive split every other prop in this file uses.
+## The window/porch dressing below is universal (added regardless of
+## AssetMode): neither house.gltf nor its primitive fallback models a
+## window, so this file's own hand-placed emissive panel remains, in both
+## modes, the dusk anchor the brief asks to keep -- exactly the role the
+## panel it replaces already had.
+func _build_house(root: Node3D) -> void:
+	# house.gltf's own front (the door sits toward its +Z face, per its own
+	# node translations) has to face the player, who approaches from -Z --
+	# rotated 180 degrees about Y. A yaw about the origin doesn't by itself
+	# keep any particular face flush with a given plane, so the DETAILED
+	# branch's anchor is pushed out in Z by the model's own (unscaled) +Z
+	# reach, 4.325 m (ASSET_CREDITS.md's Tiny Treats "Homely House"), at
+	# HOUSE_SCALE, so the rotated front face lands right at the walkable
+	# boundary. NOT routed through _kind() (unlike every other detailed/
+	# primitive prop in this file): _kind() hands both branches the SAME
+	# position, which is correct for every symmetric prop it already
+	# serves (a tree, a bench) but wrong here, since only the detailed
+	# branch needs that offset -- _primitive_house() builds forward from
+	# `position` as its own front wall face and would otherwise land its
+	# entire body 4.76 m further from the doorway than intended.
+	const HOUSE_SCALE := 1.1
+	const HOUSE_PATH := "res://assets/house/house.gltf"
+	if AssetMode.resolve_detailed(HOUSE_PATH):
+		const HOUSE_FRONT_REACH := 4.325 * HOUSE_SCALE
+		_prop(root, HOUSE_PATH, Vector3(0.0, 0.0, 16.3 + HOUSE_FRONT_REACH), HOUSE_SCALE, PI, "House")
+	else:
+		if AssetMode.use_detailed():
+			push_warning("Detailed asset missing, using primitive fallback: %s" % HOUSE_PATH)
+		_primitive_house(root, Vector3(0.0, 0.0, 16.3), 1.0, 0.0)
+
+	# The warm window, a porch sconce, and a second supporting window --
+	# concept_05's "single warm anchor" and its plural "windows" -- and the
+	# door/step/pot below all sit as close to z=16.3 (the true walkable
+	# boundary, and where both AssetMode branches above put the house's own
+	# front wall) as camera_rig.gd's own THRESHOLD/APPROACH clamp allows.
+	#
+	# That clamp is a hard constraint, not a margin to eyeball: this zone's
+	# camera can sit at z up to 15.9 (camera_rig.gd's own `desired_z :=
+	# clampf(raw_z, -19.0, 15.9)`, tuned and screenshot-verified against
+	# this room by the camera-fix task) -- confirmed empirically here too
+	# (tools/shots.ps1's "threshold" beat logs camera=(0.30, 1.28, 15.90)
+	# at the game's literal opening frame, player still at START_POSITION).
+	# The FIRST version of this dressing sat at z~16.0, inside SpringArm3D's
+	# camera-height range (y 1.2-2.6) and within centimetres of that 15.9
+	# ceiling -- close enough that the camera's own near-clip plane ended
+	# up inside the window mesh, filling the entire opening frame with one
+	# giant flat surface. Every tall (y > ~0.5) element below therefore
+	# keeps its nearest face at z <= 16.05, a minimum 0.15 m clear of 15.9 --
+	# camera_rig.gd is out of bounds for this pass (another agent's file),
+	# so the fix has to be entirely on this side. Ground-level things
+	# (the step, the pot) never enter that camera height range regardless
+	# of z and keep their original, more "proud" placement.
+	_mesh(root, "cube", Vector3(0.0, 1.75, 16.13), Vector3(1.1, 1.35, 0.14), WARM_LIGHT, Vector3.ZERO, 0.85)
+	_mesh(root, "cube", Vector3(0.0, 1.75, 16.045), Vector3(0.05, 1.35, 0.05), SHADOW_STONE)
+	_mesh(root, "cube", Vector3(0.0, 1.42, 16.045), Vector3(1.1, 0.05, 0.05), SHADOW_STONE)
+
+	# A second, dimmer window off to one side -- ART_DIRECTION.md's plural
+	# "windows", supporting rather than competing with the anchor above
+	# (per docs/EMOTIONAL_LENS.md's own "a lit window is the single warm
+	# anchor" framing of this beat).
+	_mesh(root, "cube", Vector3(-2.6, 1.55, 16.13), Vector3(0.8, 1.0, 0.14), WARM_LIGHT, Vector3.ZERO, 0.4)
+	_mesh(root, "cube", Vector3(-2.6, 1.55, 16.045), Vector3(0.05, 1.0, 0.05), SHADOW_STONE)
+
+	# A small warm sconce near the entrance -- concept_05's porch light.
+	# Off-centre (x=0.85), where the THRESHOLD/APPROACH camera's own small
+	# lateral offset is unlikely to sit exactly, on top of the same z clamp.
+	_mesh(root, "cylinder", Vector3(0.85, 2.35, 16.1), Vector3(0.05, 0.14, 0.05), SHADOW_STONE)
+	_mesh(root, "sphere", Vector3(0.85, 2.28, 16.15), Vector3(0.14, 0.14, 0.14), WARM_LIGHT, Vector3.ZERO, 1.2)
+
+	# A low porch step -- wide enough to read as the threshold regardless
+	# of exactly which x a door mesh lands at in either AssetMode. Ground
+	# level (top at y=0.14), well under the camera's height range, so it
+	# can sit proud of the wall toward the player without the clearance
+	# concern above.
+	_mesh(root, "cube", Vector3(0.0, 0.07, 15.85), Vector3(3.4, 0.14, 0.9), PLASTER_LIGHT)
+
+	# A potted plant beside the step -- concept_01/05's flanking planters.
+	_mesh(root, "cylinder", Vector3(1.9, 0.18, 15.75), Vector3(0.22, 0.36, 0.22), WOOD)
+	_mesh(root, "sphere", Vector3(1.9, 0.44, 15.75), Vector3(0.32, 0.28, 0.32), FOLIAGE)
+
+
+## A symmetric gable roof from two slabs meeting at a ridge -- the same
+## "box as a tilted plank, rotated about the perpendicular horizontal
+## axis" construction _slide_plank() uses, just rotated about Z (height
+## varying across local X) instead of X (height varying across local Z).
+## `center` is the midpoint of the eave line at the wall's own top (x =
+## center.x, y = eave height, z = center.z); the roof spans +-half_width
+## in X from there, rising `rise` metres to a ridge directly above
+## center.x.
+func _gable_roof(root: Node3D, center: Vector3, half_width: float, rise: float, depth: float, thickness: float, color: Color) -> void:
+	var run_len := sqrt(half_width * half_width + rise * rise)
+	var theta := atan2(rise, half_width)
+	for side in [-1.0, 1.0]:
+		var mid := Vector3(center.x + side * half_width * 0.5, center.y + rise * 0.5, center.z)
+		_mesh(root, "cube", mid, Vector3(run_len, thickness, depth), color, Vector3(0.0, 0.0, -side * theta))
+
+
+## Primitive-mode fallback for _build_house(): walls, a gabled roof, a
+## chimney and a door, in the same PLASTER/WOOD/SHADOW_STONE-ish palette
+## every other primitive fallback in this file already uses. Anchored at
+## its own front-wall-at-ground-level point like every other _kind() spot
+## in this file (_add_tree, the bench, the lamp) -- unlike house.gltf's
+## own asymmetric bounding box, a primitive box needs no offset trick:
+## its front wall face is simply `position.z`, so this ignores
+## `_rotation_y` the same way _primitive_tree() does (always built facing
+## -Z, since it is only ever placed the one way).
+func _primitive_house(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	var half_width := 3.2 * scale
+	var wall_height := 3.6 * scale
+	var rise := 2.6 * scale
+	var depth := 5.0 * scale
+	_mesh(root, "cube", position + Vector3(0.0, wall_height * 0.5, depth * 0.5), Vector3(half_width * 2.0, wall_height, depth), PLASTER_LIGHT)
+	_gable_roof(root, position + Vector3(0.0, wall_height, depth * 0.5), half_width, rise, depth + 0.6 * scale, 0.18 * scale, SHADOW_STONE)
+
+	# Chimney, off-centre, based part-way up the near roof slope so it
+	# reads as growing out of the roof rather than floating above it.
+	var chimney_x := 1.8 * scale
+	var roof_h_here: float = wall_height + rise * (1.0 - chimney_x / half_width)
+	_mesh(root, "cube", position + Vector3(chimney_x, roof_h_here + 0.3 * scale, depth * 0.35), Vector3(0.5, 1.3, 0.5) * scale, BRICK)
+
+	# Door, offset from centre -- the universal window dressing in
+	# _build_house() owns the doorway's own centreline.
+	_mesh(root, "cube", position + Vector3(1.8 * scale, 1.075 * scale, -0.05 * scale), Vector3(1.1, 2.15, 0.12) * scale, WOOD_LIGHT)
+
+
+## GARDEN BED (home west flank): outer footprint x[-6.3,-3.5], z[10.45,
+## 13.65] -- a low brick-edged planting bed by the home threshold, where
+## the balance verb now lives (moved off the tall playground/garden-pocket
+## boundary wall, world_affordances.gd's own doc comment has the
+## developer's own words on why). Same "pit + four borders" construction
+## tools/_bootstrap_sandbox_scene.gd already uses for the sandbox, just
+## soil and brick instead of sand and timber, and built here directly
+## (world-space, like every other courtyard prop) rather than as its own
+## sub-scene, since this is dressing for one specific spot, not a
+## droppable kit piece.
+##
+## Placement clears the HOME west wall collider (x<=-6.4), the near-home
+## tree's own collider at (-6.0,9.5) (half 0.65, so it reaches z=10.15),
+## and the doorway piers (z>=14) -- 0.1-0.35 m margins throughout, tight
+## by this file's usual standard because the flank itself is only ~3 m
+## wide, but the tree and the piers are real colliders that already stop
+## a player from reaching the tightest of those margins on foot.
+##
+## Only the EAST border (facing the path, WorldAffordances.EDGING_X) is
+## the mountable edge -- the other three sides are dressing without their
+## own collider, the same "collision simpler than render" allowance
+## _build_arcade_wall() already relies on for its blind niches. A player
+## would have to leave the path and squeeze past the tree specifically to
+## walk through the far side of a small planting bed; accepted rather
+## than spending a new WorldBounds collider on it (world_bounds.gd's
+## footprints are settled for this pass).
+func _build_garden_bed(root: Node3D) -> void:
+	var soil_color := SOIL
+	_mesh(root, "cube", Vector3(-4.9, 0.05, 12.05), Vector3(2.2, 0.1, 2.6), soil_color)
+
+	# Borders: east (the mount edge, EDGING_X=-3.7) and west fit the soil's
+	# own depth; north and south run the full outer width to cover the
+	# corners -- exactly the sandbox's own BorderNorth/South/East/West
+	# shape, see that generator's doc comment.
+	_mesh(root, "cube", Vector3(WorldAffordances.EDGING_X, WorldAffordances.EDGING_TOP_Y * 0.5, 12.05), Vector3(0.3, WorldAffordances.EDGING_TOP_Y, 3.2), BRICK)
+	_mesh(root, "cube", Vector3(-6.15, WorldAffordances.EDGING_TOP_Y * 0.5, 12.05), Vector3(0.3, WorldAffordances.EDGING_TOP_Y, 3.2), BRICK)
+	_mesh(root, "cube", Vector3(-4.9, WorldAffordances.EDGING_TOP_Y * 0.5, 10.6), Vector3(2.8, WorldAffordances.EDGING_TOP_Y, 0.3), BRICK)
+	_mesh(root, "cube", Vector3(-4.9, WorldAffordances.EDGING_TOP_Y * 0.5, 13.5), Vector3(2.8, WorldAffordances.EDGING_TOP_Y, 0.3), BRICK)
+
+	# A couple of blooms in the soil -- reuses _build_static_world()'s own
+	# flower construction (stem + emissive bloom) so this bed reads as
+	# planted rather than just an empty dirt box.
+	var bed_flower_color := Color(0.85, 0.72, 0.42)
+	for flower in [[-4.4, 11.5], [-5.4, 12.6]]:
+		_mesh(root, "cylinder", Vector3(flower[0], 0.25, flower[1]), Vector3(0.035, 0.5, 0.035), FOLIAGE_LIGHT)
+		_mesh(root, "sphere", Vector3(flower[0], 0.52, flower[1]), Vector3(0.14, 0.1, 0.14), bed_flower_color, Vector3.ZERO, 0.15)
 
 
 ## LANE: the new narrow passage, x[-3,3] z[-4,8] -- concept_02_path_
@@ -370,7 +559,39 @@ func _build_playground(root: Node3D) -> void:
 			for dz in [-0.8, 0.8]:
 				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD)
 	_mesh(root, "cube", Vector3(0, 2.3, -12.8), Vector3(4.8, 0.25, 1.15), WOOD)
-	_mesh(root, "cube", Vector3(-3.4, 0.95, -10.1), Vector3(1.25, 0.18, 5.2), SLIDE, Vector3(-0.54, 0, 0))
+
+	# The slide. Scale diagnosis (DEMO_PLAN.md, 2026-08-29): the previous
+	# plank (a bare Vector3(-0.54,0,0)-tilted box) ran from ~2.3 m down to
+	# -0.4 m -- authored backwards (its high end sat further from the tower
+	# than its low end) and ending below the ground plane, so it never
+	# visually connected deck to ground from any angle. Rebuilt from the
+	# SAME two authored points WorldAffordances/player.gd already use for
+	# the scripted ride -- the tower deck's own south face (its top, at the
+	# footprint's edge) down to SLIDE_END (where the ride's launch hop
+	# lands) -- via _slide_plank() below, so the visual and the ride can
+	# never drift apart again: change PLATFORM_TOP_Y or SLIDE_END and this
+	# geometry follows.
+	var slide_top := Vector3(WorldAffordances.TOWER_X, WorldAffordances.PLATFORM_TOP_Y - 0.025, WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF)
+	var slide_bottom := Vector3(WorldAffordances.SLIDE_END.x, 0.05, WorldAffordances.SLIDE_END.z)
+	_slide_plank(root, slide_top, slide_bottom, 1.25, 0.18)
+
+
+## A plank between two world points that share an X (so the box's local Z
+## is the only axis that needs rotating away from world Z), tilted about
+## local X. `width` runs along local X, unrotated -- the slide's sideways
+## width; `thickness` is local Y before rotation, same parameter shapes
+## _mesh() itself uses. Verified against the ORIGINAL (broken) slide: this
+## formula, fed that plank's own two endpoints, reproduces its authored
+## Vector3(-0.54,0,0) rotation exactly -- so the fix here is purely the
+## two input points (deck edge to SLIDE_END, not two arbitrary floating
+## numbers), not a new rotation trick.
+func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float) -> void:
+	var dy := to.y - from.y
+	var dz := to.z - from.z
+	var run_len := sqrt(dy * dy + dz * dz)
+	var theta := atan2(-dy, dz)
+	var mid := (from + to) * 0.5
+	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0))
 
 
 ## GARDEN POCKET, through the wall gap: x[11,22] z[-16,-4] --
@@ -383,7 +604,9 @@ func _build_playground(root: Node3D) -> void:
 ## the only way through").
 func _build_garden_pocket(root: Node3D) -> void:
 	# West wall (shared with the playground), two segments with the 2 m
-	# gap between them -- matches WorldAffordances.WALL_SEGMENTS exactly.
+	# gap between them. (No longer the balance-verb wall -- that affordance
+	# now lives on the garden-bed edging in _build_garden_bed(); this stays
+	# a plain boundary, matching WorldBounds.COLLIDERS exactly as before.)
 	_mesh(root, "cube", Vector3(11.0, 0.55, -12.5), Vector3(0.6, 1.2, 7.0), PLASTER_LIGHT)
 	_mesh(root, "cube", Vector3(11.0, 0.55, -5.5), Vector3(0.6, 1.2, 3.0), PLASTER_LIGHT)
 	# North/south/east walls seal the rest of the pocket.

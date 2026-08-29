@@ -1,8 +1,8 @@
 class_name WorldAffordances
 extends RefCounted
 ## Static geometry + pure query functions for the courtyard's PLAYABLE
-## affordances -- the slide/tower, the garden wall, the stepping stones and
-## the puddles that tools/_bootstrap_courtyard.gd already builds as pure
+## affordances -- the slide/tower, the garden-bed edging, the stepping
+## stones and the puddles that tools/_bootstrap_courtyard.gd already builds as pure
 ## decoration (see that file's doc comment: it is a one-shot generator for
 ## *visual* shapes and colliders only, nothing there is interactive).
 ##
@@ -55,23 +55,36 @@ const PLATFORM_STAND := Vector3(TOWER_X, PLATFORM_TOP_Y, TOWER_Z + 1.0)
 const SLIDE_START := PLATFORM_STAND
 const SLIDE_END := Vector3(TOWER_X, 0.0, -9.1)
 
-# ------------------------------------------------------------------- wall --
-## Garden wall (bootstrap's two PLASTER_LIGHT wall meshes at x=11 -- the
-## playground/garden-pocket boundary since the 2026-08-28 world expansion,
-## relocated from the old single-room x=5.4). Top surface at y = 0.55
-## (origin) + 1.2/2 (its own render height) = 1.15.
-const WALL_X := 11.0
-const WALL_TOP_Y := 1.15
-const WALL_SEGMENTS := [
-	{"z_min": -16.0, "z_max": -9.0},
-	{"z_min": -7.0, "z_max": -4.0},
+# ---------------------------------------------------------------- edging --
+## Low brick edging around a planting bed by the home threshold (home's
+## west flank, x[-6.3,-3.5] z[10.45,13.65] in _bootstrap_courtyard.gd's
+## _build_garden_bed()) -- where the balance verb now lives. It used to be
+## the tall playground/garden-pocket boundary wall (x=11, still there as a
+## boundary, just no longer a balance affordance): the developer's own
+## words were "the walking on the edge should be on the side of a brick
+## lining of a small garden or area or something -- not the wall, where it
+## is." A real garden bed's edging is both better storytelling and what a
+## child would actually do, and DEMO_PLAN.md's scale diagnosis makes the
+## same point under "order of work" #4.
+##
+## EDGING_X is the mount edge's own centreline -- the border segment
+## facing the path, the side a player walking the porch actually meets.
+## Top surface at y = 0.3, a real low garden-edging height (roughly knee
+## height on the 1.08 m child), not a wall.
+const EDGING_X := -3.7
+const EDGING_TOP_Y := 0.3
+## A single run the full length of that east border (matches its own
+## rendered span exactly, same convention WALL_SEGMENTS used against its
+## wall meshes) -- one continuous edge around a small bed, unlike the old
+## wall's two segments either side of the garden gap, since there is no
+## gap here to model.
+const EDGING_SEGMENTS := [
+	{"z_min": 10.45, "z_max": 13.65},
 ]
-## How close in x, at ground level, mounts the wall.
-const WALL_MOUNT_X_RANGE := 0.75
-## Matches WorldBounds.COLLIDERS' half_x for these segments (0.35) plus a
-## hair of slack -- how far sideways off the centerline reads as "still
-## on top" before the player has visibly stepped off.
-const WALL_HALF_WIDTH := 0.4
+## How close in x, at ground level, mounts the edging.
+const EDGING_MOUNT_X_RANGE := 0.55
+## How far off the centreline reads as "still on top" before stepping off.
+const EDGING_HALF_WIDTH := 0.3
 
 # ---------------------------------------------------------------- stones --
 ## Four stones just past the garden gap, bootstrap's `for stone in [...]`
@@ -109,20 +122,21 @@ static func near_climb_trigger(x: float, z: float) -> bool:
 	return Vector2(x - CLIMB_TRIGGER.x, z - CLIMB_TRIGGER.z).length() < CLIMB_TRIGGER_RADIUS
 
 
-## The wall segment (an entry of WALL_SEGMENTS) containing `z`, or {} if none.
-static func wall_segment_at_z(z: float) -> Dictionary:
-	for segment in WALL_SEGMENTS:
+## The edging segment (an entry of EDGING_SEGMENTS) containing `z`, or {}
+## if none.
+static func edging_segment_at_z(z: float) -> Dictionary:
+	for segment in EDGING_SEGMENTS:
 		if z >= segment["z_min"] and z <= segment["z_max"]:
 			return segment
 	return {}
 
 
-## True if (x, z), at ground level, is close enough to the wall's base to
-## mount it.
-static func near_wall_mount(x: float, z: float) -> bool:
-	if absf(x - WALL_X) > WALL_MOUNT_X_RANGE:
+## True if (x, z), at ground level, is close enough to the edging's base
+## to mount it.
+static func near_edging_mount(x: float, z: float) -> bool:
+	if absf(x - EDGING_X) > EDGING_MOUNT_X_RANGE:
 		return false
-	return not wall_segment_at_z(z).is_empty()
+	return not edging_segment_at_z(z).is_empty()
 
 
 ## Index (0..3) of the stone (x, z) is standing on, or -1 if it's in a gap.

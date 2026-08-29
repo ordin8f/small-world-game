@@ -34,29 +34,40 @@ func test_walking_into_the_tower_climbs_slides_and_lands_back_on_the_ground() ->
 	assert_float(player.global_position.z).is_greater(WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF)
 
 
-func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_off() -> void:
+func test_walking_onto_the_garden_edging_balances_slower_and_never_fails_to_step_off() -> void:
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
-	# Just clear of the wall's own physics collider (half_x 0.35 + player
-	# radius 0.32 = 0.67) but still inside WorldAffordances' 0.75 mount
-	# range. WALL_X relocated to 11.0 for the 2026-08-28 world expansion
-	# (world_bounds.gd's own doc comment); z=-13.0 sits well inside the
-	# deep segment (-16..-9), same relative spot the single-room version's
-	# z=-6.0 held inside its own (-8..-3.8) segment.
-	player.global_position = Vector3(10.3, 0.0, -13.0)
+	# Just clear of the edging's own physical thickness (half 0.15) but
+	# still inside WorldAffordances' 0.55 mount range. The balance verb
+	# moved off the tall playground/garden-pocket boundary wall onto a low
+	# brick edging around a planting bed by the home threshold
+	# (world_affordances.gd's own doc comment has the developer's own
+	# words on why). z=13.2 sits near the far end of the edging's own run
+	# (10.45..13.65) -- this test walks toward z_min, and the 2.75 m of
+	# room from there is the most the run's own 3.2 m length can offer,
+	# well short of a full wall's worth (the old wall's own equivalent
+	# test held 3.0 m inside a 7 m run).
+	player.global_position = Vector3(-4.15, 0.0, 13.2)
 
 	await runner.simulate_frames(2)
 	assert_int(player.verb).is_equal(player.Verb.WALL_MOUNTING)
 
 	var mounted := await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 	assert_bool(mounted).is_true()
-	assert_float(player.global_position.y).is_equal_approx(WorldAffordances.WALL_TOP_Y, 0.01)
+	assert_float(player.global_position.y).is_equal_approx(WorldAffordances.EDGING_TOP_Y, 0.01)
 
 	# Walking the top is slower than the baseline walk speed -- "should slow
-	# the player" per the brief -- not a stall, just unhurried.
+	# the player" per the brief -- not a stall, just unhurried. Measured
+	# over 20 frames rather than the old wall test's 60: this run is under
+	# half that test's own length, and gdUnit4's simulate_frames() steps by
+	# idle (process) frames, not a fixed physics delta, so the actual
+	# distance covered per simulated frame isn't perfectly 1:1 with the
+	# physics tick -- 20 keeps this comfortably inside the run's own 2.75 m
+	# of available space even with a generous margin for that ratio, while
+	# still comfortably clearing the `moved > 0.05` floor below.
 	var z_before: float = player.global_position.z
 	runner.simulate_action_press("move_forward")
-	await runner.simulate_frames(60)
+	await runner.simulate_frames(20)
 	runner.simulate_action_release("move_forward")
 	var moved: float = absf(player.global_position.z - z_before)
 	assert_float(moved).is_greater(0.05)  # actually moved
@@ -72,7 +83,7 @@ func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_o
 	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
 
 	# Regression: stepping off must actually leave. An earlier version
-	# landed the dismount inside WorldAffordances.WALL_MOUNT_X_RANGE, so
+	# landed the dismount inside WorldAffordances.EDGING_MOUNT_X_RANGE, so
 	# the very next GROUND tick's trigger check silently re-mounted the
 	# player -- "stepping off" did nothing observable from outside a
 	# single-frame check. Give it a couple of seconds with no input at all
@@ -83,28 +94,29 @@ func test_walking_onto_the_garden_wall_balances_slower_and_never_fails_to_step_o
 	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
 
 
-func test_walking_off_the_end_of_a_wall_segment_dismounts_just_as_gently() -> void:
-	# The OTHER way off the wall -- not a deliberate sideways lean, but
-	# simply walking to where the segment (WorldAffordances.WALL_SEGMENTS'
-	# first entry, z -16.0..-9.0 as of the 2026-08-28 world expansion) runs
-	# out, toward the garden-gap opening. Same non-punishing landing: no
-	# fail state, just the ground again.
+func test_walking_off_the_end_of_the_edging_dismounts_just_as_gently() -> void:
+	# The OTHER way off the edging -- not a deliberate sideways lean, but
+	# simply walking to where its one run (WorldAffordances.EDGING_SEGMENTS,
+	# z 10.45..13.65) runs out. Same non-punishing landing: no fail state,
+	# just the ground again.
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
-	player.global_position = Vector3(10.3, 0.0, -9.5)  # near the segment's z_max=-9.0 end
+	player.global_position = Vector3(-4.15, 0.0, 13.15)  # near the run's z_max=13.65 end
 	await runner.simulate_frames(2)
 	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 
 	# "move_back" is the key that increases world z at this yaw -- toward
-	# the -9.0 end and off it.
+	# the 13.65 end and off it (same direction sense THRESHOLD and REVEAL
+	# share -- both authored_yaw values are small negative angles, see
+	# CameraProfile.profile()).
 	runner.simulate_action_press("move_back")
 	var dismounted := await _wait_for_verb(runner, player, player.Verb.GROUND)
 	runner.simulate_action_release("move_back")
 
 	assert_bool(dismounted).is_true()
 	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
-	# Walked off the near end, not teleported to the far one.
-	assert_float(player.global_position.z).is_greater(-9.1)
+	# Walked off the far end, not teleported to the near one.
+	assert_float(player.global_position.z).is_greater(13.55)
 
 
 func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
@@ -113,7 +125,7 @@ func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
 	# must never, by itself, cross the dismount threshold.
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
-	player.global_position = Vector3(10.3, 0.0, -13.0)
+	player.global_position = Vector3(-4.15, 0.0, 13.2)
 	await runner.simulate_frames(2)
 	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 

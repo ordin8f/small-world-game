@@ -112,7 +112,10 @@ const COLLIDERS := [
 	# with a 2 m gap between -- same "wall with one discoverable opening"
 	# construction the single-room version used, just relocated from
 	# x=5.4 to x=11 and widened in z to match the pocket's own z[-16,-4]
-	# span. WorldAffordances.WALL_X/WALL_SEGMENTS mirror these exactly.
+	# span. (This wall used to double as WorldAffordances' balance-verb
+	# geometry too; that affordance has since moved to a garden-bed edging
+	# by the home threshold -- see world_affordances.gd's own doc comment
+	# -- so this remains purely a boundary from here on.)
 	{"x": 11.0, "z": -12.5, "half_x": 0.35, "half_z": 3.5, "camera_blocks": true},
 	{"x": 11.0, "z": -5.5, "half_x": 0.35, "half_z": 1.5, "camera_blocks": true},
 	# North/south/east walls seal the pocket everywhere except that gap --

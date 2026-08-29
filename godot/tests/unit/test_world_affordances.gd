@@ -19,24 +19,29 @@ func test_slide_descends_from_platform_to_the_ground() -> void:
 	assert_float(WorldAffordances.SLIDE_END.y).is_equal_approx(0.0, 0.001)
 
 
-## Garden wall relocated to x=11 for the 2026-08-28 world expansion
-## (world_bounds.gd's own doc comment) -- segments and gap widened/moved
-## with it (z -16..-9 / gap -9..-7 / -7..-4), same shape of claim as before.
-func test_wall_mount_matches_the_two_authored_segments() -> void:
-	# Inside the first (deep) segment (z -16.0..-9.0).
-	assert_bool(WorldAffordances.near_wall_mount(11.0, -13.0)).is_true()
-	# Inside the second (near) segment (z -7.0..-4.0).
-	assert_bool(WorldAffordances.near_wall_mount(11.0, -5.5)).is_true()
-	# In the garden-gap opening between the two segments -- not a wall here.
-	assert_bool(WorldAffordances.near_wall_mount(11.0, -8.0)).is_false()
-	# Right x, but too far from the wall's own x to mount from the ground.
-	assert_bool(WorldAffordances.near_wall_mount(12.6, -13.0)).is_false()
+## Balance verb moved off the tall playground/garden-pocket boundary wall
+## (which stays at x=11, just no longer a balance affordance) onto a low
+## brick edging around a planting bed by the home threshold --
+## world_affordances.gd's own doc comment has the developer's own words on
+## why. One continuous run (z 10.45..13.65), unlike the old wall's two
+## segments either side of the garden gap, since a small bed's edging has
+## no gap to model -- so the "in between" case below is past either end
+## instead of a gap in the middle.
+func test_edging_mount_matches_its_authored_run() -> void:
+	# Inside the run (z 10.45..13.65).
+	assert_bool(WorldAffordances.near_edging_mount(-3.7, 12.0)).is_true()
+	assert_bool(WorldAffordances.near_edging_mount(-3.7, 11.0)).is_true()
+	# Past either end -- not the edging here.
+	assert_bool(WorldAffordances.near_edging_mount(-3.7, 10.0)).is_false()
+	assert_bool(WorldAffordances.near_edging_mount(-3.7, 14.0)).is_false()
+	# Right x, but too far from the edging's own x to mount from the ground.
+	assert_bool(WorldAffordances.near_edging_mount(-2.6, 12.0)).is_false()
 
 
-func test_wall_segment_lookup_matches_bootstrap_courtyard_geometry() -> void:
-	assert_dict(WorldAffordances.wall_segment_at_z(-13.0)).is_not_empty()
-	assert_dict(WorldAffordances.wall_segment_at_z(-5.5)).is_not_empty()
-	assert_dict(WorldAffordances.wall_segment_at_z(-8.0)).is_empty()
+func test_edging_segment_lookup_matches_bootstrap_courtyard_geometry() -> void:
+	assert_dict(WorldAffordances.edging_segment_at_z(12.0)).is_not_empty()
+	assert_dict(WorldAffordances.edging_segment_at_z(10.0)).is_empty()
+	assert_dict(WorldAffordances.edging_segment_at_z(14.0)).is_empty()
 
 
 ## Stones relocated with the garden gap -- same positions relative to the
