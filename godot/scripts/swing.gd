@@ -27,6 +27,13 @@ const CREAK_THETA_WINDOW := 0.06   ## only near the bottom of the arc
 const CREAK_MIN_OMEGA := 0.5
 const CREAK_MIN_INTERVAL := 0.35
 
+## "drive", not "sit". Both put the child at seat height with their legs out
+## in front (they are the same seated pose in the Kenney rig), but "sit"
+## leaves the arms hanging down through the seat while "drive" holds them
+## up and forward -- which, on a swing, is holding the chains. The slide
+## keeps "sit", where hands-in-lap is right and there is nothing to hold.
+const RIDE_CLIP := "drive"
+
 @onready var pivot: Node3D = $Pivot
 @onready var seat: MeshInstance3D = $Pivot/Seat
 
@@ -60,7 +67,7 @@ func _mount() -> void:
 		return
 	_riding = true
 	Game.player.external_control = true
-	Game.player.character_visual.play_pose("sit")
+	Game.player.character_visual.play_pose(RIDE_CLIP)
 
 
 func _dismount() -> void:

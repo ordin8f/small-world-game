@@ -29,6 +29,18 @@ const PIT_HALF := 1.6  ## must match tools/_bootstrap_sandbox_scene.gd's own PIT
 const MOUND_MARGIN := 0.35  ## keeps a mound's own footprint inside the border, not clipping through it
 const MOUND_RADIUS := 0.22
 const GROW_SECONDS := 0.35
+
+## One squat per handful of sand. The obvious reading of "build a sandcastle"
+## would be to hold `crouch` for the whole time the child is in the pit and
+## punch `interact-right` in on each pat -- but those two fight: interact-right
+## is a standing clip that touches the torso, so every pat would stand the
+## child back up and then drop them again. A repeated squat is also simply
+## the truer picture of patting sand, and it composes with the pit's own
+## rule that WHERE you stand is the choice: the child squats wherever they
+## are, stands, walks two steps, squats again.
+const PAT_CLIP := "crouch"
+## crouch is a 0.17s held pose, so its own length is far too short to read.
+const PAT_HOLD_SECONDS := 0.7
 const SAND_MOUND_COLOR := Color(0.78, 0.66, 0.46)
 const FLAG_POLE_COLOR := Color(0.4, 0.24, 0.14)
 const FLAG_CLOTH_COLOR := Color(0.75, 0.28, 0.22)
@@ -65,6 +77,11 @@ func interact() -> void:
 	_spawn_mound(Vector3(clamped_x, 0.0, clamped_z))
 	_mound_count += 1
 	AudioDirector.play_sand_pat()
+	# Presentation only, and after the mound already exists -- the pat has
+	# fully happened by this line whether or not a clip plays.
+	var visual := CharacterVisual.of_player()
+	if visual != null:
+		visual.play_pose(PAT_CLIP, PAT_HOLD_SECONDS)
 	if _mound_count >= MAX_MOUNDS and not _flag_planted:
 		_plant_flag()
 

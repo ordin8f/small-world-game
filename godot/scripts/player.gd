@@ -69,6 +69,16 @@ const WALL_WALK_SPEED := 1.35      ## slower than walk_speed -- precarious, not 
 const WALL_LEAN_SPEED := 0.55      ## m/s the player can drift sideways off the centerline
 const WALL_DISMOUNT_SECONDS := 0.22
 
+## Arms out sideways for the whole balance, layered over the ordinary
+## walk/idle clips (character_visual.gd's set_arm_pose). Deliberately NOT a
+## clip swap: the wobble and the lean below are already doing the balancing,
+## and any full-body clip would have replaced the walk cycle with a static
+## pose and left the child gliding along the bricks with still legs. "static"
+## is the rig's rest T-pose, and a T-pose is exactly what a child's arms do
+## on a narrow wall -- the one place in this pack where the useless-looking
+## clip is the right one.
+const BALANCE_ARM_CLIP := "static"
+
 var _verb_time: float = 0.0
 var _verb_from: Vector3 = Vector3.ZERO
 var _verb_to: Vector3 = Vector3.ZERO
@@ -118,6 +128,9 @@ func _reset_to_start() -> void:
 	verb = Verb.GROUND
 	_wall_offset_x = 0.0
 	character_visual.rotation.z = 0.0
+	# ...and no leftover carry/balance arms or half-finished pose, same
+	# reasoning as the verb reset just above.
+	character_visual.reset_pose()
 	# Gate 1: a restart mid-swing-ride must hand control back too -- same
 	# defensive reasoning as the verb reset just above. swing.gd also
 	# listens for ARRIVE itself and dismounts on its own end, but a
@@ -279,6 +292,9 @@ func _start_slide() -> void:
 	verb = Verb.SLIDING
 	_verb_time = 0.0
 	moving = false
+	# "sit" translates the rig's root bone down to seat height, which is why
+	# character_visual.gd compensates for it -- without that the rider is
+	# buried to the eyebrows in the chute rather than sitting in it.
 	character_visual.play_pose("sit")  # reads far better riding down than a standing idle
 	AudioDirector.play_slide_whoosh()
 
@@ -327,6 +343,10 @@ func _start_wall_mount() -> void:
 	velocity = Vector3.ZERO
 	moving = false
 	character_visual.set_motion(false, false)
+	# Arms go out as they step up, not once they are already up there --
+	# the overlay eases in over the crossfade, which is roughly the mount's
+	# own 0.3s, so the two land together.
+	character_visual.set_arm_pose(BALANCE_ARM_CLIP)
 
 
 func _process_wall_mount(delta: float) -> void:
@@ -408,6 +428,7 @@ func _start_wall_dismount() -> void:
 		landing_x = WorldAffordances.EDGING_X + side * (WorldAffordances.EDGING_MOUNT_X_RANGE + 0.3)
 	_verb_to = Vector3(landing_x, locked_y, global_position.z)
 	character_visual.rotation.z = 0.0
+	character_visual.clear_arm_pose()
 	_wall_offset_x = 0.0
 	moving = false
 	character_visual.set_motion(false, false)
