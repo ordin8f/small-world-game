@@ -112,6 +112,48 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
   the primitive fallbacks (a trunk with real branches instead of two
   spheres on a stick; a tuft of bent blades instead of a cone).
 
+### Kenney — Fantasy Town Kit 2.0
+
+- Original source: https://kenney.nl/assets/fantasy-town-kit
+- License: CC0 1.0 Universal (`License.txt` inside the downloaded pack states
+  "License: (Creative Commons Zero, CC0)";
+  http://creativecommons.org/publicdomain/zero/1.0/)
+- Use: the built structures, as opposed to the planting the Nature Kit
+  covers. Currently the two play-tower roofs, replacing bare `CylinderMesh`
+  cones. `wall-door.glb`, `wall-window-shutters.glb` and
+  `stairs-wood-handrail.glb` are vendored and registered as the `door`,
+  `window` and `stairs` kinds but are NOT yet placed — see the note on the
+  house below.
+- Runtime files: `godot/assets/kenney_town/roof-high-point.glb`,
+  `wall-door.glb`, `wall-window-shutters.glb`, `stairs-wood-handrail.glb`
+  (Godot only), selected from `Models/GLB format/` in the official zip. 104 KB
+  for all four; the pack's OBJ/FBX copies and its other ~160 models were not
+  vendored.
+- NOT modified before vendoring, and deliberately so: unlike the Nature Kit
+  these models are TEXTURED — one embedded `colormap` atlas each and no
+  `baseColorFactor` — so the sRGB-to-linear palette rewrite described above
+  does not apply to them and must not be attempted. Their stock
+  terracotta/stone/wood already sits close to this world's warm palette.
+- Reason for selection: CC0, small, and the only surveyed kit with the
+  vocabulary this courtyard is actually built from — pointed roofs, arches,
+  stone and plaster walls, doorways, stairs with handrails.
+
+### Playground equipment — no CC0 source found
+
+The slide and the swing frame have no vendored model and are built from
+primitives. This is a search result, not an oversight: kenney.nl's full 3D
+catalogue and quaternius.com's complete pack list were both checked, and
+neither has a playground kit. The web results for "CC0 playground slide
+swing" are aggregator sites whose per-model licences are unverifiable, which
+is not a basis for vendoring into this repository.
+
+The slide is additionally one this project should not replace with a stock
+model even if one appeared: its geometry is derived from
+`WorldAffordances.PLATFORM_TOP_Y` and `SLIDE_END`, which is what keeps the
+visual plank and the scripted ride from drifting apart. Its side rails and
+end kicker are built from those same two authored points, through the same
+`_slide_plank()`, for the same reason.
+
 ## Detailed vs primitive assets
 
 `tools/_bootstrap_courtyard.gd` can build the courtyard two ways, chosen

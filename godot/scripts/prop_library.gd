@@ -46,20 +46,27 @@ extends RefCounted
 const USE_MODELS := true
 
 const NATURE_DIR := "res://assets/kenney_nature/"
+## Kenney Fantasy Town Kit 2.0 (CC0). Unlike the Nature Kit these are TEXTURED
+## -- one embedded `colormap` atlas per model, no baseColorFactor -- so the
+## sRGB/linear palette rewrite that assets/kenney_nature/ needed does not
+## apply and must not be attempted on them. Their stock terracotta/stone/wood
+## reads close enough to this world's own warm palette to sit beside it.
+const TOWN_DIR := "res://assets/kenney_town/"
 
 ## Kinds the world asks for that have no vendored model, listed so the gap is
 ## explicit rather than a typo silently falling back:
-##   door, window  -- no CC0 modular door/window found in the kits surveyed
-##                    (Kenney's suburban kit ships whole buildings, not
-##                    openings). Both stay hand-built in _build_house().
-##   slide         -- deliberately NOT modelled. The slide's geometry is
-##                    derived from WorldAffordances.PLATFORM_TOP_Y and
-##                    SLIDE_END so the visual plank and the scripted ride can
-##                    never drift apart (see _slide_plank()). A stock model
-##                    would break that link.
-##   swing_frame   -- no CC0 playground kit found on kenney.nl or
-##                    quaternius.com; both catalogues were checked.
-const KINDS_WITHOUT_MODELS := ["door", "window", "slide", "swing_frame"]
+##   slide        -- deliberately NOT modelled, and no CC0 slide exists to
+##                   model it with. Its geometry is derived from
+##                   WorldAffordances.PLATFORM_TOP_Y and SLIDE_END so the
+##                   visual plank and the scripted ride can never drift apart
+##                   (see _slide_plank()); a stock model would break that
+##                   link, and the bed/rails it is built from are aligned to
+##                   those same two authored points instead.
+##   swing_frame  -- no CC0 playground kit exists on kenney.nl or
+##                   quaternius.com; both catalogues were checked in full.
+##                   The swing is also not this file's to change: it is its
+##                   own scene (tools/_bootstrap_swing_scene.gd).
+const KINDS_WITHOUT_MODELS := ["slide", "swing_frame"]
 
 ## kind -> {
 ##   "axis":   which native dimension "target" describes. Documentation for
@@ -143,6 +150,30 @@ const KINDS := {
 	"log": {
 		"axis": "width", "target": 0.71,
 		"models": [[NATURE_DIR + "log.glb", 0.71]],
+	},
+	# Built structures, from the Fantasy Town Kit. Normalised on WIDTH because
+	# each replaces a primitive whose footprint is the thing that has to match
+	# -- a roof has to cap the tower it sits on, a door has to fill its opening.
+	"roof_point": {
+		"axis": "width", "target": 1.0,
+		"models": [[TOWN_DIR + "roof-high-point.glb", 1.10]],
+	},
+	# Modular 1x1 m wall TILES, not standalone frames: 1 m square in Y/Z with
+	# their ~0.1 m thickness along X, so a caller has to yaw them 90 degrees to
+	# face a player approaching down -Z. `s` is their edge length in metres.
+	"door": {
+		"axis": "edge", "target": 1.0,
+		"models": [[TOWN_DIR + "wall-door.glb", 1.00]],
+	},
+	"window": {
+		"axis": "edge", "target": 1.0,
+		"models": [[TOWN_DIR + "wall-window-shutters.glb", 1.00]],
+	},
+	# A staircase, used as the play tower's way up. Normalised on HEIGHT: what
+	# matters is that it reaches the deck, and its tread depth follows.
+	"stairs": {
+		"axis": "height", "target": 1.0,
+		"models": [[TOWN_DIR + "stairs-wood-handrail.glb", 1.45]],
 	},
 	# Tiny Treats props, authored at world scale already: native == target, so
 	# scale_for() is the identity and callers keep passing 1.0 as they do now.

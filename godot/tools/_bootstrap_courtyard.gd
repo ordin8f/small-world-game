@@ -639,7 +639,14 @@ func _build_playground(root: Node3D) -> void:
 	for x in [-3.4, 3.4]:
 		_mesh(root, "cube", Vector3(x, 1.25, -12.8), Vector3(2.3, 2.4, 2.3), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 		_mesh(root, "cube", Vector3(x, 2.75, -12.8), Vector3(2.7, 0.25, 2.7), WOOD, Vector3.ZERO, 0.0, "wood")
-		_mesh(root, "cone", Vector3(x, 4.0, -12.8), Vector3(2.0, 1.8, 2.0), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+		# The tower roof. A bare CylinderMesh cone was the most obviously
+		# placeholder thing left in this frame once the planting had real
+		# models beside it -- a smooth untextured funnel where the rest of the
+		# world had grown surface. roof-high-point.glb occupies the SAME volume
+		# (2.0 m across, 1.82 m tall against the cone's 1.8) and, because the
+		# model's origin is at its base while a CylinderMesh's is at its
+		# centre, sits at the cone's base rather than its centre: y 4.0 - 1.8/2.
+		_kind_of(root, "roof_point", Vector3(x, 3.1, -12.8), 2.0, Callable(self, "_primitive_tower_roof"), 0.0, "TowerRoof")
 		for dx in [-0.8, 0.8]:
 			for dz in [-0.8, 0.8]:
 				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD, Vector3.ZERO, 0.0, "wood")
@@ -660,6 +667,40 @@ func _build_playground(root: Node3D) -> void:
 	var slide_bottom := Vector3(WorldAffordances.SLIDE_END.x, 0.05, WorldAffordances.SLIDE_END.z)
 	_slide_plank(root, slide_top, slide_bottom, 1.25, 0.18)
 
+	# Side rails. The developer has called the slide out twice as "not properly
+	# oriented"; the geometry was fixed to derive from the two authored points
+	# above, but a bare 1.25 m plank still reads as an orange SLAB from the
+	# play camera, with nothing to say which way it runs or which face you go
+	# down. Rails are what make a slide legible as a slide.
+	#
+	# No CC0 slide model exists (kenney.nl and quaternius.com both checked in
+	# full), so these are primitives -- but primitives built from the SAME two
+	# points as the bed, through the same _slide_plank(), so they cannot drift
+	# from it or from the ride. See _slide_rail() for why the offset has to be
+	# taken along the plank's own local up rather than straight up in world Y.
+	for side in [-1.0, 1.0]:
+		_slide_rail(root, slide_top, slide_bottom, side * 0.60, 0.16, 0.12, 0.34)
+	# A kicker at the foot, where SLIDE_END's launch hop lands -- the small
+	# upturned lip a real slide finishes with, and a full-width visual full
+	# stop at the bottom end so the run reads as having a direction.
+	_mesh(root, "cube", slide_bottom + Vector3(0.0, 0.10, 0.28), Vector3(1.25, 0.30, 0.14), SLIDE, Vector3(deg_to_rad(-18.0), 0.0, 0.0), 0.0, "wood")
+
+
+## A plank parallel to the from->to run, shifted `lateral` metres sideways and
+## `up` metres clear of it. Delegates to _slide_plank() with shifted endpoints,
+## so a rail can never end up at a different angle from the bed it guards.
+##
+## `up` is measured along the PLANK's own local up, not world Y. The run is
+## tilted about X by theta, so its local up is (0, cos theta, sin theta);
+## offsetting straight up in world Y instead would slide the rail along the
+## bed's length as well as away from it, leaving it proud at the top and sunk
+## at the bottom. `lateral` needs no such correction -- X is the rotation axis,
+## so world X and the plank's local X are the same direction.
+func _slide_rail(root: Node3D, from: Vector3, to: Vector3, lateral: float, up: float, width: float, thickness: float) -> void:
+	var theta := atan2(-(to.y - from.y), to.z - from.z)
+	var offset := Vector3(lateral, cos(theta) * up, sin(theta) * up)
+	_slide_plank(root, from + offset, to + offset, width, thickness)
+
 
 ## A plank between two world points that share an X (so the box's local Z
 ## is the only axis that needs rotating away from world Z), tilted about
@@ -670,13 +711,20 @@ func _build_playground(root: Node3D) -> void:
 ## Vector3(-0.54,0,0) rotation exactly -- so the fix here is purely the
 ## two input points (deck edge to SLIDE_END, not two arbitrary floating
 ## numbers), not a new rotation trick.
-func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float) -> void:
+##
+## Textured, unlike the version before this pass. The slide was the ONLY large
+## surface in the playground still carrying a bare palette colour -- the towers
+## are "wood", the walls and piers "plaster" -- and a 3.7 x 1.25 m field of flat
+## SLIDE orange is exactly what read as untextured cardboard beside the
+## vegetation once that had real models. It is painted wood like everything
+## else the children climb on, so it takes the same surface.
+func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float, surface: String = "wood") -> void:
 	var dy := to.y - from.y
 	var dz := to.z - from.z
 	var run_len := sqrt(dy * dy + dz * dz)
 	var theta := atan2(-dy, dz)
 	var mid := (from + to) * 0.5
-	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0))
+	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0), 0.0, surface)
 
 
 ## GARDEN POCKET, through the wall gap: x[11,22] z[-16,-4] --
@@ -1142,6 +1190,16 @@ func _primitive_flower(root: Node3D, position: Vector3, scale: float, _rotation_
 	var stem := scale / 0.6  # the old numbers were authored at a 0.6 m flower
 	_mesh(root, "cylinder", position + Vector3(0.0, 0.25 * stem, 0.0), Vector3(0.035, 0.5, 0.035) * stem, FOLIAGE_LIGHT)
 	_mesh(root, "sphere", position + Vector3(0.0, 0.52 * stem, 0.0), Vector3(0.14, 0.1, 0.14) * stem, Color(0.85, 0.72, 0.42), Vector3.ZERO, 0.15)
+
+
+## Primitive-mode fallback for the play towers' roofs: the bare CylinderMesh
+## cone they had before. `position` is the roof's BASE (the model's own origin
+## convention), so the cone -- which a CylinderMesh centres -- is lifted half
+## its height to occupy the same volume. Height tracks `scale` at the authored
+## 2.0-wide / 1.8-tall proportion rather than being a second loose constant.
+func _primitive_tower_roof(root: Node3D, position: Vector3, scale: float, _rotation_y: float) -> void:
+	var height := scale * 0.9
+	_mesh(root, "cone", position + Vector3(0.0, height * 0.5, 0.0), Vector3(scale, height, scale), WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
 
 
 ## Primitive-mode fallback for the porch pot: the plain WOOD cylinder this
