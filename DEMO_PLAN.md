@@ -409,3 +409,83 @@ monumental, so it stays.
    what a child actually does.
 5. **Beauty pass** — largely free once proportion is right. Most of what reads
    as ugly is scale conflict rather than missing detail.
+
+## Surface, sightlines and animation, 2026-08-29
+
+Three things the developer named on seeing the build: textures, better shapes,
+and "the playground is quite crammed and all places are not reachable". Then,
+separately, "walk animation doesn't properly work — it shows initially but then
+it doesn't repeat".
+
+### What landed
+
+- **Surfaces are real** (`1d05024`). Six generated tileable textures under
+  `godot/assets/surfaces/` drive a `SURFACES` registry in the courtyard
+  generator, applied with triplanar UVs so box geometry needs no authored UVs.
+  Textures are optional by construction: `_apply_surface()` returns false when a
+  file is missing and the flat palette colour stands.
+- **Volumetric fog was eating the distance** (`bd2acc6`). Everything past ~15 m
+  washed to one cream value. The depth fog was not the cause — it does not begin
+  until 22 m. At 0.018 density a 4.0-energy sun scatters into every view ray.
+  Halved density and sun scattering across all three moods.
+- **The laundry rendered as black rectangles** floating at head height: thin
+  slabs whose camera-facing side is the shadowed back. Now two-sided, backlit,
+  no self-shadow.
+- **Vegetation is no longer placeholder** (`feat/models`). Kenney Nature Kit
+  (CC0) behind `PropLibrary` with a working toggle; six tree species replace
+  five clones of one blob.
+
+### Three defects worth recording, because each hid behind a passing test
+
+- **No animation clip loops. None of the 32.** Godot's glTF importer defaults to
+  `LOOP_NONE` unless a clip name carries a `-loop`/`-cycle` suffix; Kenney's are
+  plain, and nothing in the repo sets `loop_mode`. `set_motion()` guards with
+  `if clip == _current_clip: return`, so `walk` plays once, runs 0.67 s, and
+  freezes on its last frame while the child keeps sliding. `idle` and `sprint`
+  have the identical bug; idle hides it because its last frame looks like
+  standing. This is also why NPCs "play idle once and never move again".
+- **`character_visual.gd` falls back to `"idle"` silently** when a clip name is
+  missing. One NPC's `talk_pose` is `"wave"`, which is not one of the 32 clips,
+  so that animation has never once played and nothing reported it.
+- **A vendored `.glb` referencing an external texture that is not in the repo
+  imports as white.** The Fantasy Town roof references `Textures/colormap.png`;
+  only the model files were vendored. Combined with the glow pass it rendered as
+  a glowing white lampshade. Three more models from that kit carry the same
+  defect, unplaced.
+
+### The reachability complaint was a sightline complaint
+
+A headless flood-fill of the walkable plane, using the real physics world and
+the player's actual collision radius, found **every interaction zone reachable
+from spawn**. The literal claim does not hold. What it did find: only 8 of 14
+place-to-place sightlines are clear at child eye height, 215 m² of walled-off
+dead space, and the garden arch's lintel sitting at **1.15–1.95 m — across the
+eyeline of a child walking through it**.
+
+The `03_gap` frame confirms it: at the moment the player passes through the
+opening, the right ~40% of the screen is the gap wall itself, seen face-on. Four
+rounds of camera work could not fix that frame, because the problem was never in
+the camera.
+
+**The lesson for testing here is specific.** A sightline test that asks only
+"does a ray reach the next place" scores that frame as passing — you *can* see
+through the gap. Any measure of openness has to include how much of the view is
+occupied by blank near geometry, or it will go green on the exact frame the
+developer is objecting to. This is the same defect class as
+[[tests-that-measure-the-wrong-thing]]: name the mutation the assertion must
+catch, then run it.
+
+### Camera: an approach ruled out
+
+Redirecting REVEAL's yaw near the garden seam was tried across five variants and
+abandoned — swinging the camera in either direction from a player that close to a
+2 m gap reliably grazes a wall corner at (11,−9) or (11,−7). The fix that holds
+is geometry: a collider at (9.5, 1.3) giving SpringArm3D an ordinary thing to
+stop against, the same mechanism as every other wall. Zero raycast hits across a
+1277-tick driven route. The beat is improved, not solved; the rest is
+composition.
+
+Recorded so it is not re-chased: the camera now sits ~6 cm above the top face of
+the lane's wide invisible flank. Non-camera-blocking colliders are 2.4 m tall by
+the generator's own height rule, so an all-layers raycast finds it while
+SpringArm3D and the rendered frame — which only care about layer 2 — do not.
