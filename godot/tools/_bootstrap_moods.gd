@@ -52,7 +52,7 @@ func _afternoon() -> Resource:
 	var m := MoodPresetScript.new()
 	m.background_color = Color(0.70, 0.67, 0.60)
 	m.ambient_color = Color(0.46, 0.51, 0.60)
-	m.ambient_energy = 0.80
+	m.ambient_energy = 0.34
 	m.sun_color = Color(1.0, 0.87, 0.68)
 	m.sun_energy = 4.0
 	m.sun_from = Vector3(16.0, 10.0, 12.0)
@@ -63,13 +63,13 @@ func _afternoon() -> Resource:
 	m.fog_end = 120.0
 	m.volumetric_density = 0.018
 	m.volumetric_albedo = Color(1.0, 0.92, 0.80)
-	m.exposure = 0.62
+	m.exposure = 0.80
 	m.tonemap_white = 2.0
 	m.glow_intensity = 0.35
 	m.glow_bloom = 0.10
 	m.ssao_intensity = 1.6
-	m.saturation = 0.95
-	m.contrast = 1.05
+	m.saturation = 1.06
+	m.contrast = 1.28
 	return m
 
 
@@ -80,7 +80,7 @@ func _golden() -> Resource:
 	var m := MoodPresetScript.new()
 	m.background_color = Color(0.82, 0.68, 0.49)
 	m.ambient_color = Color(0.54, 0.49, 0.49)
-	m.ambient_energy = 0.85
+	m.ambient_energy = 0.38
 	m.sun_color = Color(1.0, 0.78, 0.50)
 	m.sun_energy = 4.4
 	m.sun_from = Vector3(18.0, 7.5, 8.0)
@@ -91,13 +91,13 @@ func _golden() -> Resource:
 	m.fog_end = 110.0
 	m.volumetric_density = 0.020
 	m.volumetric_albedo = Color(1.0, 0.88, 0.70)
-	m.exposure = 0.68
+	m.exposure = 0.84
 	m.tonemap_white = 2.0
 	m.glow_intensity = 0.50
 	m.glow_bloom = 0.16
 	m.ssao_intensity = 1.5
-	m.saturation = 1.00
-	m.contrast = 1.04
+	m.saturation = 1.08
+	m.contrast = 1.26
 	return m
 
 
@@ -108,7 +108,7 @@ func _dusk() -> Resource:
 	var m := MoodPresetScript.new()
 	m.background_color = Color(0.46, 0.40, 0.52)
 	m.ambient_color = Color(0.42, 0.44, 0.58)
-	m.ambient_energy = 1.15
+	m.ambient_energy = 0.58
 	m.sun_color = Color(0.85, 0.55, 0.52)
 	m.sun_energy = 3.0
 	m.sun_from = Vector3(20.0, 4.0, 3.5)
@@ -120,11 +120,11 @@ func _dusk() -> Resource:
 	m.volumetric_density = 0.026
 	m.volumetric_albedo = Color(0.85, 0.78, 0.86)
 	m.volumetric_emission = Color(0.02, 0.018, 0.03)
-	m.exposure = 1.00
+	m.exposure = 1.12
 	m.tonemap_white = 2.0
 	m.glow_intensity = 0.55
 	m.glow_bloom = 0.20
 	m.ssao_intensity = 1.8
-	m.saturation = 0.88
-	m.contrast = 1.08
+	m.saturation = 1.00
+	m.contrast = 1.26
 	return m
