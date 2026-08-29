@@ -125,15 +125,31 @@ paths and the Godot rebuild under `godot/` — see `GODOT_REBUILD_PLAN.md`.
   `window` and `stairs` kinds but are NOT yet placed — see the note on the
   house below.
 - Runtime files: `godot/assets/kenney_town/roof-high-point.glb`,
-  `wall-door.glb`, `wall-window-shutters.glb`, `stairs-wood-handrail.glb`
-  (Godot only), selected from `Models/GLB format/` in the official zip. 104 KB
-  for all four; the pack's OBJ/FBX copies and its other ~160 models were not
-  vendored.
-- NOT modified before vendoring, and deliberately so: unlike the Nature Kit
-  these models are TEXTURED — one embedded `colormap` atlas each and no
-  `baseColorFactor` — so the sRGB-to-linear palette rewrite described above
-  does not apply to them and must not be attempted. Their stock
-  terracotta/stone/wood already sits close to this world's warm palette.
+  `wall-door.glb`, `wall-window-shutters.glb`, `stairs-wood-handrail.glb`,
+  **and `godot/assets/kenney_town/Textures/colormap.png`** (Godot only),
+  selected from `Models/GLB format/` in the official zip. 115 KB for all five;
+  the pack's OBJ/FBX copies and its other ~160 models were not vendored.
+- The atlas is REQUIRED, not optional. These models do not embed their
+  texture — each declares `images: [{"uri": "Textures/colormap.png"}]`,
+  resolved relative to the .glb — and they share one 512x512 atlas between
+  them, which is why a single file serves all four. glTF has no albedo colour
+  to fall back on when a `baseColorTexture` fails to resolve, so a model
+  vendored without it imports pure white; with this scene's glow pass on top,
+  the two tower roofs rendered as glowing white lampshades. Note that
+  `godot/assets/kenney/Textures/colormap.png` is a DIFFERENT atlas (Mini
+  Characters, verified by checksum) — pointing these models at it would land
+  every UV on the wrong swatch.
+- Vendoring the atlas is necessary but not sufficient: Godot keys its import
+  cache on the model file, so a .glb first imported while the texture was
+  absent stays untextured through later `--import` runs. Its `.import`
+  sibling has to be deleted to force a reimport. `tools/verify.ps1`'s
+  `== assets ==` step (`tools/_check_asset_textures.gd`) now fails the build
+  on both conditions.
+- NOT re-materialed before vendoring, and deliberately so: unlike the Nature
+  Kit these carry a texture rather than a `baseColorFactor`, so the
+  sRGB-to-linear palette rewrite described above does not apply to them and
+  must not be attempted. Their stock terracotta/stone/wood already sits close
+  to this world's warm palette.
 - Reason for selection: CC0, small, and the only surveyed kit with the
   vocabulary this courtyard is actually built from — pointed roofs, arches,
   stone and plaster walls, doorways, stairs with handrails.
