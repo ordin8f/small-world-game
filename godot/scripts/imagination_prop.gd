@@ -41,7 +41,7 @@ const PROP_DATA := {
 	},
 }
 
-const IMAGINED_COLOR := Color(0.95, 0.85, 0.6)
+const IMAGINED_COLOR := Color(0.88, 0.76, 0.52)
 const REVERT_SECONDS := 3.2  ## "briefly" -- long enough to register, short enough to stay a flicker of imagination, not a new steady state
 const FADE_SECONDS := 0.45
 const INTERACT_RADIUS := 1.5
@@ -52,6 +52,13 @@ var radius: float = INTERACT_RADIUS
 var _imagined: bool = false
 var _overlay: Node3D = null
 var _revert_timer: float = 0.0
+## How large the imagined thing grows relative to the real object. Deliberately
+## well above 1.0: the child is 1.08 m and the play camera sits 5-10 m back, so a
+## 1:1 overlay is a bump on a crate rather than a castle. Anchored at the base,
+## so it grows upward and outward from the real object rather than drifting off
+## it.
+const IMAGINED_SCALE := 2.8
+
 var _perception: Node = null
 
 
@@ -92,7 +99,7 @@ func interact() -> void:
 	_overlay.visible = true
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tween.tween_property(_overlay, "scale", Vector3.ONE, FADE_SECONDS)
+	tween.tween_property(_overlay, "scale", Vector3.ONE * IMAGINED_SCALE, FADE_SECONDS)
 	if _perception != null:
 		_perception.set_imagination_target(true, name)
 
@@ -208,5 +215,9 @@ func _imagined_material() -> StandardMaterial3D:
 	mat.roughness = 0.6
 	mat.emission_enabled = true
 	mat.emission = IMAGINED_COLOR
-	mat.emission_energy_multiplier = 0.9
+	# 0.35, not 0.9: at 1:1 the overlay was small and 0.9 read as a gentle
+	# glow. At IMAGINED_SCALE it is a large surface and blew to flat white
+	# against a bright sky -- a light box rather than a castle. Lower emission
+	# lets it keep its own silhouette and stay inside the palette.
+	mat.emission_energy_multiplier = 0.35
 	return mat
