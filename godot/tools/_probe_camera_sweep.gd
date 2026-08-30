@@ -61,6 +61,24 @@ extends SceneTree
 ##                that snaps as you cross a line is far more noticeable in
 ##                play than one that is merely badly placed, and a
 ##                beat-sampled test cannot see it at all.
+##   wall%     -- share of the picture taken by BOUNDARY WALL within 14 m.
+##                Added for the camera-orbit task (2026-08-30). Every metric
+##                above asks where the camera IS; none of them has ever
+##                asked what it is POINTED AT, and the developer's remaining
+##                complaint after round 5 was exactly that ("the default
+##                position of the camera looking is the same as the one
+##                facing wall"). An upper bound, not an exact figure -- see
+##                the comment at its own loop.
+##   open/gain -- how far the frame can see PAST the child, as a fraction of
+##                15 m, and how much more a bounded turn of the shot could
+##                see. `gain` is what the geometry OFFERS, not what is
+##                achievable: it says nothing about whether a camera could
+##                stand at that angle, and at the park's west wall the
+##                best-scoring angle is one that would put the camera inside
+##                the wall. Read it as an upper bound on the prize and let
+##                `open` before/after say what was actually collected.
+##   orbit     -- what camera_rig.gd's own orbit chose, in degrees. Reads 0
+##                on any build without one, which is the honest answer.
 ##
 ## Run `--drive-only` for the second half alone: a genuine continuous walk
 ## through every region with real simulated input. Teleport sampling and
@@ -97,11 +115,59 @@ const ASPECT := 1280.0 / 720.0
 ## sweep is O(cells * every mesh in the world) and takes minutes.
 const BUCKET := 8.0
 
+# --- "the frame is a wall" metrics (camera-orbit task, 2026-08-30) ---------
+## The fault this round was given: "the default position of the camera
+## looking is the same as the one facing wall." Round 4 measured whether the
+## camera COLLAPSED against a wall behind the player; nothing has ever
+## measured what the frame is POINTED AT. A camera can be a perfect
+## distance, a perfect height, dead behind, with the child fully in frame,
+## and the entire picture past them is boundary wall.
+##
+## Walls, not props, and a longer reach than NEAR_M: a tree 5 m past the
+## child is scenery, a 45 m boundary wall 8 m past them is a backdrop that
+## fills the whole picture. 14 m is roughly where a 4.2 m park wall stops
+## reaching the top of a 58 deg frame and starts reading as part of the
+## world instead of a lid on it.
+const WALL_NEAR_M := 14.0
+## A render box counts as a WALL if it stands up off the ground and its
+## footprint sits on one of world_bounds.gd's own camera_blocks colliders.
+## Derived, never name-matched -- same rule as _collect_boxes().
+const WALL_MIN_HEIGHT := 1.5
+const WALL_FOOTPRINT_SLACK := 0.8
+
+## `open` -- how far the frame can see PAST the child, sampled as a fan of
+## layer-2 (camera-blocking) rays from the child's own chest, scored as a
+## fraction of OPEN_CAP. This is the quantity an orbit can actually trade
+## against: rotating the shot barely changes the CENTRE ray's reach (a
+## child 1 m from a flat wall is 1/cos(theta) from it whichever way you
+## rotate) but it changes the fan enormously -- half the frame swings to
+## run ALONG the wall and sees the length of the park.
+const OPEN_CAP := 15.0
+const OPEN_EYE_Y := 1.1          # camera_profile.gd's REVEAL target_height
+## Horizontal half-angle of a 58 deg vertical frame at 16:9 --
+## atan(tan(29 deg) * 16/9). The window an orbit slides across the fan.
+const OPEN_HALF_FOV := 44.6
+## How far either way the "is a better angle reachable?" scan looks, and at
+## what spacing. This is a REPORTING scan: it asks whether the geometry
+## offers a materially better window, not whether the rig could stand there.
+const OPEN_SCAN := 40.0
+const OPEN_SCAN_STEP := 5.0
+const OPEN_RAY_STEP := 5.0       # fan sample spacing, degrees
+
 # --- thresholds used only to COUNT faults in the summary -------------------
 const ANGLE_LIMIT := 35.0
 const RATIO_FLOOR := 0.35
 const NEAR_LIMIT := 30.0
 const JUMP_LIMIT := 1.5   # metres of camera travel per 0.5 m player step
+## Over this share of the picture taken by boundary wall within WALL_NEAR_M,
+## the shot is "pointed at a wall". Picked by shooting cells either side of
+## it and looking, not from the arithmetic.
+const WALL_FRAME_LIMIT := 25.0
+## Under this window openness the frame has nothing in it to see; over this
+## much available gain, a bounded orbit had somewhere materially better to
+## point. Both are report thresholds only.
+const OPEN_POOR := 0.45
+const OPEN_GAIN_LIMIT := 0.15
 
 var _runner: GdUnitSceneRunner = null
 var _main: Node = null
@@ -119,6 +185,7 @@ var _exclude: Array = []
 var _boxes: Array = []          # [{name, box}]
 var _buckets := {}              # Vector2i -> Array[int] (indices into _boxes)
 var _labels := {}               # collider RID -> readable name
+var _is_wall := {}              # index into _boxes -> true, for boundary walls
 
 ## Per sampled cell: a Dictionary of every metric. `_slot` maps grid index
 ## -> position in this array so the neighbour pass can find them.
@@ -193,6 +260,10 @@ func _run() -> void:
 	print("render boxes collected: %d (bucketed into %d cells of %.0f m)" % [
 		_boxes.size(), _buckets.size(), BUCKET,
 	])
+	print("of those, %d are boundary WALL meshes (stand >%.1f m and sit on a camera_blocks collider)" % [
+		_is_wall.size(), WALL_MIN_HEIGHT,
+	])
+	print("rig orbit support: %s" % ("yes (_orbit_yaw present)" if _rig.get("_orbit_yaw") != null else "no (pre-orbit build)"))
 
 	if _single.x != INF:
 		await _report_single(_single.x, _single.y)
@@ -268,6 +339,27 @@ func _collect_boxes(root: Node) -> void:
 		if _player.is_ancestor_of(node) or node == _player:
 			continue
 		_boxes.append({"name": str(node.name), "box": box})
+
+	# Which of them are BOUNDARY WALL, derived rather than name-matched: it
+	# stands up off the ground, and its footprint lies on one of
+	# world_bounds.gd's own camera_blocks collider boxes. Everything the
+	# camera can be pointed at that fills a frame with nothing is one of
+	# these; a tree crown or a tower is scenery and is counted separately by
+	# `standing` already.
+	for i in range(_boxes.size()):
+		var box: AABB = _boxes[i]["box"]
+		if box.size.y < WALL_MIN_HEIGHT:
+			continue
+		for collider in WorldBounds.COLLIDERS:
+			if not collider.get("camera_blocks", false):
+				continue
+			var overlap_x: bool = absf(box.get_center().x - collider["x"]) \
+				<= box.size.x * 0.5 + collider["half_x"] + WALL_FOOTPRINT_SLACK
+			var overlap_z: bool = absf(box.get_center().z - collider["z"]) \
+				<= box.size.z * 0.5 + collider["half_z"] + WALL_FOOTPRINT_SLACK
+			if overlap_x and overlap_z:
+				_is_wall[i] = true
+				break
 
 	for i in range(_boxes.size()):
 		var box: AABB = _boxes[i]["box"]
@@ -469,12 +561,22 @@ func _measure() -> Dictionary:
 
 	# --- what fills the frame, and where the frame is pointed -------------
 	var near_pool := PackedInt32Array() if _fast else _candidates(eye, NEAR_M)
+	# A SECOND, wider pool restricted to boundary-wall meshes. Deliberately
+	# not folded into `near_pool`: `near`/`standing` are round 4's numbers and
+	# stay comparable run to run, and a wall reads as a lid on the picture from
+	# much further out than a bench does.
+	var wall_pool := PackedInt32Array()
+	if not _fast:
+		for bi in _candidates(eye, WALL_NEAR_M):
+			if _is_wall.has(bi):
+				wall_pool.append(bi)
 	var half_v: float = tan(deg_to_rad(float(profile["fov"]) * 0.5))
 	var half_h: float = half_v * ASPECT
 	var right := basis.x
 	var up := basis.y
 	var near_hits := 0
 	var standing_hits := 0
+	var wall_hits := 0
 	var below := 0
 	var shares := {}
 	for row in range(FRAME_ROWS):
@@ -497,7 +599,14 @@ func _measure() -> Dictionary:
 				var t: float = (res as Vector3).distance_to(eye)
 				if t < best:
 					best = t
-					who = _boxes[bi]["name"]
+					# Footprint, not just the name, for the same reason
+					# _segment_blocker() carries one: half the meshes in this
+					# world are generated in code and come back as
+					# "@MeshInstance3D@390", which nobody can act on.
+					var wc := b.get_center()
+					who = "%s at (%.1f,%.1f,%.1f) size %.1fx%.1fx%.1f" % [
+						_boxes[bi]["name"], wc.x, wc.y, wc.z, b.size.x, b.size.y, b.size.z,
+					]
 					who_is_ground = _is_ground_slab(b)
 			if best <= NEAR_M:
 				near_hits += 1
@@ -507,6 +616,24 @@ func _measure() -> Dictionary:
 				if not who_is_ground:
 					standing_hits += 1
 					shares[who] = shares.get(who, 0) + 1
+			# ... and, separately, how much of the picture is BOUNDARY WALL.
+			# `best` (the nearest thing in the 6 m pool, ground included)
+			# suppresses it: a canopy or a paving slab in front of the wall
+			# is what the eye actually sees on that ray, and a wall behind a
+			# tree is not a blank frame. This still overcounts a little --
+			# anything standing between 6 and 14 m out is not in `best`'s
+			# pool to hide it -- so read `wallf` as an upper bound.
+			for bi in wall_pool:
+				var b: AABB = _boxes[bi]["box"]
+				if b.has_point(eye):
+					continue
+				var res = b.intersects_ray(eye, dir)
+				if res == null:
+					continue
+				var wt: float = (res as Vector3).distance_to(eye)
+				if wt <= WALL_NEAR_M and wt <= best:
+					wall_hits += 1
+					break
 	var frame_total := FRAME_COLS * FRAME_ROWS
 	var top_name := ""
 	var top_share := 0.0
@@ -523,6 +650,21 @@ func _measure() -> Dictionary:
 	for h in BODY_SAMPLES:
 		if _camera.is_position_in_frustum(p + Vector3(0.0, h, 0.0)):
 			in_frame += 1
+
+	# --- is there a better direction to point this shot? ------------------
+	var fan := _openness_fan(p)
+	var authored_yaw: float = profile["authored_yaw"]
+	var aim := rad_to_deg(angle_difference(authored_yaw, atan2(-forward.x, -forward.z)))
+	var open_now := _window_openness(fan, aim)
+	var open_best := open_now
+	var open_at := aim
+	var scan := -OPEN_SCAN
+	while scan <= OPEN_SCAN + 1e-3:
+		var score := _window_openness(fan, scan)
+		if score > open_best:
+			open_best = score
+			open_at = scan
+		scan += OPEN_SCAN_STEP
 
 	return {
 		"px": p.x, "pz": p.z,
@@ -555,7 +697,63 @@ func _measure() -> Dictionary:
 		"arm_want": _arm.spring_length,
 		"arm_got": _arm.get_hit_length(),
 		"clear": _wall_clearance(eye),
+		# --- camera-orbit task (2026-08-30) --------------------------------
+		"wallf": 100.0 * wall_hits / frame_total,
+		"open": open_now,
+		"open_best": open_best,
+		"gain": open_best - open_now,
+		"open_at": open_at,
+		"aim": aim,
+		# What the rig itself chose. Reads 0 on a pre-orbit build, which is
+		# exactly right: it orbited by nothing.
+		"orbit": 0.0 if _rig.get("_orbit_yaw") == null else rad_to_deg(_rig.get("_orbit_yaw")),
 	}
+
+
+## How far the world runs in every direction the shot could be pointed,
+## measured ONCE per cell from the child's own chest and shared by every
+## candidate angle below. Angles are degrees off the zone's authored aim, so
+## 0 is the shot the rig composes today.
+##
+## Layer 2 only -- boundary walls. A tree trunk 4 m past the child is
+## something to look at, not an absence of one, and the `standing`/`hidden`
+## metrics already carry the props. Rays leave from OPEN_EYE_Y (the zone's
+## own look-at height), not the ground, so the park's low kerbs and the
+## chalk ring are not mistaken for a horizon.
+func _openness_fan(p: Vector3) -> Dictionary:
+	var authored_yaw: float = CameraProfile.profile(p.z)["authored_yaw"]
+	var origin := Vector3(p.x, OPEN_EYE_Y, p.z)
+	var fan := {}
+	var psi := -(OPEN_SCAN + OPEN_HALF_FOV)
+	while psi <= OPEN_SCAN + OPEN_HALF_FOV + 1e-3:
+		var yaw := authored_yaw + deg_to_rad(psi)
+		# The rig's own `forward` for that yaw: away from the camera, past
+		# the child -- camera_rig.gd builds Vector3(-sin, 0, -cos).
+		var dir := Vector3(-sin(yaw), 0.0, -cos(yaw))
+		var q := PhysicsRayQueryParameters3D.create(origin, origin + dir * OPEN_CAP)
+		q.exclude = _exclude
+		q.collision_mask = 2
+		var hit := _space.intersect_ray(q)
+		var reach := OPEN_CAP
+		if not hit.is_empty():
+			reach = origin.distance_to(hit["position"])
+		fan[psi] = reach / OPEN_CAP
+		psi += OPEN_RAY_STEP
+	return fan
+
+
+## Mean openness across the frame a shot centred on `centre` degrees would
+## cover. A mean, not a minimum: a shot with a wall down one edge and forty
+## metres of park down the other is a good shot, and a minimum would score it
+## the same as one facing the wall square on.
+func _window_openness(fan: Dictionary, centre: float) -> float:
+	var total := 0.0
+	var n := 0
+	for psi in fan:
+		if absf(float(psi) - centre) <= OPEN_HALF_FOV:
+			total += float(fan[psi])
+			n += 1
+	return total / maxf(float(n), 1.0)
 
 
 ## Distance from the camera to the nearest camera-blocking wall. Neither
@@ -614,6 +812,13 @@ func _candidates(origin: Vector3, radius: float) -> PackedInt32Array:
 ## Name of the first render box strictly between `from` and `to`, or "".
 ## Boxes containing either endpoint are skipped -- you are not blocked by
 ## the canopy you are standing under, nor by the arch the camera sits in.
+##
+## The name carries the box's own footprint, for the same reason
+## _label_colliders() puts one on every wall: half this world's meshes are
+## generated in code and come back as "@MeshInstance3D@390", which is not
+## something anyone can act on. "@MeshInstance3D@390 at (-20.4,-8.9) 1.0x1.0"
+## is traceable back to the line of _bootstrap_courtyard.gd that put it
+## there. Cost is a string build on the occlusion path only.
 func _segment_blocker(from: Vector3, to: Vector3, pool: PackedInt32Array) -> String:
 	var span := from.distance_to(to)
 	if span < 1e-4:
@@ -628,7 +833,10 @@ func _segment_blocker(from: Vector3, to: Vector3, pool: PackedInt32Array) -> Str
 			continue
 		var t: float = (res as Vector3).distance_to(from)
 		if t > 0.02 and t < span - 0.02:
-			return _boxes[i]["name"]
+			var c := b.get_center()
+			return "%s at (%.1f,%.1f,%.1f) size %.1fx%.1fx%.1f" % [
+				_boxes[i]["name"], c.x, c.y, c.z, b.size.x, b.size.y, b.size.z,
+			]
 	return ""
 
 
@@ -693,6 +901,35 @@ func _report_coverage() -> void:
 		out_of_frame, 100.0 * out_of_frame / maxi(_cells.size(), 1),
 	])
 
+	# --- camera-orbit task: is the shot POINTED anywhere? ------------------
+	var walled := 0
+	var blind := 0
+	var better := 0
+	var orbited := 0
+	for m in _cells:
+		if float(m["wallf"]) > WALL_FRAME_LIMIT:
+			walled += 1
+		if float(m["open"]) < OPEN_POOR:
+			blind += 1
+		if float(m["gain"]) > OPEN_GAIN_LIMIT:
+			better += 1
+		if absf(float(m["orbit"])) > 1.0:
+			orbited += 1
+	print("")
+	print("=== WHAT THE SHOT IS POINTED AT ===")
+	print("cells where over %.0f%% of the picture is boundary wall within %.0f m : %d (%.1f%%)" % [
+		WALL_FRAME_LIMIT, WALL_NEAR_M, walled, 100.0 * walled / maxi(_cells.size(), 1),
+	])
+	print("cells where the frame's own window sees under %.2f of %.0f m         : %d (%.1f%%)" % [
+		OPEN_POOR, OPEN_CAP, blind, 100.0 * blind / maxi(_cells.size(), 1),
+	])
+	print("cells where a bounded (+-%.0f deg) orbit had a materially better aim  : %d (%.1f%%)" % [
+		OPEN_SCAN, better, 100.0 * better / maxi(_cells.size(), 1),
+	])
+	print("cells where the rig actually orbited (more than 1 deg)               : %d (%.1f%%)" % [
+		orbited, 100.0 * orbited / maxi(_cells.size(), 1),
+	])
+
 
 ## Which of world_bounds.gd's rooms a standing position is in. The park is
 ## split at z=-14 because that is where a 10.5 m northward throw stops
@@ -718,17 +955,21 @@ const REGIONS := ["HOME", "LANE", "PARK north", "PARK south", "GARDEN", "SE LAWN
 func _report_regions() -> void:
 	print("")
 	print("=== WHERE THE FAULTS ARE ===")
-	print("%-12s %7s | %10s %10s %10s %10s %9s" % [
+	print("%-12s %7s | %10s %10s %10s %10s %9s | %10s %7s %7s" % [
 		"region", "cells", "hidden", "off-frame", "ratio<.35", "wall<0.6m", "med dist",
+		"wall>25%", "med open", "med orb",
 	])
-	print("-".repeat(80))
+	print("-".repeat(112))
 	for region in REGIONS:
 		var n := 0
 		var hidden := 0
 		var off := 0
 		var tight := 0
 		var near := 0
+		var walled := 0
 		var dists: Array = []
+		var opens: Array = []
+		var orbits: Array = []
 		for m in _cells:
 			if _region(m["px"], m["pz"]) != region:
 				continue
@@ -740,15 +981,22 @@ func _report_regions() -> void:
 				tight += 1
 			if float(m["clear"]) < 0.6:
 				near += 1
+			if float(m["wallf"]) > WALL_FRAME_LIMIT:
+				walled += 1
 			dists.append(float(m["dist"]))
+			opens.append(float(m["open"]))
+			orbits.append(absf(float(m["orbit"])))
 		if n == 0:
 			continue
 		dists.sort()
-		print("%-12s %7d | %5d %4.0f%% %5d %4.0f%% %5d %4.0f%% %5d %4.0f%% %9.2f" % [
+		opens.sort()
+		orbits.sort()
+		print("%-12s %7d | %5d %4.0f%% %5d %4.0f%% %5d %4.0f%% %5d %4.0f%% %9.2f | %5d %4.0f%% %7.2f %7.1f" % [
 			region, n,
 			hidden, 100.0 * hidden / n, off, 100.0 * off / n,
 			tight, 100.0 * tight / n, near, 100.0 * near / n,
 			dists[dists.size() / 2],
+			walled, 100.0 * walled / n, opens[opens.size() / 2], orbits[orbits.size() / 2],
 		])
 
 
@@ -796,6 +1044,10 @@ func _report_distributions() -> void:
 		["camera height y (m)", "cy", 0.0, false],
 		["clearance to wall (m)", "clear", 0.6, false],
 		["arm shortened to (m)", "arm_got", 0.0, false],
+		["frame that is wall (%)", "wallf", WALL_FRAME_LIMIT, true],
+		["window openness (0-1)", "open", OPEN_POOR, false],
+		["openness left on table", "gain", OPEN_GAIN_LIMIT, true],
+		["orbit applied (deg)", "orbit", 0.0, false],
 	]
 	for row in rows:
 		var s := _stat(row[1])
@@ -812,17 +1064,19 @@ func _rank(key: String, descending: bool, count: int, label: String) -> void:
 		return float(a[key]) > float(b[key]) if descending else float(a[key]) < float(b[key]))
 	print("")
 	print("--- worst %s ---" % label)
-	print("%9s %9s | %8s %8s %8s | %7s %7s %6s %6s %6s %5s  %s" % [
-		"player x", "z", "cam x", "cam y", "cam z", "dist", "ratio", "angle", "pitch", "near%", "shown", "blocked by",
+	print("%9s %9s | %8s %8s %8s | %7s %7s %6s %6s %6s %5s | %6s %5s %5s %6s  %s" % [
+		"player x", "z", "cam x", "cam y", "cam z", "dist", "ratio", "angle", "pitch", "near%", "shown",
+		"wall%", "open", "gain", "orbit", "blocked by",
 	])
 	for i in range(mini(count, sorted.size())):
 		var m: Dictionary = sorted[i]
 		var who: String = m["blocker"]
 		if who == "" and m["vis_name"] != "":
 			who = "(render) %s" % m["vis_name"]
-		print("%9.2f %9.2f | %8.2f %8.2f %8.2f | %7.2f %7.2f %6.1f %6.1f %6.1f %5d  %s" % [
+		print("%9.2f %9.2f | %8.2f %8.2f %8.2f | %7.2f %7.2f %6.1f %6.1f %6.1f %5d | %6.1f %5.2f %5.2f %6.1f  %s" % [
 			m["px"], m["pz"], m["cx"], m["cy"], m["cz"],
-			m["dist"], m["ratio"], m["angle"], m["pitch"], m["standing"], m["in_frame"], who,
+			m["dist"], m["ratio"], m["angle"], m["pitch"], m["standing"], m["in_frame"],
+			m["wallf"], m["open"], m["gain"], m["orbit"], who,
 		])
 
 
@@ -838,6 +1092,9 @@ func _report_worst() -> void:
 	_rank("clear", false, 12, "camera jammed against a camera-blocking wall")
 	_rank("pitch", true, 10, "steepest look-down (staring at the dirt)")
 	_rank("pitch", false, 10, "flattest/upward look (staring past the child)")
+	_rank("wallf", true, 14, "picture filled with boundary wall")
+	_rank("open", false, 14, "frame with nothing in it to see")
+	_rank("gain", true, 14, "best angle left unused (a bounded orbit could reach it)")
 
 	# Which objects hide the child, and how often.
 	var tally := {}
@@ -918,7 +1175,8 @@ func _report_single(x: float, z: float) -> void:
 	print("=== SINGLE CELL (%.2f, %.2f) ===" % [x, z])
 	for key in ["cx", "cy", "cz", "dist", "authored", "ratio", "angle", "pitch", "below",
 			"near", "top_near", "top_name", "blocked", "blocker", "wall_hit",
-			"vis_blocked", "vis_name", "arm_want", "arm_got"]:
+			"vis_blocked", "vis_name", "arm_want", "arm_got",
+			"wallf", "open", "open_best", "gain", "open_at", "aim", "orbit"]:
 		print("  %-12s %s" % [key, m[key]])
 
 
@@ -984,10 +1242,14 @@ func _drive() -> void:
 		"ratio": INF, "ratio_at": Vector2.ZERO,
 		"occluded": 0, "wall": 0, "seen": 0,
 		"last_cam": _camera.global_position,
+		"last_yaw": 0.0,
+		"dyaw": 0.0, "dyaw_at": Vector2.ZERO,
 	}
 	var jumps: Array = []
 	var angles: Array = []
 	var ratios: Array = []
+	var dyaws: Array = []
+	var opens: Array = []
 	var blockers := {}
 
 	var on_tick := func() -> void:
@@ -1000,6 +1262,23 @@ func _drive() -> void:
 		if jump > s["jump"]:
 			s["jump"] = jump
 			s["jump_at"] = Vector2(p.x, p.z)
+
+		# Orbit smoothness, driven rather than settled: an orbit that finds a
+		# better angle by SNAPPING to it is worse than one that stays put, and
+		# a teleport grid cannot see the difference. Degrees of camera yaw per
+		# 1/60 s tick.
+		var fwd := -_camera.global_transform.basis.z
+		var cam_yaw := atan2(-fwd.x, -fwd.z)
+		var dyaw := absf(rad_to_deg(angle_difference(s["last_yaw"], cam_yaw)))
+		s["last_yaw"] = cam_yaw
+		if s["seen"] > 1:
+			dyaws.append(dyaw)
+			if dyaw > s["dyaw"]:
+				s["dyaw"] = dyaw
+				s["dyaw_at"] = Vector2(p.x, p.z)
+		# What the frame can see past the child, on the real walked path.
+		var authored_yaw: float = CameraProfile.profile(p.z)["authored_yaw"]
+		opens.append(_window_openness(_openness_fan(p), rad_to_deg(angle_difference(authored_yaw, cam_yaw))))
 
 		var profile: Dictionary = CameraProfile.profile(p.z)
 		var offset := Vector2(eye.x - p.x, eye.z - p.z)
@@ -1039,6 +1318,8 @@ func _drive() -> void:
 	jumps.sort()
 	angles.sort()
 	ratios.sort()
+	dyaws.sort()
+	opens.sort()
 	print("ticks driven: %d (%.1f s of play, measured in %.1f s)" % [
 		ticks, ticks / 60.0, (Time.get_ticks_msec() - started) / 1000.0,
 	])
@@ -1060,6 +1341,16 @@ func _drive() -> void:
 		print("distance / authored    : median %.3f  p1 %.3f  min %.3f at (%.2f, %.2f)" % [
 			ratios[int(ratios.size() * 0.5)], ratios[int(ratios.size() * 0.01)],
 			s["ratio"], s["ratio_at"].x, s["ratio_at"].y,
+		])
+	if not dyaws.is_empty():
+		print("camera yaw per tick    : median %.4f deg  p99 %.4f  max %.4f at (%.2f, %.2f)" % [
+			dyaws[int(dyaws.size() * 0.5)], dyaws[int(dyaws.size() * 0.99)],
+			s["dyaw"], s["dyaw_at"].x, s["dyaw_at"].y,
+		])
+	if not opens.is_empty():
+		print("window openness        : median %.3f  p10 %.3f  p1 %.3f  min %.3f" % [
+			opens[int(opens.size() * 0.5)], opens[int(opens.size() * 0.10)],
+			opens[int(opens.size() * 0.01)], opens[0],
 		])
 	var ranked: Array = []
 	for k in blockers:

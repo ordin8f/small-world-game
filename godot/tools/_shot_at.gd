@@ -19,9 +19,15 @@ extends SceneTree
 const SCENE_PATH := "res://scenes/main.tscn"
 const OUT_DIR := "user://shots_at"
 const WARMUP_TICKS := 150
-## camera_rig.gd damps with lambda 7.3; 90 ticks is 1.5 s, well past
-## convergence, and matches test_camera_never_in_geometry.gd's own settle.
-const SETTLE_TICKS := 90
+## camera_rig.gd's POSITION damps with lambda 7.3, for which 90 ticks (1.5 s)
+## is well past convergence. Raised to 150 for the camera-orbit task
+## (2026-08-30): the orbit is a second, deliberately slower damper on top
+## (ORBIT_LAMBDA 2.0, a half-second time constant, so that a shot turning to
+## find a better angle reads as a camera move rather than a snap). At 90
+## ticks a still shot taken right after a teleport is still ~9% of the way
+## back to the previous position's answer; 2.5 s leaves under 1%, which
+## matters because these frames are the evidence.
+const SETTLE_TICKS := 150
 
 var _runner: GdUnitSceneRunner = null
 var _main: Node = null
