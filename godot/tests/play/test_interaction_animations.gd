@@ -91,23 +91,164 @@ func test_every_clip_name_the_interaction_scripts_reference_exists() -> void:
 			.is_true()
 
 
-## The locomotion clips must LOOP. Godot's glTF importer defaults every
-## imported clip to LOOP_NONE, so before character_visual.gd set this, one
-## 0.67s walk cycle played and the child then slid along frozen mid-stride
-## for as long as the key was held.
-func test_the_locomotion_clips_loop() -> void:
+## The clips that are continuous STATES must loop. Godot's glTF importer
+## defaults every imported clip to LOOP_NONE, so before character_visual.gd
+## set this, one 0.67s walk cycle played and the child then slid along frozen
+## mid-stride for as long as the key was held -- which is exactly what the
+## developer reported: "walk animation doesn't properly work, it shows
+## initially but then it doesn't repeat".
+##
+## Every name below is spelled out rather than read from LOOPING_CLIPS /
+## HELD_POSE_CLIPS / ONE_SHOT_CLIPS: emptying or rewriting those constants
+## would otherwise change both sides at once and this test would pass while
+## checking nothing.
+func test_the_continuous_state_clips_loop() -> void:
 	var runner := scene_runner("res://scenes/main.tscn")
 	await runner.simulate_frames(2)
 	var visual := CharacterVisual.of_player()
 	var anim: AnimationPlayer = visual.get("_anim_player")
 	assert_object(anim).is_not_null()
-	# The three names are spelled out rather than read from LOOPING_CLIPS:
-	# emptying that constant would otherwise make this test pass by checking
-	# nothing at all.
-	for clip: String in ["idle", "walk", "sprint"]:
+
+	for clip: String in [
+		"idle", "walk", "sprint", "fall",
+		"wheelchair-move-forward", "wheelchair-move-back",
+		"wheelchair-move-left", "wheelchair-move-right",
+		"crouch", "sit", "drive", "static",
+		"holding-left", "holding-right", "holding-both", "wheelchair-sit",
+	]:
 		assert_int(anim.get_animation(clip).loop_mode) \
-			.override_failure_message("%s does not loop -- holding a movement key will freeze the child mid-stride" % clip) \
-			.is_equal(Animation.LOOP_LINEAR)
+			.override_failure_message("%s does not loop -- a state clip that stops is a frozen child" % clip) \
+			.is_not_equal(Animation.LOOP_NONE)
+
+
+## ...and the clips that are EVENTS must not, which is not merely tidiness:
+## "pick-up" ends 0.23 quaternion distance from where it starts and "die"
+## 0.35, so looping either would visibly snap the child back every third of a
+## second. Blanket-looping the whole library to fix walk would have traded one
+## bug for sixteen.
+func test_the_one_shot_clips_do_not_loop() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	var visual := CharacterVisual.of_player()
+	var anim: AnimationPlayer = visual.get("_anim_player")
+
+	for clip: String in [
+		"jump", "die", "pick-up", "emote-yes", "emote-no",
+		"attack-melee-left", "attack-melee-right",
+		"attack-kick-left", "attack-kick-right",
+		"interact-left", "interact-right",
+		"holding-left-shoot", "holding-right-shoot", "holding-both-shoot",
+		"wheelchair-look-left", "wheelchair-look-right",
+	]:
+		assert_int(anim.get_animation(clip).loop_mode) \
+			.override_failure_message("%s loops -- it is a one-shot and will restart forever" % clip) \
+			.is_equal(Animation.LOOP_NONE)
+
+
+## Nothing in the pack may be left unclassified: a clip that is in neither
+## set is a clip whose loop mode nobody decided, and the next one Kenney adds
+## should fail here rather than quietly inherit LOOP_NONE.
+func test_every_clip_in_the_pack_is_classified() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	var visual := CharacterVisual.of_player()
+	var anim: AnimationPlayer = visual.get("_anim_player")
+
+	var classified: Array = []
+	classified.append_array(CharacterVisual.LOOPING_CLIPS)
+	classified.append_array(CharacterVisual.HELD_POSE_CLIPS)
+	classified.append_array(CharacterVisual.ONE_SHOT_CLIPS)
+
+	var unclassified: Array = []
+	for clip: String in anim.get_animation_list():
+		if clip == "RESET":
+			continue  # Godot's own generated rest-pose track, never played
+		if not classified.has(clip):
+			unclassified.append(clip)
+
+	assert_array(unclassified) \
+		.override_failure_message("clips with no decided loop mode: %s" % [unclassified]) \
+		.is_empty()
+	# ...and no name in the sets that isn't a real clip.
+	for clip: String in classified:
+		assert_bool(anim.has_animation(clip)) \
+			.override_failure_message("'%s' is classified but is not a clip in the pack" % clip) \
+			.is_true()
+
+
+## The symptom itself, not the setting behind it: walk for well past one clip
+## length and the legs must still be moving. This is the test that would have
+## caught the original report -- asserting loop_mode alone would not, because
+## a future change could set loop_mode correctly and still break the cycle
+## some other way (a stray play() every frame, a paused mixer, a pose hold
+## that never expires).
+func test_walking_past_one_clip_length_keeps_cycling_instead_of_freezing() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	var visual := CharacterVisual.of_player()
+	var skeleton: Skeleton3D = visual.get("_skeleton")
+	var anim: AnimationPlayer = visual.get("_anim_player")
+	var walk_length: float = anim.get_animation("walk").length
+
+	Game.start_episode(0.0)
+	await runner.simulate_frames(SETTLE_FRAMES)
+	runner.simulate_action_press("move_forward")
+	await runner.simulate_frames(SETTLE_FRAMES)
+	assert_str(visual.current_clip()).is_equal("walk")
+
+	# Sample the leg over a window that starts AFTER several clip lengths have
+	# already elapsed. Before the fix the child froze on walk's last frame, so
+	# every sample in this window was identical no matter how long the window.
+	var tree := Engine.get_main_loop() as SceneTree
+	var settle_frames := int(walk_length * 4.0 * Engine.physics_ticks_per_second)
+	for _i in range(settle_frames):
+		await tree.physics_frame
+	var elapsed := float(settle_frames) / Engine.physics_ticks_per_second
+
+	# Sample the playhead and the leg together over two further clip lengths.
+	var leg_id := skeleton.find_bone("leg-left")
+	var legs: Array[Quaternion] = []
+	var deepest := 0.0
+	var wraps := 0
+	var previous := anim.current_animation_position
+	for _i in range(int(walk_length * 2.0 * Engine.physics_ticks_per_second)):
+		var position: float = anim.current_animation_position
+		deepest = maxf(deepest, position)
+		if position < previous - 0.001:
+			wraps += 1
+		previous = position
+		legs.append(skeleton.get_bone_pose_rotation(leg_id))
+		await tree.physics_frame
+	runner.simulate_action_release("move_forward")
+
+	# 1. The playhead gets deep into the clip. This is what separates a real
+	#    loop from the tempting wrong fix -- dropping the change-guard and
+	#    re-calling play() every physics frame. That "works" in the sense that
+	#    the pose keeps changing, so a leg-moved-at-all assertion passes it,
+	#    but the playhead never leaves the first frame or two and the child
+	#    twitches in place instead of walking.
+	assert_float(deepest) \
+		.override_failure_message("after %.2fs of walking the playhead never got past %.3fs of walk's %.2fs -- the clip is being restarted, not looped" % [
+			elapsed, deepest, walk_length,
+		]) \
+		.is_greater(walk_length * 0.6)
+
+	# 2. It wraps. A one-shot that simply hasn't finished yet would satisfy
+	#    (1) once and never again.
+	assert_int(wraps) \
+		.override_failure_message("the walk playhead never wrapped in %.2fs of walking -- it is playing once and stopping" % (walk_length * 2.0)) \
+		.is_greater(0)
+
+	# 3. And the body actually moves, measured off the skeleton rather than
+	#    off the mixer's own bookkeeping.
+	var spread := 0.0
+	for q in legs:
+		spread = maxf(spread, 1.0 - absf(legs[0].dot(q)))
+	assert_float(spread) \
+		.override_failure_message("after %.2fs of walking (%.1f clip lengths) leg-left barely moved (%.5f) -- the walk cycle has frozen on its last frame" % [
+			elapsed, elapsed / walk_length, spread,
+		]) \
+		.is_greater(0.01)
 
 
 ## The fallback still has to be a fallback: a bad name must not crash a

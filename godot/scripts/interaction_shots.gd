@@ -62,6 +62,7 @@ func _run() -> void:
 	_main.add_child(_camera)
 	_camera.current = true
 
+	await _shoot_walk_cycle()
 	await _shoot_carry()
 	await _shoot_sandbox()
 	await _shoot_treasure()
@@ -71,6 +72,45 @@ func _run() -> void:
 
 	print("SHOTS_DIR: %s" % ProjectSettings.globalize_path(OUT_DIR))
 	_shutdown(0)
+
+
+# -------------------------------------------------------------- walk cycle --
+
+## The reported bug, watched rather than asserted: "walk animation doesn't
+## properly work - it shows initially but then it doesn't repeat".
+##
+## Walks continuously for several clip lengths and then captures a strip
+## spanning ONE further cycle. Two things have to be true in that strip and
+## both are visible in it: the four frames within the cycle must differ from
+## each other (the legs are still moving this late in), and the frame exactly
+## one cycle after the first must match the first (it is a repeating cycle,
+## not a slow drift). Before the fix every frame here was identical -- the
+## child's last walk frame, held, sliding along the ground.
+const WALK_STRIP_SAMPLES := 5
+const WALK_SETTLE_TICKS := 200  ## ~3.3s at 60Hz, five walk cycles
+
+
+func _shoot_walk_cycle() -> void:
+	var visual: Node = _player.character_visual
+	var anim: AnimationPlayer = visual.get("_anim_player")
+	var walk_length: float = anim.get_animation("walk").length
+	var ticks_per_cycle := int(round(walk_length * 60.0))
+
+	_runner.simulate_action_press("move_forward")
+	await _wait_ticks(WALK_SETTLE_TICKS)
+
+	# One extra sample so the last one lands a full cycle after the first.
+	for i in range(WALK_STRIP_SAMPLES):
+		await _capture("walkcycle_%02d_t%.2fs" % [
+			i, (WALK_SETTLE_TICKS + i * ticks_per_cycle / (WALK_STRIP_SAMPLES - 1)) / 60.0,
+		])
+		if i < WALK_STRIP_SAMPLES - 1:
+			await _wait_ticks(int(ticks_per_cycle / (WALK_STRIP_SAMPLES - 1)))
+
+	_runner.simulate_action_release("move_forward")
+	await _wait_ticks(20)
+	_player.global_position = Vector3(0.0, 0.0, 10.0)  # back to the doorway for the carry beats
+	await _wait_ticks(20)
 
 
 # ------------------------------------------------------------------- carry --

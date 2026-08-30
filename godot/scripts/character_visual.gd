@@ -115,15 +115,59 @@ const CHARACTER_DATA := {
 
 const CROSSFADE_SECONDS := 0.2
 
-## The three clips the locomotion state machine cycles between. Godot's glTF
-## importer gives every imported clip loop_mode LOOP_NONE unless the source
-## file names it otherwise, and Kenney's does not -- so before this was set,
-## holding a movement key played exactly one 0.67s walk cycle and then froze
-## the child mid-stride until they stopped and started again. Set here at
-## runtime rather than in the three .glb.import files: it applies to every
-## character .glb this project loads without three near-identical
-## _subresources blocks that the asset pipeline would have to keep in sync.
-const LOOPING_CLIPS := ["idle", "walk", "sprint"]
+# ------------------------------------------------------- clip loop modes --
+#
+# Godot's glTF importer gives every imported clip loop_mode LOOP_NONE unless
+# the source file's own clip name carries a -loop/-cycle suffix, and Kenney's
+# names are plain. All 32 clips therefore import as one-shots
+# (tools/_probe_loops.gd prints this), which is why holding a movement key
+# played exactly one 0.67s walk cycle and then froze the child mid-stride
+# while they kept sliding across the ground: set_motion() only calls play()
+# on a CHANGE, so nothing ever restarted it.
+#
+# Which clips belong in which set was measured, not guessed --
+# tools/_probe_cycles.gd samples every rotation track across each clip and
+# reports whether the values actually move and whether the last frame
+# matches the first. Three outcomes:
+
+## Genuine cycles, and continuous states rather than events: playing one once
+## and stopping is the bug. All of these were measured to move (walk peaks at
+## 0.13 quaternion distance from its first frame) and to have first and last
+## frames that match, so they loop without a visible pop.
+const LOOPING_CLIPS := [
+	"idle", "walk", "sprint", "fall",
+	"wheelchair-move-forward", "wheelchair-move-back",
+	"wheelchair-move-left", "wheelchair-move-right",
+]
+
+## Also states you hold rather than events -- but measurably STATIC: every
+## rotation track in each of these holds one constant value for the clip's
+## whole 0.10-0.17s, so looping them is an inert no-op. They are set anyway,
+## so the classification is "state vs event" throughout rather than "state,
+## event, and a third thing nobody wrote down", and they are listed
+## separately so nobody mistakes a test asserting these for coverage of the
+## walk-freeze bug. It is not: flipping any of these back to LOOP_NONE
+## changes nothing on screen.
+const HELD_POSE_CLIPS := [
+	"crouch", "sit", "drive", "static",
+	"holding-left", "holding-right", "holding-both",
+	"wheelchair-sit",
+]
+
+## Everything else in the pack is an event with a beginning and an end and
+## must NOT loop. Two of them would visibly snap if looped -- "pick-up" ends
+## 0.23 quaternion distance from where it starts and "die" 0.35 -- so this is
+## not merely a tidiness rule. Named explicitly rather than left as "the
+## remainder" so the test can assert it, and so adding a clip to the pack
+## fails loudly here rather than being silently mis-classified.
+const ONE_SHOT_CLIPS := [
+	"jump", "die", "pick-up", "emote-yes", "emote-no",
+	"attack-melee-left", "attack-melee-right",
+	"attack-kick-left", "attack-kick-right",
+	"interact-left", "interact-right",
+	"holding-left-shoot", "holding-right-shoot", "holding-both-shoot",
+	"wheelchair-look-left", "wheelchair-look-right",
+]
 
 ## Bones whose rotation set_arm_pose() overrides. The Kenney rig is seven
 ## bones (root/torso/head/arm-left/arm-right/leg-left/leg-right), and the
@@ -208,9 +252,7 @@ func _ready() -> void:
 
 	_anim_player = _find_animation_player(model)
 	if _anim_player:
-		for clip_name in LOOPING_CLIPS:
-			if _anim_player.has_animation(clip_name):
-				_anim_player.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
+		_apply_loop_modes()
 		_anim_player.play("idle")
 		_current_clip = "idle"
 		_motion_clip = "idle"
@@ -533,6 +575,37 @@ func reset_pose() -> void:
 
 
 # ------------------------------------------------------------- internals --
+
+## Sets each clip's loop_mode once, at the source, rather than at any play()
+## call site -- the change-guard in set_motion() is correct and must stay, and
+## re-calling play() every physics frame to force a repeat would restart the
+## clip 60 times a second and look worse than the freeze it was meant to fix.
+##
+## SHARED RESOURCES: an imported .glb's Animations live in one AnimationLibrary
+## that PackedScene.instantiate() hands to every instance BY REFERENCE, so this
+## is mutating a resource other characters are also using
+## (tools/_probe_shared_anims.gd demonstrates it: two instances of
+## character-male-a.glb return the same Animation object, and setting
+## loop_mode on one is immediately visible on the other). That is safe here,
+## and deliberately so rather than by luck:
+##
+##   - The only .glb shared by two characters is character-male-a, used by the
+##     player and by Priya, and both are children who want walk to loop. Every
+##     entry above is a property of the CLIP, not of who is playing it.
+##   - The three .glbs do not share Animations with each other, so each
+##     character's own _ready() covers its own file.
+##   - Writing the same value repeatedly is idempotent, so N instances doing
+##     this N times is one effective write.
+##
+## The residual hazard, for whoever reads this next: the mutation lasts for the
+## process and is invisible to anything that loads these .glbs WITHOUT going
+## through this script. If a future character ever needs a non-looping walk,
+## this has to become a per-instance duplicate() rather than a shared write.
+func _apply_loop_modes() -> void:
+	for clip_name in LOOPING_CLIPS + HELD_POSE_CLIPS:
+		if _anim_player.has_animation(clip_name):
+			_anim_player.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
+
 
 ## The one place a clip name becomes a clip. Keeps the defensive fallback --
 ## a wrong name must never crash a child's afternoon -- but says so, with the
