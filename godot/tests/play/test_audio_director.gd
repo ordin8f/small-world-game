@@ -22,13 +22,14 @@ func test_start_episode_initializes_the_drone_and_oneshot_players() -> void:
 	await runner.simulate_frames(2)
 
 	Game.start_episode(0.0)
-	# chime player + step player + effect player (Gate 0: splash/whoosh) + 3 drones.
-	assert_int(AudioDirector.get_child_count()).is_equal(6)
+	# chime player + step player + effect player (Gate 0: splash/whoosh) +
+	# 3 drones + the music layer's 12 pad players and 4 melody players.
+	assert_int(AudioDirector.get_child_count()).is_equal(22)
 
 	# Calling start() again (Game.start_episode() on "Play again") must
 	# stay idempotent, not spawn a second set of players.
 	Game.start_episode(0.0)
-	assert_int(AudioDirector.get_child_count()).is_equal(6)
+	assert_int(AudioDirector.get_child_count()).is_equal(22)
 
 
 func test_dispatch_and_movement_drive_audio_without_error() -> void:

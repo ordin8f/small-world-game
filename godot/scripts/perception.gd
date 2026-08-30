@@ -113,6 +113,13 @@ func _physics_process(delta: float) -> void:
 	_base = _blend_moods(_mood_progress)
 	_imagination_strength = lerpf(_imagination_strength, _imagination_target, 1.0 - exp(-maxf(0.0, delta) * IMAGINATION_EASE))
 
+	# The music layer rides the same authored mood arc as the light, so the two
+	# can never disagree about where in the afternoon we are. Outside the player
+	# guard below, like the arc itself: the mood advances before the player
+	# exists, and the music's chord should already be settling toward dusk
+	# when a completed-once title card is showing it.
+	AudioDirector.set_music_mood(_mood_progress)
+
 	var player := Game.player
 	if is_instance_valid(player):
 		var p := player.global_position
