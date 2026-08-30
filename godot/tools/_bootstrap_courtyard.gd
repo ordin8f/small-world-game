@@ -538,9 +538,17 @@ func _path_run(root: Node3D, points: Array, width: float, color: Color = PATH, s
 ## than as a patch of bare dirt -- the same reading _build_garden_bed()'s
 ## own edging already carries by the home threshold, reused here so the
 ## park's beds and home's bed are visibly the same kind of object.
+##
+## Height and thickness come from WorldAffordances.PARK_BED_KERB_H/_T
+## rather than local literals: at least one of this bed's four sides is
+## also a WorldAffordances edge the balance verb mounts (see PARK_BEDS),
+## and a kerb built to its own separate number is exactly how this
+## project's slide/ride and bench/seat pairs drifted apart before -- was a
+## local KERB_H=0.26 here, 4 cm short of the 0.3 m the affordance would
+## have mounted a balancer to.
 func _planting_bed(root: Node3D, cx: float, cz: float, w: float, d: float, seed_index: int) -> void:
-	const KERB_H := 0.26
-	const KERB_T := 0.24
+	const KERB_H := WorldAffordances.PARK_BED_KERB_H
+	const KERB_T := WorldAffordances.PARK_BED_KERB_T
 	# BRICK straight is the home garden bed's own colour, authored for one
 	# 2.8 m bed seen up close on a shaded porch. Ten beds of it along a
 	# sunlit boundary came back as vivid terracotta stripes -- the loudest
@@ -697,14 +705,17 @@ func _build_park_ground(root: Node3D) -> void:
 	# both the watch and circle beats as a pair of dark troughs straddling
 	# the way in. They belong tucked against the gate piers at x=+-5.15,
 	# which is where a park actually plants them.
-	_planting_bed(root, -4.3, -5.1, 2.6, 1.5, 1)
-	_planting_bed(root, 4.3, -5.1, 2.6, 1.5, 2)
-	var bed_index := 3
-	for bed_x in [-16.0, -8.0, 0.0, 8.0, 16.0]:
-		_planting_bed(root, bed_x, -22.6, 5.2, 1.5, bed_index)
-		bed_index += 1
-	for bed_z in [-8.0, -13.5, -19.0]:
-		_planting_bed(root, -21.4, bed_z, 1.5, 4.2, bed_index)
+	#
+	# Driven from WorldAffordances.PARK_BEDS rather than these ten calls'
+	# own literals (2026-08-30, the "brick lane around each garden" pass):
+	# that table is also where the balance verb's mountable edges are
+	# derived FROM, so a bed's kerb and its edge are always the same
+	# rectangle and can't quietly disagree. Order (and so seed_index)
+	# unchanged: the two gate beds, five along the arcade, three down the
+	# hedge, same as when they were three separate literals/loops.
+	var bed_index := 1
+	for bed: Dictionary in WorldAffordances.PARK_BEDS:
+		_planting_bed(root, bed["cx"], bed["cz"], bed["w"], bed["d"], bed_index)
 		bed_index += 1
 
 

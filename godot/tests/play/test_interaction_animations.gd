@@ -551,7 +551,7 @@ func test_balancing_on_the_edging_holds_the_arms_out_and_drops_them_on_dismount(
 	# to +x at this z; calling _start_wall_dismount() directly instead would
 	# NOT work, because a dismount with no lean lands the child back inside
 	# the mount range and the very next ground tick re-mounts them.
-	player.set("_wall_offset_x", WorldAffordances.EDGING_HALF_WIDTH + 0.2)
+	player.set("_wall_offset", WorldAffordances.EDGING_HALF_WIDTH + 0.2)
 	await _wait_for_verb(runner, player, "GROUND", 120)
 	await runner.simulate_frames(SETTLE_FRAMES)
 	assert_str(visual.arm_pose_clip()) \

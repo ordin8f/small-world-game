@@ -102,7 +102,7 @@ func test_walking_onto_the_garden_edging_balances_slower_and_never_fails_to_step
 
 func test_walking_off_the_end_of_the_edging_dismounts_just_as_gently() -> void:
 	# The OTHER way off the edging -- not a deliberate sideways lean, but
-	# simply walking to where its one run (WorldAffordances.EDGING_SEGMENTS,
+	# simply walking to where its one run (WorldAffordances.HOME_BED_EDGE,
 	# z 10.45..13.65) runs out. Same non-punishing landing: no fail state,
 	# just the ground again.
 	var runner := scene_runner("res://scenes/player.tscn")
@@ -139,6 +139,61 @@ func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
 		await runner.simulate_frames(1)
 
 	assert_bool(player.verb == player.Verb.WALL_WALKING).is_true()
+
+
+## Proves the generalisation end-to-end, not just at the WorldAffordances
+## layer (test_world_affordances.gd's own
+## test_edging_generalises_to_an_edge_that_runs_along_x() checks the pure
+## geometry) -- mounting and balancing on a bed OTHER than the home
+## threshold one, whose edge runs along X rather than Z.
+## WorldAffordances.PARK_BEDS' (cx=0, cz=-22.6, w=5.2, d=1.5) "+z" side
+## (the arcade run's middle bed, lawn-facing side) puts its centreline at
+## z=-21.85, running x[-2.84, 2.84].
+func test_walking_onto_a_park_beds_edging_balances_along_x() -> void:
+	var runner := scene_runner("res://scenes/player.tscn")
+	var player: CharacterBody3D = runner.scene()
+	player.global_position = Vector3(0.0, 0.0, -21.6)  # inside EDGING_MOUNT_X_RANGE of z=-21.85
+
+	await runner.simulate_frames(2)
+	assert_int(player.verb).is_equal(player.Verb.WALL_MOUNTING)
+
+	var mounted := await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
+	assert_bool(mounted).is_true()
+	assert_float(player.global_position.y).is_equal_approx(WorldAffordances.EDGING_TOP_Y, 0.01)
+	# Snapped onto the CENTRELINE of this edge specifically (z=-21.85), not
+	# the home bed's (x=-3.7) -- proof _wall_edge_index picked the right one.
+	assert_float(player.global_position.z).is_equal_approx(-21.85, 0.01)
+
+	# Walk ALONG the run -- world +x, this edge's own tangent. Found the
+	# same way tests/helpers/drive.gd steers DriveRoute toward a
+	# world-space target: CameraProfile.input_direction() is its own
+	# inverse (see that helper's own doc comment), so feeding it the
+	# desired world direction hands back which keys reproduce it.
+	var yaw: float = CameraProfile.profile(player.global_position.z)["authored_yaw"]
+	var keys: Dictionary = DriveRoute._keys_for(Vector2(1.0, 0.0), yaw)
+	if keys["x"] == 1:
+		runner.simulate_action_press("move_right")
+	elif keys["x"] == -1:
+		runner.simulate_action_press("move_left")
+	if keys["z"] == 1:
+		runner.simulate_action_press("move_forward")
+	elif keys["z"] == -1:
+		runner.simulate_action_press("move_back")
+
+	var x_before: float = player.global_position.x
+	await runner.simulate_frames(20)
+	runner.simulate_action_release("move_right")
+	runner.simulate_action_release("move_left")
+	runner.simulate_action_release("move_forward")
+	runner.simulate_action_release("move_back")
+
+	var moved: float = absf(player.global_position.x - x_before)
+	assert_float(moved).is_greater(0.05)  # actually moved, along the run's own axis
+	assert_bool(player.verb == player.Verb.WALL_WALKING).is_true()  # still up there
+	# Drifted along X, not Z -- the tangent/normal split lined up with
+	# THIS edge's own orientation rather than defaulting to the home
+	# bed's (which would have moved z instead and likely dismounted).
+	assert_float(player.global_position.z).is_equal_approx(-21.85, WorldAffordances.EDGING_HALF_WIDTH)
 
 
 func _wait_for_verb(runner: GdUnitSceneRunner, player: CharacterBody3D, verb: int) -> bool:
