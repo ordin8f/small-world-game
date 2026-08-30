@@ -58,6 +58,7 @@ func _afternoon() -> Resource:
 	m.sun_from = Vector3(16.0, 10.0, 12.0)
 	m.sun_target = Vector3(0.0, 1.2, -2.0)
 	m.sun_volumetric_energy = 1.1
+	m.shadow_opacity = 0.55
 	m.fog_color = Color(0.76, 0.70, 0.59)
 	m.fog_begin = 22.0
 	m.fog_end = 120.0
@@ -86,6 +87,7 @@ func _golden() -> Resource:
 	m.sun_from = Vector3(18.0, 7.5, 8.0)
 	m.sun_target = Vector3(0.0, 1.1, -3.0)
 	m.sun_volumetric_energy = 1.6
+	m.shadow_opacity = 0.60
 	m.fog_color = Color(0.86, 0.71, 0.51)
 	m.fog_begin = 20.0
 	m.fog_end = 110.0
@@ -114,6 +116,7 @@ func _dusk() -> Resource:
 	m.sun_from = Vector3(20.0, 4.0, 3.5)
 	m.sun_target = Vector3(0.0, 1.0, -4.0)
 	m.sun_volumetric_energy = 1.3
+	m.shadow_opacity = 0.75
 	m.fog_color = Color(0.55, 0.46, 0.56)
 	m.fog_begin = 16.0
 	m.fog_end = 85.0

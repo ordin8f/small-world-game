@@ -220,6 +220,7 @@ func _apply(base: Resource, visuals: Dictionary) -> void:
 		sun.light_energy = base.sun_energy
 		sun.light_volumetric_fog_energy = base.sun_volumetric_energy
 		sun.shadow_enabled = true
+		sun.shadow_opacity = base.shadow_opacity
 		if not base.sun_from.is_equal_approx(base.sun_target):
 			sun.look_at_from_position(base.sun_from, base.sun_target, Vector3.UP)
 

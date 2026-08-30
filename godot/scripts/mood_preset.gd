@@ -38,6 +38,12 @@ extends Resource
 ## How strongly this sun feeds the volumetric fog -- this is what makes the
 ## visible light shafts in every concept panel.
 @export_range(0.0, 8.0, 0.05) var sun_volumetric_energy := 1.0
+## How much of the sun a shadow actually takes away. 1.0 is Godot's default and
+## means a shadowed surface gets none of it, lit only by ambient -- which is why
+## the shadows read as holes however high ambient goes. Below 1.0 the shadow
+## removes only part, so ambient is a floor the sun adds to rather than a
+## substitute for it, and lit surfaces keep their value while shadows come up.
+@export_range(0.0, 1.0, 0.01) var shadow_opacity := 1.0
 
 @export_group("Depth fog")
 @export var fog_color := Color(0.5, 0.5, 0.5)

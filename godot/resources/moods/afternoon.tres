@@ -12,6 +12,7 @@ sun_energy = 4.0
 sun_from = Vector3(16, 10, 12)
 sun_target = Vector3(0, 1.2, -2)
 sun_volumetric_energy = 1.1
+shadow_opacity = 0.55
 fog_color = Color(0.76, 0.7, 0.59, 1)
 fog_begin = 22.0
 fog_end = 120.0
