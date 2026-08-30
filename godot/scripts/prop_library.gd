@@ -56,12 +56,17 @@ const TOWN_DIR := "res://assets/kenney_town/"
 ## Kinds the world asks for that have no vendored model, listed so the gap is
 ## explicit rather than a typo silently falling back:
 ##   slide        -- deliberately NOT modelled, and no CC0 slide exists to
-##                   model it with. Its geometry is derived from
-##                   WorldAffordances.PLATFORM_TOP_Y and SLIDE_END so the
-##                   visual plank and the scripted ride can never drift apart
-##                   (see _slide_plank()); a stock model would break that
-##                   link, and the bed/rails it is built from are aligned to
-##                   those same two authored points instead.
+##                   model it with. Its bed and rails are built from
+##                   WorldAffordances.slide_surface_point(), the single
+##                   authored definition of the slide's top FACE, which
+##                   player.gd's ride also derives from; a stock model would
+##                   break that link. (This entry used to name PLATFORM_TOP_Y
+##                   and SLIDE_END and claim the two "can never drift apart".
+##                   They were different constants and they did drift --
+##                   world_affordances.gd's slide block has the measurements.
+##                   tests/play/test_slide_ride_on_the_plank.gd is what
+##                   actually holds the guarantee now, by measuring the ride
+##                   against the generated plank rather than asserting it.)
 ##   swing_frame  -- no CC0 playground kit exists on kenney.nl or
 ##                   quaternius.com; both catalogues were checked in full.
 ##                   The swing is also not this file's to change: it is its

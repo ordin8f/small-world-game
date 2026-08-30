@@ -90,7 +90,7 @@ func test_talking_to_priya_sends_her_walking_toward_the_slide() -> void:
 		await tree.physics_frame
 
 	var start_pos: Vector3 = priya.global_position
-	var start_dist_to_slide: float = start_pos.distance_to(WorldAffordances.CLIMB_TRIGGER)
+	var start_dist_to_slide: float = start_pos.distance_to(WorldAffordances.SLIDE_END)
 
 	Game.interact()
 	for _i in range(180):
@@ -98,7 +98,7 @@ func test_talking_to_priya_sends_her_walking_toward_the_slide() -> void:
 
 	var moved: float = priya.global_position.distance_to(start_pos)
 	assert_float(moved).is_greater(0.5)
-	assert_float(priya.global_position.distance_to(WorldAffordances.CLIMB_TRIGGER)).is_less(start_dist_to_slide)
+	assert_float(priya.global_position.distance_to(WorldAffordances.SLIDE_END)).is_less(start_dist_to_slide)
 
 
 func test_repeated_interacts_cycle_through_different_lines() -> void:

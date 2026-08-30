@@ -300,7 +300,13 @@ func interact() -> void:
 			_talk_timer = FOLLOW_SECONDS
 		"wander_to_slide":
 			_talking = true
-			_wander_target = WorldAffordances.CLIMB_TRIGGER
+			# The slide's own foot, where its riders land. This used to be
+			# CLIMB_TRIGGER, which was a fair stand-in while the climb
+			# trigger sat on the tower right beside the slide; as of
+			# 2026-08-30 the climb is a staircase up the tower's far flank,
+			# 4.6 m away, so "wander to the slide" would have sent this
+			# child to the stairs instead.
+			_wander_target = WorldAffordances.SLIDE_END
 			_talk_timer = WANDER_TIMEOUT_SECONDS
 
 

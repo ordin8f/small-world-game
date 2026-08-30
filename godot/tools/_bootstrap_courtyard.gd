@@ -13,6 +13,13 @@ extends SceneTree
 
 const ROUGHNESS := 0.92
 
+## The tower staircase's model (see _add_tower_stairs()). Kenney Fantasy Town
+## Kit, CC0, already vendored alongside its shared Textures/colormap.png
+## atlas -- tools/_check_asset_textures.gd is what guarantees that atlas
+## actually resolves rather than the model importing pure white, which is how
+## the roofs from this same kit shipped once.
+const STAIR_MODEL := "res://assets/kenney_town/stairs-wood-handrail.glb"
+
 
 func _init() -> void:
 	var root := Node3D.new()
@@ -130,7 +137,12 @@ func _apply_surface(mat: StandardMaterial3D, surface: String, color: Color) -> b
 
 # ------------------------------------------------------------- visual mesh --
 
-func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color: Color, rotation_rad: Vector3 = Vector3.ZERO, emissive: float = 0.0, surface: String = "") -> void:
+## `node_name` is optional and almost always left empty -- these are hundreds
+## of anonymous decorative shapes and naming them all would be noise. It
+## exists for the few that something else has to find by name afterwards:
+## today just the slide's bed, which tests/play/test_slide_ride_on_the_plank.gd
+## looks up in the built scene to measure the ride against.
+func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color: Color, rotation_rad: Vector3 = Vector3.ZERO, emissive: float = 0.0, surface: String = "", node_name: String = "") -> void:
 	var mesh: Mesh
 	match kind:
 		"cube":
@@ -174,6 +186,8 @@ func _mesh(root: Node3D, kind: String, position: Vector3, scale: Vector3, color:
 
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
+	if node_name != "":
+		instance.name = node_name
 	root.add_child(instance)
 	instance.owner = root
 	instance.position = position
@@ -272,7 +286,15 @@ func _build_static_world(root: Node3D) -> void:
 	# in a sightline is a placement problem, not a fact. It reads better
 	# here too: set back on the chalk circle's west side facing it, rather
 	# than floating in open ground halfway to the sandbox.
-	_kind(root, Vector3(-7.0, 0.0, -9.8), "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, 0.0, "Bench")
+	#
+	# 2026-08-30: position and facing now come from WorldAffordances rather
+	# than being repeated here, because the bench finally has an affordance
+	# on it (scripts/bench.gd's sit) and a WorldBounds collider, and all
+	# three have to agree about where it is and which way round it stands.
+	# It was drawn at rotation 0 -- facing the lane -- for as long as the
+	# comment above claimed it faced the circle; bench_yaw() makes that
+	# true instead of aspirational.
+	_kind(root, WorldAffordances.BENCH_POSITION, "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, WorldAffordances.bench_yaw(), "Bench")
 
 	# Trees flanking the lane's home-side mouth (concept_02's "narrow
 	# passage... light at the far end" reads better with something framing
@@ -751,20 +773,26 @@ func _build_playground(root: Node3D) -> void:
 				_mesh(root, "cylinder", Vector3(x + dx, 0.5, -12.8 + dz), Vector3(0.16, 3.8, 0.16), WOOD, Vector3.ZERO, 0.0, "wood")
 	_mesh(root, "cube", Vector3(0, 2.3, -12.8), Vector3(4.8, 0.25, 1.15), WOOD, Vector3.ZERO, 0.0, "wood")
 
-	# The slide. Scale diagnosis (DEMO_PLAN.md, 2026-08-29): the previous
-	# plank (a bare Vector3(-0.54,0,0)-tilted box) ran from ~2.3 m down to
-	# -0.4 m -- authored backwards (its high end sat further from the tower
-	# than its low end) and ending below the ground plane, so it never
-	# visually connected deck to ground from any angle. Rebuilt from the
-	# SAME two authored points WorldAffordances/player.gd already use for
-	# the scripted ride -- the tower deck's own south face (its top, at the
-	# footprint's edge) down to SLIDE_END (where the ride's launch hop
-	# lands) -- via _slide_plank() below, so the visual and the ride can
-	# never drift apart again: change PLATFORM_TOP_Y or SLIDE_END and this
-	# geometry follows.
-	var slide_top := Vector3(WorldAffordances.TOWER_X, WorldAffordances.PLATFORM_TOP_Y - 0.025, WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF)
-	var slide_bottom := Vector3(WorldAffordances.SLIDE_END.x, 0.05, WorldAffordances.SLIDE_END.z)
-	_slide_plank(root, slide_top, slide_bottom, 1.25, 0.18)
+	_add_tower_stairs(root)
+
+	# The slide, built from WorldAffordances' single authored definition of
+	# where its TOP SURFACE is (slide_surface_point(), which has the full
+	# history). The previous version of this comment claimed the visual and
+	# the ride "can never drift apart again" because both derived from the
+	# same constants. They did not: the plank ran deck-edge -> SLIDE_END at
+	# 50.0 degrees while the ride ran PLATFORM_STAND -> SLIDE_END at 46.8,
+	# starting 0.35 m up-slope of the plank and crossing through it on the
+	# way down -- and _slide_plank() centred the box on the line it was
+	# given, so the "surface" was another 0.09 m above it again. The
+	# developer caught all of it by playing.
+	#
+	# The fix is that there is now ONE line and both things hang off it:
+	# _slide_plank() takes the top FACE and drops the box below it, and
+	# player.gd rides slide_ride_position(), which is the same face plus the
+	# seat lift. Nothing here re-derives an endpoint.
+	var slide_top := WorldAffordances.slide_surface_point(0.0)
+	var slide_bottom := WorldAffordances.slide_surface_point(1.0)
+	_slide_plank(root, slide_top, slide_bottom, WorldAffordances.SLIDE_WIDTH, 0.18, "wood", "SlidePlank")
 
 	# Side rails. The developer has called the slide out twice as "not properly
 	# oriented"; the geometry was fixed to derive from the two authored points
@@ -785,9 +813,60 @@ func _build_playground(root: Node3D) -> void:
 	_mesh(root, "cube", slide_bottom + Vector3(0.0, 0.10, 0.28), Vector3(1.25, 0.30, 0.14), SLIDE, Vector3(deg_to_rad(-18.0), 0.0, 0.0), 0.0, "wood")
 
 
+## The left tower's staircase -- real, built access to the deck, so the slide
+## stops being the only visible way up (developer, 2026-08-30). Three flights
+## of Kenney's stairs-wood-handrail.glb up the tower's west flank; every
+## number comes from WorldAffordances' STAIR_* block, which has the
+## reasoning, so the meshes stand exactly where player.gd walks.
+##
+## There is no primitive fallback branch here, unlike the props that go
+## through _kind(). A staircase whose whole job is to be visibly climbable
+## cannot degrade to "three boxes"; if the model is switched off the ramp
+## below still gives the ascent something solid to be on, which is the part
+## that must not silently vanish.
+func _add_tower_stairs(root: Node3D) -> void:
+	var scale := WorldAffordances.STAIR_MODULE
+	for index in range(WorldAffordances.STAIR_FLIGHTS):
+		var origin := WorldAffordances.stair_flight_origin(index)
+		if AssetMode.resolve_detailed(STAIR_MODEL):
+			_prop(root, STAIR_MODEL, origin, scale, 0.0, "TowerStair%d" % index)
+		else:
+			# Primitive fallback: the flight's own wedge, as a stack of
+			# treads on the same 1x1 module the model occupies.
+			for step in range(4):
+				var t := (float(step) + 0.5) / 4.0
+				_mesh(root, "cube",
+					origin + Vector3((t - 0.5) * scale, t * scale * 0.5, 0.0),
+					Vector3(scale * 0.25, t * scale, scale * 0.5),
+					WOOD_LIGHT, Vector3.ZERO, 0.0, "wood")
+
+	# A stringer under the whole run: one continuous plank from the bottom
+	# step to the deck, along the same line stair_surface_y_at_x() ramps up.
+	# Without it three separate flights read as three floating objects from
+	# the side, which is exactly the angle the player approaches from.
+	var foot := Vector3(WorldAffordances.STAIR_FOOT_X, 0.0, WorldAffordances.STAIR_Z)
+	var head := Vector3(WorldAffordances.STAIR_TOP_X, WorldAffordances.PLATFORM_TOP_Y, WorldAffordances.STAIR_Z)
+	for side in [-1.0, 1.0]:
+		var offset := Vector3(0.0, 0.0, side * (WorldAffordances.STAIR_HALF_WIDTH - 0.06))
+		_stringer(root, foot + offset, head + offset, 0.1, 0.26)
+
+
+## A plank between two points that share a Z (the mirror of _slide_plank(),
+## whose two points share an X): the staircase runs along world X, so the
+## rotation that lines a box up with it is about Z rather than about X.
+func _stringer(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float) -> void:
+	var dy := to.y - from.y
+	var dx := to.x - from.x
+	var run_len := sqrt(dy * dy + dx * dx)
+	var theta := atan2(dy, dx)
+	var mid := (from + to) * 0.5 - Vector3(0.0, cos(theta) * thickness * 0.5, 0.0)
+	_mesh(root, "cube", mid, Vector3(run_len, thickness, width), WOOD, Vector3(0.0, 0.0, theta), 0.0, "wood")
+
+
 ## A plank parallel to the from->to run, shifted `lateral` metres sideways and
-## `up` metres clear of it. Delegates to _slide_plank() with shifted endpoints,
-## so a rail can never end up at a different angle from the bed it guards.
+## standing `up` metres proud of it. Delegates to _slide_plank() with shifted
+## endpoints, so a rail can never end up at a different angle from the bed it
+## guards.
 ##
 ## `up` is measured along the PLANK's own local up, not world Y. The run is
 ## tilted about X by theta, so its local up is (0, cos theta, sin theta);
@@ -795,21 +874,31 @@ func _build_playground(root: Node3D) -> void:
 ## bed's length as well as away from it, leaving it proud at the top and sunk
 ## at the bottom. `lateral` needs no such correction -- X is the rotation axis,
 ## so world X and the plank's local X are the same direction.
+##
+## Since _slide_plank() now takes a top FACE rather than a centreline, `up`
+## reads as "how far the rail stands above the bed you slide on", and a rail
+## `thickness` deeper than `up` hangs down alongside the bed's own underside
+## -- which is what the authored 0.16/0.34 pair does.
 func _slide_rail(root: Node3D, from: Vector3, to: Vector3, lateral: float, up: float, width: float, thickness: float) -> void:
 	var theta := atan2(-(to.y - from.y), to.z - from.z)
 	var offset := Vector3(lateral, cos(theta) * up, sin(theta) * up)
 	_slide_plank(root, from + offset, to + offset, width, thickness)
 
 
-## A plank between two world points that share an X (so the box's local Z
-## is the only axis that needs rotating away from world Z), tilted about
-## local X. `width` runs along local X, unrotated -- the slide's sideways
-## width; `thickness` is local Y before rotation, same parameter shapes
-## _mesh() itself uses. Verified against the ORIGINAL (broken) slide: this
-## formula, fed that plank's own two endpoints, reproduces its authored
-## Vector3(-0.54,0,0) rotation exactly -- so the fix here is purely the
-## two input points (deck edge to SLIDE_END, not two arbitrary floating
-## numbers), not a new rotation trick.
+## A plank hanging below the line from->to, both of which share an X (so the
+## box's local Z is the only axis that needs rotating away from world Z),
+## tilted about local X. `width` runs along local X, unrotated -- the slide's
+## sideways width; `thickness` is local Y before rotation, same parameter
+## shapes _mesh() itself uses.
+##
+## from->to is the plank's TOP FACE, not its centreline. That distinction is
+## the third of the three offsets that had the slide's rider inside the plank
+## instead of on it: a box centred on the line puts half its thickness above
+## it, so the surface the eye sees was 0.09 m above the surface the ride
+## used. Hanging the box below the line instead means "the line" and "the
+## thing you sit on" are the same place, which is what lets
+## WorldAffordances.slide_ride_position() be that line plus a seat lift and
+## nothing else.
 ##
 ## Textured, unlike the version before this pass. The slide was the ONLY large
 ## surface in the playground still carrying a bare palette colour -- the towers
@@ -817,13 +906,16 @@ func _slide_rail(root: Node3D, from: Vector3, to: Vector3, lateral: float, up: f
 ## SLIDE orange is exactly what read as untextured cardboard beside the
 ## vegetation once that had real models. It is painted wood like everything
 ## else the children climb on, so it takes the same surface.
-func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float, surface: String = "wood") -> void:
+func _slide_plank(root: Node3D, from: Vector3, to: Vector3, width: float, thickness: float, surface: String = "wood", node_name: String = "") -> void:
 	var dy := to.y - from.y
 	var dz := to.z - from.z
 	var run_len := sqrt(dy * dy + dz * dz)
 	var theta := atan2(-dy, dz)
-	var mid := (from + to) * 0.5
-	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0), 0.0, surface)
+	# Local up for a box rotated by theta about X, so the drop below the top
+	# face is taken perpendicular to the plank rather than straight down.
+	var local_up := Vector3(0.0, cos(theta), sin(theta))
+	var mid := (from + to) * 0.5 - local_up * (thickness * 0.5)
+	_mesh(root, "cube", mid, Vector3(width, thickness, run_len), SLIDE, Vector3(theta, 0.0, 0.0), 0.0, surface, node_name)
 
 
 ## GARDEN POCKET, through the wall gap: x[11,22] z[-16,-4] --

@@ -22,6 +22,7 @@
 [ext_resource type="PackedScene" path="res://scenes/pocket_treasure.tscn" id="20_ptrsr"]
 [ext_resource type="PackedScene" path="res://scenes/swing.tscn" id="21_swng0"]
 [ext_resource type="PackedScene" path="res://scenes/sandbox.tscn" id="22_sbox0"]
+[ext_resource type="PackedScene" path="res://scenes/bench.tscn" id="23_bnch0"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_dpsxx"]
 size = Vector2(2, 3)
@@ -117,3 +118,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0, -8.0)
 
 [node name="Sandbox" type="Node3D" parent="." unique_id=4004001 instance=ExtResource("22_sbox0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0, -8.0)
+
+[node name="BenchSeat" type="Node3D" parent="." unique_id=4005001 instance=ExtResource("23_bnch0")]

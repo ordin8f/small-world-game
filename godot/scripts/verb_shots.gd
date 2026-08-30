@@ -14,6 +14,15 @@ const SCENE_PATH := "res://scenes/main.tscn"
 const OUT_DIR := "user://verb_shots"
 const WARMUP_TICKS := 150
 
+## Fixed eye for the two slide-alignment frames. Close, level with the
+## middle of the run, and looking ACROSS it -- the play camera sits behind
+## the player and so points straight down the slide, which is the one angle
+## from which a rider sunk into the plank and a rider sitting on it look
+## exactly the same. That is why the 2026-08-30 misalignment survived both
+## the test suite and every screenshot beat until someone played it.
+const SLIDE_EYE := Vector3(2.8, 4.0, -9.8)
+const SLIDE_SUBJECT := Vector3(-3.4, 1.3, -10.5)
+
 var _runner: GdUnitSceneRunner = null
 var _main: Node = null
 var _player: Node3D = null
@@ -56,22 +65,63 @@ func _run() -> void:
 	for _i in range(WARMUP_TICKS):
 		await physics_frame
 
-	# --- 1. Tower: climb, stand on the platform, slide down ---------------
+	# --- 1. Tower: climb the stairs, stand on the platform, slide down ----
 	_player.global_position = WorldAffordances.CLIMB_TRIGGER
-	await _wait_ticks(18)  # partway up the rise -- ground and tower both read
+	await _wait_ticks(55)  # partway up the staircase -- stairs, ground and tower all read
 	await _capture("climbing")
+	# Side-on, so the question "are the child's feet on the treads or is
+	# this a lift up a blank face" is actually answerable from the frame.
+	await _capture_from("climbing_side_on", Vector3(-6.2, 2.8, -18.2), Vector3(-6.2, 1.45, -12.25))
 
-	await _wait_for_verb("ON_PLATFORM", 200)
+	await _wait_for_verb("ON_PLATFORM", 300)
 	await _capture("on_platform")
+	# The EMPTY slide from the exact eye the ride below is shot from. The
+	# pair is the diagnostic: the first frame shows where the plank's
+	# surface is, the second shows where the child is, and the tower's own
+	# cast shadow (which covers this whole run in most moods) cannot hide a
+	# discrepancy across both.
+	await _capture_from("slide_empty_side_on", SLIDE_EYE, SLIDE_SUBJECT)
 
 	_runner.simulate_action_press("move_back")
 	await _wait_for_verb("SLIDING", 60)
-	await _wait_ticks(42)  # late in the ride, close to the launch -- lower z
-	await _capture("sliding")  # means a closer APPROACH-leaning camera than mid-ride
+	# Mid-ride, side-on. THE frame for the 2026-08-30 alignment defect: from
+	# behind the player the slide is edge-on and a rider sunk into the plank
+	# looks identical to one sitting on it, which is exactly why the tests
+	# and the screenshots both missed it and the developer did not.
+	# (_capture() itself settles for 20 more ticks before grabbing, so these
+	# waits are ~20 short of where each frame actually lands: the ride is
+	# 1.3 s / 78 ticks, of which the first 64 are on the plank.)
+	await _wait_ticks(6)
+	# Grazing, from just in front of the foot looking back UP the run. The
+	# side-on pair below is partly blocked by the near rail (which is doing
+	# its job); this one puts the eye almost in the plane of the bed, so a
+	# rider sunk into it would have the surface cutting across them and one
+	# floating over it would show daylight underneath.
+	await _capture_from("sliding_up_slope", Vector3(-3.4, 0.55, -7.9), Vector3(-3.4, 2.2, -10.9))
+	await _capture_from("sliding_side_on", SLIDE_EYE, SLIDE_SUBJECT)
+	await _capture("sliding")  # late in the ride -- the play camera's own framing
 	await _wait_for_verb("GROUND", 200)
 	_runner.simulate_action_release("move_back")
 	await _wait_ticks(10)
 	await _capture("slide_landed")
+
+	# --- 1b. The tower as the player meets it -----------------------------
+	# Standing back on the approach: does a staircase read as an obvious way
+	# up from where a child actually stands, or does the slide still look
+	# like the only route?
+	_player.global_position = Vector3(-5.6, 0.0, -8.2)
+	await _wait_ticks(90)
+	await _capture("tower_approach")
+
+	# --- 1c. Sitting on the bench -----------------------------------------
+	_player.global_position = WorldAffordances.bench_stand_position()
+	await _wait_ticks(60)
+	_game.interact()
+	await _wait_ticks(40)
+	await _capture("bench_sitting")
+	await _capture_from("bench_sitting_close", Vector3(-4.6, 1.5, -8.2), Vector3(-7.0, 0.75, -9.8))
+	_game.interact()
+	await _wait_ticks(20)
 
 	# --- 2. Garden bed edging: mount and balance along the top -------------
 	# Balance verb moved off the tall boundary wall onto a low brick edging
@@ -165,6 +215,41 @@ func _wait_for_verb(verb_name: String, max_ticks: int) -> void:
 		if current == enum_value:
 			return
 		await physics_frame
+
+
+## A capture from a throwaway camera at a fixed spot instead of the play
+## camera. The play camera sits behind the player looking the way they face,
+## which is the one angle that CANNOT answer "is the child on the surface or
+## inside it" for either the slide or the stairs -- both run away from the
+## viewer there. Restores whatever camera was current afterwards, so the
+## route carries on unaffected.
+##
+## Carries its own fill light, which the ordinary beats above deliberately do
+## not. These frames are MEASUREMENTS, not art: the playground's tower casts
+## a hard shadow straight down the slide in most moods, and a black frame
+## answers nothing. The fill is local to this function and gone before the
+## next real beat, so nothing the art passes look at is touched by it.
+func _capture_from(beat_name: String, from: Vector3, look_at: Vector3) -> void:
+	var previous: Camera3D = get_root().get_viewport().get_camera_3d()
+	var cam := Camera3D.new()
+	cam.fov = 55.0
+	_main.add_child(cam)
+	cam.global_position = from
+	cam.look_at(look_at, Vector3.UP)
+	cam.current = true
+
+	var fill := OmniLight3D.new()
+	fill.omni_range = 30.0
+	fill.light_energy = 1.6
+	fill.shadow_enabled = false
+	_main.add_child(fill)
+	fill.global_position = from + Vector3(0.0, 1.5, 0.0)
+
+	await _capture(beat_name)
+	fill.queue_free()
+	cam.queue_free()
+	if is_instance_valid(previous):
+		previous.current = true
 
 
 func _capture(beat_name: String) -> void:

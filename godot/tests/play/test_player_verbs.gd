@@ -4,7 +4,13 @@ extends GdUnitTestSuite
 ## uses (no Game/episode dependency: these verbs trigger purely from
 ## world_affordances.gd position checks, not episode state).
 
-const MAX_TICKS := 300
+## Raised from 300 with the 2026-08-30 staircase: the ascent is now a walk up
+## three flights (CLIMB_RISE_SECONDS 0.85 -> 1.9) rather than a rise up a
+## blank face, so the climb alone is ~2.4 s. gdUnit4's simulate_frames()
+## steps IDLE frames, which do not map 1:1 onto physics ticks under load, so
+## the old ceiling sat close enough to the requirement to fail in a full-suite
+## run while passing when this file ran alone.
+const MAX_TICKS := 900
 
 
 func test_walking_into_the_tower_climbs_slides_and_lands_back_on_the_ground() -> void:
