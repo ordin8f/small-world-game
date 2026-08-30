@@ -4,19 +4,57 @@ extends GdUnitTestSuite
 ## the same geometry queries player.gd/stepping_stones.gd/puddles.gd call
 ## into every physics tick.
 
-func test_climb_trigger_is_just_outside_the_tower_footprint() -> void:
-	assert_bool(WorldAffordances.near_climb_trigger(-3.4, -11.0)).is_true()
-	# In the lane, nowhere near the (relocated) tower.
+## Moved 2026-08-30, from a blank tower face to the foot of the staircase
+## that now exists -- see WorldAffordances' STAIR_* block. The geometry of
+## the staircase itself is checked against the BUILT scene in
+## tests/play/test_tower_stairs.gd; these are the reachability facts a pure
+## query can answer.
+func test_climb_trigger_sits_at_the_foot_of_the_stairs() -> void:
+	assert_bool(WorldAffordances.near_climb_trigger(WorldAffordances.CLIMB_TRIGGER.x, WorldAffordances.STAIR_Z)).is_true()
+	# In the lane, nowhere near the tower.
 	assert_bool(WorldAffordances.near_climb_trigger(0.0, 0.0)).is_false()
+	# ...and no longer at the tower's south face, where the SLIDE now has
+	# sole use of the approach: walking up to the slide's foot must not
+	# teleport the player to the top of it.
+	assert_bool(WorldAffordances.near_climb_trigger(-3.4, -11.0)).is_false()
+
+
+## The trigger is useless if the collider for the thing it belongs to stops
+## the player before they reach it. This is the check that would have caught
+## the staircase collider being authored a few centimetres too wide.
+func test_the_climb_trigger_is_actually_standable_ground() -> void:
+	assert_bool(WorldBounds.can_move_to(WorldAffordances.CLIMB_TRIGGER.x, WorldAffordances.CLIMB_TRIGGER.z)).is_true()
 
 
 func test_platform_stand_sits_on_top_of_the_deck() -> void:
 	assert_float(WorldAffordances.PLATFORM_STAND.y).is_equal_approx(WorldAffordances.PLATFORM_TOP_Y, 0.001)
+	# On the deck's own footprint, both axes.
+	assert_float(absf(WorldAffordances.PLATFORM_STAND.x - WorldAffordances.TOWER_X)).is_less(WorldAffordances.TOWER_FOOTPRINT_HALF)
+	assert_float(absf(WorldAffordances.PLATFORM_STAND.z - WorldAffordances.TOWER_Z)).is_less(WorldAffordances.TOWER_FOOTPRINT_HALF)
 
 
-func test_slide_descends_from_platform_to_the_ground() -> void:
-	assert_float(WorldAffordances.SLIDE_START.y).is_greater(WorldAffordances.SLIDE_END.y)
+func test_slide_descends_from_the_deck_edge_to_the_ground() -> void:
+	assert_float(WorldAffordances.SLIDE_SURFACE_TOP.y).is_equal_approx(WorldAffordances.PLATFORM_TOP_Y, 0.001)
+	assert_float(WorldAffordances.SLIDE_SURFACE_TOP.y).is_greater(WorldAffordances.SLIDE_SURFACE_FOOT.y)
 	assert_float(WorldAffordances.SLIDE_END.y).is_equal_approx(0.0, 0.001)
+	# Lands clear of the tower's own collider footprint, out in the open.
+	assert_float(WorldAffordances.SLIDE_END.z).is_greater(WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF)
+	assert_bool(WorldBounds.can_move_to(WorldAffordances.SLIDE_END.x, WorldAffordances.SLIDE_END.z)).is_true()
+
+
+## The deck's south edge is 2.7 m wide and the slide's mouth is 1.25 of it.
+## Stepping off the edge anywhere else used to start the ride and snap the
+## child up to a metre sideways onto the plank.
+func test_only_the_slides_own_mouth_starts_the_ride() -> void:
+	var edge: float = WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF - 0.1
+	assert_bool(WorldAffordances.at_slide_mouth(WorldAffordances.TOWER_X, edge)).is_true()
+	assert_bool(WorldAffordances.at_slide_mouth(WorldAffordances.TOWER_X - 1.2, edge)).is_false()
+	assert_bool(WorldAffordances.at_slide_mouth(WorldAffordances.TOWER_X + 1.2, edge)).is_false()
+	# Middle of the deck, nowhere near the edge.
+	assert_bool(WorldAffordances.at_slide_mouth(WorldAffordances.TOWER_X, WorldAffordances.TOWER_Z)).is_false()
+	# ...and walking straight off the stairs' arrival point reaches it, so
+	# the deck is never a place the player can get stuck standing on.
+	assert_bool(WorldAffordances.at_slide_mouth(WorldAffordances.PLATFORM_STAND.x, edge)).is_true()
 
 
 ## Balance verb moved off the tall playground/garden-pocket boundary wall

@@ -163,6 +163,28 @@ const COLLIDERS := [
 	# relocated -- WorldAffordances.TOWER_X/TOWER_Z mirror these).
 	{"x": -3.4, "z": -12.8, "half_x": 1.35, "half_z": 1.35},
 	{"x": 3.4, "z": -12.8, "half_x": 1.35, "half_z": 1.35},
+	# The left tower's staircase (2026-08-30), against its west flank --
+	# WorldAffordances' STAIR_* block has the derivation and the reason it
+	# is on that side. Spans STAIR_FOOT_X (-7.644) to STAIR_TOP_X (-4.75),
+	# so its east face abuts the tower entry above with no sliver between
+	# them, and 0.6 m deep about STAIR_Z. camera_blocks stays false: it is
+	# a 0.5 m-wide open stair with a handrail, not a wall, and the spring
+	# arm has the tower itself right beside it to stop against.
+	#
+	# The climb trigger sits 0.4 m off the WEST end of this box, which is
+	# the only side it can be reached from -- walk into the foot of the
+	# stairs and you go up; walk into their flank and you bump a solid
+	# object, same as any other prop with a footprint.
+	{"x": -6.197, "z": -12.25, "half_x": 1.447, "half_z": 0.3},
+	# The park bench (2026-08-30). It had no entry here at all, so it was
+	# scenery the player walked through -- the developer's first defect.
+	# Derived from WorldAffordances.BENCH_POSITION/bench_yaw(): the model
+	# is 2.0 m wide and 1.317 m deep about a centre 0.0585 m behind its
+	# origin (measured, tools/_probe_prop_bounds.gd), rotated 1.741 rad to
+	# face the chalk circle, so the axis-aligned box that contains it is
+	# 1.0*|cos| + 0.659*|sin| = 0.818 in x and 1.0*|sin| + 0.659*|cos| =
+	# 1.097 in z, about (-7.058, -9.790).
+	{"x": -7.058, "z": -9.79, "half_x": 0.82, "half_z": 1.1},
 	# Trees flanking the lane's home-side mouth (only one of the two
 	# matching visual trees gets a collider, same asymmetry the old
 	# single-room version had for its own near-home trees).

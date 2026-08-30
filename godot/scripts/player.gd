@@ -59,11 +59,9 @@ var walk_cycle: float = 0.0
 enum Verb { GROUND, CLIMBING, ON_PLATFORM, SLIDING, WALL_MOUNTING, WALL_WALKING, WALL_DISMOUNT }
 var verb: Verb = Verb.GROUND
 
-const CLIMB_RISE_SECONDS := 0.85   ## phase 1: straight up the tower's outer face
-const CLIMB_STEP_SECONDS := 0.45   ## phase 2: step in over the deck edge
+const CLIMB_RISE_SECONDS := 1.9    ## phase 1: up the staircase against the tower's west flank
+const CLIMB_STEP_SECONDS := 0.45   ## phase 2: step in from the top tread onto the deck
 const SLIDE_SECONDS := 1.3
-const SLIDE_RIDE_FRACTION := 0.82  ## fraction of SLIDE_SECONDS spent riding vs. launching
-const SLIDE_LAUNCH_HEIGHT := 0.4   ## the "small launch at the bottom" the brief asks for
 const WALL_MOUNT_SECONDS := 0.3
 const WALL_WALK_SPEED := 1.35      ## slower than walk_speed -- precarious, not punishing
 const WALL_LEAN_SPEED := 0.55      ## m/s the player can drift sideways off the centerline
@@ -225,42 +223,56 @@ func _start_climb() -> void:
 	verb = Verb.CLIMBING
 	_verb_time = 0.0
 	velocity = Vector3.ZERO
-	moving = false
-	character_visual.set_motion(false, false)
+	# The whole point of the 2026-08-30 pass is that the ascent reads as
+	# climbing rather than teleporting, and the cheapest half of that is
+	# simply keeping the walk cycle running the whole way up instead of
+	# gliding a frozen idle pose along a line.
+	moving = true
+	character_visual.set_motion(true, false)
 
 
-## Two-phase scripted rise: straight up alongside the tower's outer face
-## (clear of its collider footprint, WorldBounds.COLLIDERS' {-3.4,-5.6}
-## entry) and only then in over the deck edge -- a straight-line lerp from
-## the ground trigger straight to the inset platform stand point would
-## carry the player, at low height, straight through the tower's own solid
-## box collider (0.05..2.45m tall) for most of the move.
+## Two-phase scripted ascent, walking the staircase _bootstrap_courtyard.gd
+## builds up the tower's WEST flank: along it at a constant rate (feet on
+## the treads, because the height comes from
+## WorldAffordances.stair_surface_y_at_x() -- the same ramp the meshes are
+## placed on), then a step in from the top tread onto the deck.
+##
+## Before this the "climb" ran straight up a blank south face on the tower's
+## own outer edge with nothing built there at all. That was invisible, so
+## the slide looked like the only route up, and it read as a lift rather
+## than a climb. Constant rate rather than the old eased rise for the same
+## reason: a child walks up steps, they do not accelerate off the ground.
 func _process_climb(delta: float) -> void:
 	_verb_time += delta
 	if _verb_time <= CLIMB_RISE_SECONDS:
-		var eased := 1.0 - pow(1.0 - clampf(_verb_time / CLIMB_RISE_SECONDS, 0.0, 1.0), 2.0)
-		global_position = Vector3(
-			WorldAffordances.CLIMB_TRIGGER.x,
-			lerpf(0.0, WorldAffordances.PLATFORM_TOP_Y + 0.05, eased),
-			WorldAffordances.CLIMB_TRIGGER.z,
-		)
+		var t := clampf(_verb_time / CLIMB_RISE_SECONDS, 0.0, 1.0)
+		var x := lerpf(WorldAffordances.CLIMB_TRIGGER.x, WorldAffordances.CLIMB_TOP.x, t)
+		global_position = Vector3(x, WorldAffordances.stair_surface_y_at_x(x), WorldAffordances.STAIR_Z)
+		# Facing along the climb (+x, up the stairs) -- same "heading chases
+		# movement" convention the baseline walk uses.
+		heading += _angle_delta(-PI * 0.5, heading) * minf(1.0, delta * 6.0)
+		rotation.y = heading
+		walk_cycle += delta * 7.0
 		return
 
 	var step_t := clampf((_verb_time - CLIMB_RISE_SECONDS) / CLIMB_STEP_SECONDS, 0.0, 1.0)
-	global_position = Vector3(
-		WorldAffordances.TOWER_X,
-		lerpf(WorldAffordances.PLATFORM_TOP_Y + 0.05, WorldAffordances.PLATFORM_TOP_Y, step_t),
-		lerpf(WorldAffordances.CLIMB_TRIGGER.z, WorldAffordances.PLATFORM_STAND.z, step_t),
-	)
+	global_position = WorldAffordances.CLIMB_TOP.lerp(WorldAffordances.PLATFORM_STAND, step_t)
+	walk_cycle += delta * 7.0
 	if step_t >= 1.0:
 		verb = Verb.ON_PLATFORM
+		moving = false
+		character_visual.set_motion(false, false)
 
 
 ## A small free-roam state on the tower deck -- there is no collider up
 ## there (the platform is render-only, see _bootstrap_courtyard.gd), so
 ## this hand-clamps the player to its footprint instead of calling
-## move_and_slide(). Walking to the south edge (toward the slide, away
-## from the tower's own footprint centre) launches the slide.
+## move_and_slide(). Walking off the SLIDE'S OWN MOUTH -- not just anywhere
+## along the south edge -- launches the slide: see
+## WorldAffordances.at_slide_mouth(). The z clamp stops exactly at the deck
+## edge for the same reason, since the old 0.3 m of overhang past it only
+## existed to make the "any part of the south edge" trigger reachable, and
+## with the trigger narrowed it would just be somewhere to stand in the air.
 func _process_on_platform(delta: float) -> void:
 	var input_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	var input_z := Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
@@ -274,7 +286,7 @@ func _process_on_platform(delta: float) -> void:
 		var direction := CameraProfile.input_direction(input_x, input_z, yaw)
 		var half := WorldAffordances.TOWER_FOOTPRINT_HALF - 0.2
 		global_position.x = clampf(global_position.x + direction["x"] * walk_speed * delta, WorldAffordances.TOWER_X - half, WorldAffordances.TOWER_X + half)
-		global_position.z = clampf(global_position.z + direction["z"] * walk_speed * delta, WorldAffordances.TOWER_Z - half, WorldAffordances.TOWER_Z + half + 0.3)
+		global_position.z = clampf(global_position.z + direction["z"] * walk_speed * delta, WorldAffordances.TOWER_Z - half, WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF - 0.05)
 
 		var target_heading := atan2(-direction["x"], -direction["z"])
 		heading += _angle_delta(target_heading, heading) * minf(1.0, delta * 10.0)
@@ -284,7 +296,7 @@ func _process_on_platform(delta: float) -> void:
 
 	global_position.y = WorldAffordances.PLATFORM_TOP_Y
 
-	if global_position.z > WorldAffordances.TOWER_Z + WorldAffordances.TOWER_FOOTPRINT_HALF - 0.15:
+	if WorldAffordances.at_slide_mouth(global_position.x, global_position.z):
 		_start_slide()
 
 
@@ -299,30 +311,22 @@ func _start_slide() -> void:
 	AudioDirector.play_slide_whoosh()
 
 
-## Rides WorldAffordances' authored curve: an accelerating descent
-## (SLIDE_RIDE_FRACTION of the total time) then a short forward launch hop
-## (the remainder) that lands exactly on SLIDE_END -- "accelerate down, a
-## small launch at the bottom" per the brief. Bypasses move_and_slide()
-## the same way ball.gd's flight tween bypasses physics for the ball:
-## this is a scripted beat, not free movement.
+## Rides WorldAffordances.slide_ride_position() -- the slide's own top
+## surface plus the seat lift, accelerating down it and then hopping off the
+## foot onto SLIDE_END ("accelerate down, a small launch at the bottom" per
+## the brief). The whole path lives in that pure function rather than here,
+## because it has to be the SAME path the plank is built from and the same
+## one tests/play/test_slide_ride_on_the_plank.gd samples; this version of
+## the loop reconstructed its own curve from a start point, an end point and
+## a hand-tuned mid-height (0.35), and none of the three agreed with the
+## plank the player could see.
+##
+## Bypasses move_and_slide() the same way ball.gd's flight tween bypasses
+## physics for the ball: this is a scripted beat, not free movement.
 func _process_slide(delta: float) -> void:
 	_verb_time += delta
 	var t := clampf(_verb_time / SLIDE_SECONDS, 0.0, 1.0)
-	var start: Vector3 = WorldAffordances.SLIDE_START
-	var end: Vector3 = WorldAffordances.SLIDE_END
-	var ride_end := Vector3(start.x, 0.35, lerpf(start.z, end.z, SLIDE_RIDE_FRACTION * 0.94))
-
-	if t < SLIDE_RIDE_FRACTION:
-		var rt := t / SLIDE_RIDE_FRACTION
-		global_position = start.lerp(ride_end, rt * rt)  # accelerating, not linear
-	else:
-		var lt := (t - SLIDE_RIDE_FRACTION) / (1.0 - SLIDE_RIDE_FRACTION)
-		var hop := sin(lt * PI) * SLIDE_LAUNCH_HEIGHT
-		global_position = Vector3(
-			start.x,
-			lerpf(ride_end.y, 0.0, lt) + hop,
-			lerpf(ride_end.z, end.z, lt),
-		)
+	global_position = WorldAffordances.slide_ride_position(t)
 
 	# Face the direction of travel throughout (down and out, +z here) --
 	# same "heading chases movement" convention the baseline uses.
@@ -331,7 +335,7 @@ func _process_slide(delta: float) -> void:
 
 	if t >= 1.0:
 		verb = Verb.GROUND
-		global_position = end
+		global_position = WorldAffordances.SLIDE_END
 
 
 # ----------------------------------------------------------- garden edging --
