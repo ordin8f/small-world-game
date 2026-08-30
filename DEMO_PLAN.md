@@ -489,3 +489,168 @@ Recorded so it is not re-chased: the camera now sits ~6 cm above the top face of
 the lane's wide invisible flank. Non-camera-blocking colliders are 2.4 m tall by
 the generator's own height rule, so an all-layers raycast finds it while
 SpringArm3D and the rendered frame — which only care about layer 2 — do not.
+
+## Ground, light, camera, sound, and a name, 2026-08-30
+
+### The child was standing in the floor
+
+The park pass laid ground as thin slabs stacked *upward* from the walking
+plane (lawn 0.02, paving 0.05, bark 0.07) to keep coplanar layers from
+z-fighting. `player.gd` locks the child's Y with no terrain-follow, so the
+walking plane is not one height among several — it is THE height, and the
+child wades: 2 cm on the lawn, 7 cm in the bark pit under the swing and
+sandbox, where the camera sits closest. Same defect family, third instance in
+two days, this time spread over 900 m². Fix compresses the stack *downward*
+instead — same order, same overlap semantics, everything now at or under the
+child's feet. `test_ground_datum.gd` measures the built scene rather than the
+constants (a literal top passed to `_ground()` is invisible to a
+constants-only check); it took three broken attempts to get it to measure
+anything — `global_transform` read zero outside the tree, an unnormalised
+flatness check choked on the node's own scale, and `add_child()` silently
+dropped 51 tagged slabs to 2 because a sibling already held the name.
+Mutation-verified both directions. 142 tests green (was 134).
+
+Two more instances of the same root cause, found in review: the bench-seat
+test compared a world-space height to a model-local constant and passed at
+0.71 > 0.5 while the bench floated half a metre; and a doc comment claiming
+the park benches "face backwards" was flat wrong (measured on the mesh, they
+face +Z) even though the three tuned yaw literals were correct regardless —
+the comment could not hold the invariant the numbers already did. Both are
+now pinned by measurements against the built mesh, not against a comment or
+a same-function round-trip.
+
+The chalk ring got its own probe (`_probe_chalk.gd`, since removed — the
+question it answered is now settled and recorded here) because three
+readings were in dispute: a flat 2.7 mm mark, a 9 cm hoop, a 26 mm ring.
+Measured: 26 mm, floating 117 mm above the paving before the re-datum. It
+now lies flat on the stone, which is what the mesh's own doc comment already
+said a chalk ring wants to be.
+
+### The animation loop bug: measured, not guessed
+
+None of the 32 character clips looped. Godot's glTF importer defaults every
+clip to `LOOP_NONE` unless its name carries a `-loop`/`-cycle` suffix;
+Kenney's don't, and nothing set `loop_mode`. `set_motion()`'s change-guard
+(`if clip == _current_clip: return`) meant `walk` played once, ran 0.67 s,
+and froze on its last frame while the child kept sliding — same bug on
+`idle` and `sprint`, hidden on `idle` because its last frame looks like
+standing.
+
+Guessing which clips should loop from their names would have reintroduced
+the same bug in a new place: `pick-up` ends 0.23 quaternion distance from
+its start frame and `die` 0.35 — looping either snaps visibly.
+`_probe_cycles.gd` (also since removed) sampled every rotation track and
+classified each clip as a genuine cycle, a measurably-static held pose, or
+an event; only cycles get `loop_mode`. The held-pose set is kept separate
+from the looping set rather than folded in, so a test asserting those loop
+isn't mistaken for coverage of the walk-freeze bug — flipping any of them
+back to `LOOP_NONE` changes nothing on screen. `character_visual.gd` now
+carries this reasoning permanently in its own doc comments, alongside the
+adjacent finding that an imported `AnimationLibrary`'s clips are shared
+sub-resources across every instance of the same `.glb` (Player and Priya
+both use `character-male-a.glb`), so `loop_mode` is set once at the source
+rather than per-instance.
+
+### Shadow floor: two rounds to get the reading right
+
+Developer: *"The darkness is a bit too much - and hard to see anything in
+there."* Four settings were compounding, none wrong alone — ambient 0.34,
+exposure 0.80, contrast 1.28, SSAO 1.6 — and together the foreground of
+every frame went near-black. Round one raised the floor (ambient → 0.75,
+exposure → 0.95, contrast → 1.14, SSAO → 1.0, per mood) and verified with a
+new tool, `tools/_survey_light.gd`, which walks the player across the whole
+park on a grid and renders the real frame at each stop instead of trusting
+six route beats — the same reasoning as `_probe_camera_sweep.gd` below.
+79 positions, median luminance 0.460, nothing under the readability floor.
+
+The developer's second note was about method, not the bug: *"You haven't
+explored the entire play area."* Round two found why the pass still read as
+too dark in play: `DirectionalLight3D.shadow_opacity` had never been set, so
+it sat at Godot's default of 1.0 — a shadowed surface gets *none* of the
+sun, lit by ambient alone, which is why raising ambient alone washes out
+the lit surfaces before the shadows come up far enough to read. Below 1.0,
+shadow removes only part of the sun's contribution, so ambient becomes a
+floor the sun adds to rather than a substitute for it — set per mood
+(afternoon 0.55, golden 0.60, dusk 0.75).
+
+Recorded rather than glossed over: the round-one survey's "0 of 79 failing"
+was true of only the western third of the park. `DriveRoute` cannot steer
+the player around the narrow garden-gap opening, so every sweep built on it
+silently omits everything east of it. A pass rate over unknown coverage is
+not a pass — this is now written into the survey's own output rather than
+left to be re-discovered.
+
+### Camera: coverage, then fit, then turn
+
+Four prior rounds had measured the same six screenshot beats and closed
+with the developer still finding faults by walking around. `tools/
+_probe_camera_sweep.gd` floods the walkable plane with the real physics
+world and the player's real capsule (3,610 standing positions, 0.5 m
+spacing) and drives the real camera rig through a 29-leg route, 5,043
+ticks — coverage first, not a fix. It found the child hidden behind
+geometry in 12.4% of cells (27% of the southern park), out of frame in
+8.5%, and the camera collapsing to under 0.35× its authored distance in
+15.5% — because `SpringArm3D` shortens its whole arm on collision, so
+height collapses in proportion with distance and a 10.5 m/2.6 m shot became
+1.5 m/1.3 m at the child's own head height wherever the park's north wall
+stood behind the player.
+
+Fix: `camera_rig.gd` measures the room behind the player *before* building
+the desired position and fits horizontal reach to it while keeping the
+authored height, so the camera climbs as it's pushed in instead of
+collapsing. `REVEAL`'s distance/height/lead were retuned for the park's
+actual footprint (10.5→7.5 m, 2.6→3.2 m, 1.2→0.8 m). Hidden cells 449→190,
+out-of-frame 306→0, worst single-tick jump 6.77 m→2.65 m.
+
+A second round let the shot turn off a wall it's pinned against, when
+turning genuinely helps, scored against the sweep's own metrics (wall share
+of frame, window openness, room the turn leaves unused). It engages on 26%
+of cells with a median turn of 0° in five of six regions — the authored
+framing survives almost everywhere, which is the point of the engagement
+gate; without it, an earlier version turned 84.5% of the time and won
+nothing. The first version of this shipped a real regression, caught by
+playing rather than by the metrics: at the park's west edge the turn bought
+better distance/height/clearance by aiming *into* a corner and losing the
+child from frame entirely. `ORBIT_VIEW_TOLERANCE` now prices that trade —
+the turn may not surrender the frame's own reach to gain the other terms —
+and the obvious-looking alternative fix (collider the offending canopy
+tree) was checked and rejected: that tree's collider is deliberately
+undersized so the crown doesn't wall the player out of its own shade.
+
+### Music and sound
+
+Background music is synthesised in `audio_director.gd`, not vendored audio,
+so it can ride the same mood arc `perception.gd` already drives for light:
+a relative-key pivot from C major add9 in the afternoon to A minor 9 at
+dusk, common tones held across the change so it reads as light shifting
+rather than a key change, with sparse music-box phrases on top. Measured at
+-56.5 dBFS RMS, comfortably under the ambience drones and the interaction
+chimes so nothing competes for attention. A second pass sounded the three
+interactions that had stayed silent (the tower climb, the bench, the ball
+handback to the other children, which gets its own distinct "welcome" cue
+as DEMO_PLAN's emotional peak of the demo) after auditing that everything
+else was already wired up. The new measurement tooling (`tools/
+_probe_oneshots.gd`) caught a real click on the bench's creak layer before
+it shipped — a 4 ms attack ramp fixed it.
+
+### The rename to Carefree
+
+The game was "Small World — The Lost Ball"; it is now **Carefree**, with
+"The Lost Ball" kept as the name of this episode — the title card reads
+CAREFREE over "The Lost Ball", the same series-over-episode hierarchy as
+before. Renamed everywhere the game is identified as a product:
+`project.godot`, `export_presets.cfg`, the title card and its generator,
+the playtest-feedback header, and the web prototype's page title/
+description/package name. Deliberately not renamed: internal identifiers
+(`small_world/assets/use_detailed`, `window.__SMALL_WORLD__`) that have no
+user-visible benefit and a real chance of breaking the smoke-test hook, and
+the archived docs, which are a record of what was decided when.
+
+**The pattern, again.** Three more defects this session hid behind a
+passing check for the same reason as the ones logged 2026-08-29: a
+constants-only ground test that never asked what the built scene actually
+measured, a bench-seat comparison of a world height against a model-local
+one, and a camera fix that scored better on every metric it was graded
+against while losing the one thing — the child in frame — that the metrics
+never asked about. See [[tests-that-measure-the-wrong-thing]]: name the
+mutation, then run it.
