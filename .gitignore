@@ -14,5 +14,6 @@ src/game.bundle.js
 godot/.godot/
 godot/build/
 godot/reports/
+godot/**/*.import~*.TMP
 
 build/
