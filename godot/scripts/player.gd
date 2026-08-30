@@ -25,7 +25,13 @@ extends CharacterBody3D
 
 @export var walk_speed: float = 2.65
 @export var run_speed: float = 4.1
-@export var locked_y: float = 0.0
+## The one height the child ever stands at -- there is no gravity and no
+## terrain-follow, so this is the world's walking plane, not a starting
+## value. Derived from WorldAffordances rather than written as 0.0 so it is
+## visibly the same number the ground layers are laid under: the park pass
+## stacked those upward from it (plaza +5 cm, bark pit +7 cm, chalk circle
+## +8.5 cm) and the child ended up wading through the park.
+@export var locked_y: float = WorldAffordances.WALK_PLANE_Y
 
 ## The doorway threshold, not the world origin -- inside the home porch
 ## (world_bounds.gd's HOME room, x[-7,7] z[8,16]), 4 m short of the

@@ -14,6 +14,52 @@ extends RefCounted
 ## own literals (see each section), not eyeballed separately, so a future
 ## change to the level has one obvious place to follow.
 
+# --------------------------------------------------------- ground layers --
+## The walking plane, and the stack of ground patches laid on it.
+##
+## player.gd locks the child's Y here and there is no terrain-follow, so
+## this is not one height among several: it is THE height, and every
+## walkable surface has to sit at or a hair BELOW it. Anything above it is
+## ground the child wades through.
+##
+## The 2026-08-30 park pass introduced a layered stack -- lawn < paving <
+## bark < soil < chalk, each a flat slab laid over the base plane, so
+## patches overlap freely and the later, more specific one simply wins with
+## no seams to keep in sync. That layering is good and is kept exactly.
+## What was wrong was the SPACING: authored at 0.02 .. 0.13, it stood the
+## plaza 5 cm and the bark pit 7 cm above the child's feet (7 cm is
+## ankle-deep on a 1.2 m child, and the bark is under the swing and the
+## sandbox, where the camera is closest), and it floated the chalk circle
+## -- the mark the objective text and Arun's line both name -- as a hoop
+## 8.5 cm off the ground at the exact spot the story happens.
+##
+## The only thing that spacing has to defeat is coplanar z-fighting, and
+## with a reverse-Z depth buffer a millimetre or two does that at these
+## distances. So the stack is compressed DOWNWARD from the walking plane
+## rather than stacked upward off it: same order, same overlap semantics,
+## every top now at or under the child's feet and the largest error a
+## centimetre.
+##
+## These live here rather than in _bootstrap_courtyard.gd because they are
+## a fact about where the player stands, not about how the world is drawn:
+## player.gd's locked_y, WorldBounds' colliders and the generator's slabs
+## all have to agree, and the generator is a one-shot tool no test can
+## import.
+const WALK_PLANE_Y := 0.0
+## Enough to break coplanarity on a 45 m plane, small enough to be invisible.
+const SURFACE_STEP := 0.0025
+const Y_CHALK := WALK_PLANE_Y
+const Y_SOIL := WALK_PLANE_Y - SURFACE_STEP
+const Y_BARK := WALK_PLANE_Y - SURFACE_STEP * 2.0
+const Y_PAVING := WALK_PLANE_Y - SURFACE_STEP * 3.0
+const Y_LAWN := WALK_PLANE_Y - SURFACE_STEP * 4.0
+## For a patch that has to draw OVER the layer it borders without becoming
+## a layer of its own -- the plaza's edging course. Half a step, so it can
+## never land on another layer's height however the stack is retuned; the
+## park pass's own 0.005 would have collided with Y_SOIL once the stack
+## compressed.
+const SURFACE_HAIR := SURFACE_STEP * 0.5
+
 # ---------------------------------------------------------------- tower/slide --
 ## Left tower (bootstrap's `for x in [-3.4, 3.4]` loop, first iteration) and
 ## its WorldBounds.COLLIDERS footprint: {"x": -3.4, "z": -12.8, "half_x":
@@ -136,7 +182,12 @@ const SLIDE_END := Vector3(TOWER_X, 0.0, SLIDE_SURFACE_FOOT.z + 0.55)
 ## y is Y_PAVING from _bootstrap_courtyard.gd: the park pass laid a flagstone
 ## plaza over the base plane, so a bench at y=0 now sinks 5 cm into it and
 ## takes its collider and its seat down with it.
-const BENCH_POSITION := Vector3(-7.0, 0.05, -9.8)
+## Y is Y_PAVING, not a literal: the bench stands on the laid path, and the
+## merge of the park and playground passes briefly had the model on the
+## paving while this constant -- and so the collider and the seat -- stayed
+## on the base plane 5 cm below it. Deriving it means the whole stack can be
+## retuned (as it just was) without the bench silently coming loose again.
+const BENCH_POSITION := Vector3(-7.0, Y_PAVING, -9.8)
 
 ## What a sitter looks at: the chalk circle at the Group marker, where the
 ## other children are. The generator's own comment already said the bench
@@ -165,12 +216,27 @@ const BENCH_SIT_RADIUS := 1.9
 const BENCH_STAND_FORWARD := 1.5
 
 
-## The bench's yaw, from BENCH_POSITION toward BENCH_FACES. A function
-## rather than a constant because GDScript const expressions cannot call
-## atan2 -- but it is still one derivation, not a hand-copied angle.
+## The yaw that turns a prop's local +Z from `from` toward `to`. Godot's
+## Basis(UP, yaw) maps local +Z to (sin yaw, cos yaw), which is what makes
+## this atan2(x, z) rather than the usual atan2(z, x).
+##
+## +Z is the front for bench.gltf specifically -- measured, not assumed: its
+## backrest vertices all sit at negative local z. _bootstrap_courtyard.gd
+## carried a comment claiming the opposite for a while, which would have put
+## every bench in the park 180 degrees out if anyone had believed it while
+## authoring one.
+static func yaw_facing(from: Vector3, to: Vector3) -> float:
+	var direction := to - from
+	return atan2(direction.x, direction.z)
+
+
+## The sittable bench's yaw, derived from where it stands toward what it
+## looks at. A function rather than a constant because GDScript const
+## expressions cannot call atan2 -- but it is still one derivation, not a
+## hand-copied angle. The 90.0 degrees this replaced was close enough to
+## look right and wrong enough to miss the circle.
 static func bench_yaw() -> float:
-	var to_target := BENCH_FACES - BENCH_POSITION
-	return atan2(to_target.x, to_target.z)
+	return yaw_facing(BENCH_POSITION, BENCH_FACES)
 
 
 ## Where the player node goes when they sit: on the seat's top surface,
