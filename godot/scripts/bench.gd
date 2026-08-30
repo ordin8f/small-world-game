@@ -91,6 +91,10 @@ func _sit() -> void:
 	# heading 0 (player.gd's own atan2(-x, -z) convention).
 	player.rotation.y = rotation.y + PI
 	player.character_visual.play_pose(SIT_CLIP)
+	# Sitting only. _stand() stays deliberately silent -- see
+	# audio_director.gd's BENCH_DURATION for why sounding both halves of a
+	# toggle is the wrong call.
+	AudioDirector.play_bench_settle()
 
 
 func _stand() -> void:

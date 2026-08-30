@@ -213,7 +213,14 @@ func dispatch(event_name: String) -> bool:
 	var chime_kind := "soft"
 	if event_name == "ball_kicked":
 		chime_kind = "uneasy"
-	elif event_name == "ball_returned" or event_name == "entered_home":
+	elif event_name == "ball_returned":
+		# 2026-08-30: split off "warm", which this used to share with
+		# entered_home. Handing the ball back is the moment the circle opens
+		# and lets you in -- DEMO_PLAN.md's emotional peak -- and getting
+		# home safely is a different feeling that deserves its own cue
+		# rather than a reused one.
+		chime_kind = "welcome"
+	elif event_name == "entered_home":
 		chime_kind = "warm"
 	AudioDirector.play_chime(chime_kind)
 

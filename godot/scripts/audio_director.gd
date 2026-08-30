@@ -46,6 +46,26 @@ const CHIME_KINDS := {
 	# chimes above, so "you found/finished something" never gets confused
 	# with either of those other meanings.
 	"keepsake": {"frequencies": [587.33, 880.0], "triangle": false, "peak": 0.04},
+	# 2026-08-30: the circle opening and letting you in (game.gd's
+	# "ball_returned" -> INVITED), which DEMO_PLAN.md calls the emotional
+	# peak of the demo. It used to share "warm" with walking through your own
+	# front door -- two very different moments on one cue.
+	#
+	# Distinct by SHAPE and LENGTH rather than by volume: four notes instead
+	# of two or three, twice the stagger between them so it reads as a rising
+	# line rather than a rolled chord, and a tail 1.7x longer than any other
+	# cue so it blooms and settles instead of pinging. Peak stays level with
+	# "soft"/"warm" -- this is the one sound in the game allowed to be
+	# special, and it should not need to be loud to manage it.
+	#
+	# C-E-G-A: inside the music's own pentatonic, so it lands consonantly on
+	# the pad rather than against it, and topping out at A5 (880 Hz), which
+	# is exactly where "keepsake" already tops out -- brighter than the rest
+	# by rising, not by being shriller.
+	"welcome": {
+		"frequencies": [523.25, 659.25, 783.99, 880.0], "triangle": false,
+		"peak": 0.055, "stagger": 0.16, "tail_scale": 1.7,
+	},
 }
 const CHIME_START_STAGGER := 0.08  # note_start = index * this
 const CHIME_ATTACK := 0.03         # linear ramp to peak, note_start .. note_start + this
@@ -98,6 +118,39 @@ const CREAK_DURATION := 0.22
 const CREAK_PEAK := 0.03
 const CREAK_DECAY := 0.1
 const CREAK_FREQUENCY := 145.0
+
+## 2026-08-30: bench.gd's sit. A child dropping onto a wooden bench is two
+## sounds a fraction apart -- the weight landing, then the boards taking it --
+## so this is the dull smoothed-noise thud of _make_sand_pat_wav() with a
+## short creak of _make_creak_wav()'s pitch-sliding triangle layered just
+## behind it, lower and softer than the swing's.
+##
+## Fires on SITTING DOWN ONLY. Standing up is deliberately silent: the sound
+## is here to land the weight, and a child getting off a bench is not an
+## event. Sounding both halves of a toggle is how a world starts reading as
+## a menu.
+const BENCH_DURATION := 0.34
+const BENCH_THUD_PEAK := 0.038
+const BENCH_THUD_DECAY := 0.075
+const BENCH_THUD_SMOOTHING := 0.10   # larger than WHOOSH_SMOOTHING: duller
+const BENCH_CREAK_START := 0.06
+const BENCH_CREAK_PEAK := 0.018
+const BENCH_CREAK_DECAY := 0.13
+const BENCH_CREAK_FREQUENCY := 118.0  # below the swing's 145: a heavier board
+## _triangle(0) is 1.0, so a triangle layer started raw jumps straight to its
+## peak. The swing gets away with that because its creak starts at sample
+## zero, where the jump is the onset and there is nothing before it to step
+## from. This one starts 0.06 s in, on top of the decaying thud, so the same
+## raw start is a genuine mid-buffer discontinuity -- measured at 5.6x the
+## signal's own typical slew before this ramp existed, against 1.0-1.4x for
+## every other cue in the game.
+const BENCH_CREAK_ATTACK := 0.004
+## Unlike every one-shot above, this one ends on a genuine zero rather than
+## on CHIME_FLOOR. The existing family's envelopes settle at 1e-4 (-80 dBFS)
+## and hold there to the end of the buffer -- inaudible, and not worth
+## changing sounds that work -- but there is no reason to add a new one with
+## the same loose end.
+const BENCH_TAIL_FADE := 0.06
 
 ## ===========================================================================
 ## MUSIC (2026-08-30)
@@ -731,6 +784,47 @@ static func _music_db(linear: float) -> float:
 	return linear_to_db(linear)
 
 
+## bench.gd's interact() when the child sits down -- see BENCH_DURATION.
+func play_bench_settle() -> void:
+	if not _started or Game.muted:
+		return
+	_effect_player.stream = _make_bench_wav()
+	_effect_player.volume_db = _linear_to_db_safe(_master_current_gain)
+	_effect_player.play()
+
+
+## Weight landing, then the boards taking it. See BENCH_DURATION.
+func _make_bench_wav() -> AudioStreamWAV:
+	var total_samples := int(ceil(BENCH_DURATION * SAMPLE_RATE))
+	var floats := PackedFloat32Array()
+	floats.resize(total_samples)
+
+	var smoothed := 0.0
+	for s in range(total_samples):
+		var t := float(s) / SAMPLE_RATE
+		var envelope: float = BENCH_THUD_PEAK * pow(CHIME_FLOOR / BENCH_THUD_PEAK, clampf(t / BENCH_THUD_DECAY, 0.0, 1.0))
+		smoothed = lerpf(smoothed, randf_range(-1.0, 1.0), BENCH_THUD_SMOOTHING)
+		floats[s] = smoothed * envelope
+
+	var creak_start := int(BENCH_CREAK_START * SAMPLE_RATE)
+	for i in range(total_samples - creak_start):
+		var s := creak_start + i
+		var t := float(i) / SAMPLE_RATE
+		var envelope: float = BENCH_CREAK_PEAK * pow(CHIME_FLOOR / BENCH_CREAK_PEAK, clampf(t / BENCH_CREAK_DECAY, 0.0, 1.0))
+		envelope *= 0.5 - 0.5 * cos(PI * clampf(t / BENCH_CREAK_ATTACK, 0.0, 1.0))
+		var drift: float = lerpf(1.22, 1.0, clampf(t / BENCH_CREAK_DECAY, 0.0, 1.0))
+		floats[s] += _triangle(t * BENCH_CREAK_FREQUENCY * drift) * envelope
+
+	# Raised-cosine tail to a true zero -- see BENCH_TAIL_FADE.
+	var fade_start := BENCH_DURATION - BENCH_TAIL_FADE
+	for s in range(total_samples):
+		var t := float(s) / SAMPLE_RATE
+		if t > fade_start:
+			floats[s] *= 0.5 + 0.5 * cos(PI * clampf((t - fade_start) / BENCH_TAIL_FADE, 0.0, 1.0))
+
+	return _floats_to_wav(floats)
+
+
 func _linear_to_db_safe(linear: float) -> float:
 	if linear <= 0.0001:
 		return -80.0
@@ -855,19 +949,24 @@ func _make_chime_wav(kind: String) -> AudioStreamWAV:
 	var frequencies: Array = def["frequencies"]
 	var peak: float = def["peak"]
 	var triangle: bool = def["triangle"]
+	# Both optional and both defaulted to the values every pre-2026-08-30
+	# kind was written against, so the five original chimes are byte-for-byte
+	# unchanged. Only "welcome" sets them -- see its entry in CHIME_KINDS.
+	var stagger: float = def.get("stagger", CHIME_START_STAGGER)
+	var tail_base: float = CHIME_TAIL_BASE * float(def.get("tail_scale", 1.0))
 
 	var last_index := frequencies.size() - 1
-	var last_tail_end: float = CHIME_TAIL_BASE + last_index * CHIME_TAIL_STAGGER
-	var total_duration: float = last_index * CHIME_START_STAGGER + last_tail_end + 0.05
+	var last_tail_end: float = tail_base + last_index * CHIME_TAIL_STAGGER
+	var total_duration: float = last_index * stagger + last_tail_end + 0.05
 	var total_samples := int(ceil(total_duration * SAMPLE_RATE))
 	var floats := PackedFloat32Array()
 	floats.resize(total_samples)
 
 	for index in range(frequencies.size()):
 		var frequency: float = frequencies[index]
-		var note_start: float = index * CHIME_START_STAGGER
+		var note_start: float = index * stagger
 		var attack_end: float = note_start + CHIME_ATTACK
-		var tail_end: float = note_start + CHIME_TAIL_BASE + index * CHIME_TAIL_STAGGER
+		var tail_end: float = note_start + tail_base + index * CHIME_TAIL_STAGGER
 		var start_sample := int(note_start * SAMPLE_RATE)
 		var end_sample := mini(int(tail_end * SAMPLE_RATE) + 1, total_samples)
 		for s in range(start_sample, end_sample):

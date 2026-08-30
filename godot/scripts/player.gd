@@ -259,6 +259,12 @@ func _process_climb(delta: float) -> void:
 		heading += _angle_delta(-PI * 0.5, heading) * minf(1.0, delta * 6.0)
 		rotation.y = heading
 		walk_cycle += delta * 7.0
+		# The climb drives walk_cycle and puts feet on the treads, but until
+		# 2026-08-30 it was the one verb that walked in total silence -- the
+		# ordinary walk, the tower deck and the edging all tick footsteps
+		# already. Same self-rate-limiting call they use, so a 1.9 s ascent
+		# gets about five steps rather than one per frame.
+		AudioDirector.play_step(false)
 		return
 
 	var step_t := clampf((_verb_time - CLIMB_RISE_SECONDS) / CLIMB_STEP_SECONDS, 0.0, 1.0)
