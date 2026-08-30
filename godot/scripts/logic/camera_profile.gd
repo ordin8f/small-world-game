@@ -49,9 +49,38 @@ const APPROACH := {
 	"distance": 7.0, "height": 1.5, "target_height": 1.0, "fov": 54.0,
 	"lateral": 0.55, "lead": 0.9, "authored_yaw": 0.035,
 }
+## REVEAL re-tuned for the park (camera-fix task, round 4, 2026-08-30),
+## measured over all 3610 walkable positions rather than the six authored
+## beats -- tools/_probe_camera_sweep.gd, and the frames it points at.
+##
+## `distance` 10.5 -> 7.5. 10.5 was authored when this zone's "playground
+## depth" was a 32 x 16 m room whose furniture was two towers; the park it
+## now shoots is 45 x 20 m with two towers, a bench, a staircase, three
+## park trees and eight canopy trees standing on the ground between the
+## camera and the child. Measured, the child was hidden behind one of them
+## from 26% of the southern park's standing positions, and the shot at the
+## park's own centre (0,-20) put the child at about 5% of frame height with
+## the towers' plank bridge across the middle of the picture -- both
+## looked at, not inferred -- reshoot it with `tools/_shot_at.gd -- 0 -20`,
+## which renders the real play camera at any standing position. Halving the corridor
+## between camera and child roughly halves the chance something is standing
+## in it; the same sweep measures 26% -> 8%. 7.5 also keeps this zone's
+## authored distance above APPROACH's 7.0, which test_camera_profile.gd
+## asserts and which is the "the world opens as you go" relationship this
+## table exists to express.
+##
+## `height` 2.6 -> 3.2 and `lead` 1.2 -> 0.8. At 10.5 m back and 2.6 m up
+## the shot was 8 deg below horizontal -- a ground-level camera looking
+## clean across the whole park, which is exactly the geometry that lets
+## every tree trunk into the frame. 3.2 m at 7.5 m back is 16 deg, an
+## ordinary follow angle, and it is still a low camera by the standard
+## ART_DIRECTION.md sets (the child is 1.08 m; this is a third of the way
+## up the park's own 4.2 m boundary wall, not an adult crane at 8 m).
+## `lead` comes down with `distance` so the child keeps the same place in
+## frame rather than sliding toward the top edge.
 const REVEAL := {
-	"distance": 10.5, "height": 2.6, "target_height": 1.1, "fov": 58.0,
-	"lateral": 0.45, "lead": 1.2, "authored_yaw": -0.07,
+	"distance": 7.5, "height": 3.2, "target_height": 1.1, "fov": 58.0,
+	"lateral": 0.45, "lead": 0.8, "authored_yaw": -0.07,
 }
 
 
