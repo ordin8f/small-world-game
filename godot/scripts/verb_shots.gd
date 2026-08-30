@@ -139,11 +139,11 @@ func _run() -> void:
 	# player always walks continuously between these, so verb is always
 	# GROUND by the time they arrive somewhere new; a raw teleport (this
 	# script's own shortcut, not something real play ever does) can leave
-	# WALL_WALKING/_wall_offset_x pointed at a segment that happens to still
-	# validate at the new x/z, holding the player on the wall instead of the
-	# ground it just teleported onto.
+	# WALL_WALKING/_wall_offset pointed at an edge that happens to still
+	# validate at the new x/z, holding the player on the edging instead of
+	# the ground it just teleported onto.
 	_player.verb = _player.Verb.GROUND
-	_player.set("_wall_offset_x", 0.0)
+	_player.set("_wall_offset", 0.0)
 	_player.character_visual.rotation.z = 0.0
 	_player.global_position.y = 0.0
 

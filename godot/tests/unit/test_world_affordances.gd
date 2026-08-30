@@ -64,7 +64,10 @@ func test_only_the_slides_own_mouth_starts_the_ride() -> void:
 ## why. One continuous run (z 10.45..13.65), unlike the old wall's two
 ## segments either side of the garden gap, since a small bed's edging has
 ## no gap to model -- so the "in between" case below is past either end
-## instead of a gap in the middle.
+## instead of a gap in the middle. This bed's edge is HOME_BED_EDGE, one
+## of several edging_edges() now returns -- see
+## test_edging_generalises_to_an_edge_that_runs_along_x() below for a park
+## bed's, which runs the other way.
 func test_edging_mount_matches_its_authored_run() -> void:
 	# Inside the run (z 10.45..13.65).
 	assert_bool(WorldAffordances.near_edging_mount(-3.7, 12.0)).is_true()
@@ -76,10 +79,51 @@ func test_edging_mount_matches_its_authored_run() -> void:
 	assert_bool(WorldAffordances.near_edging_mount(-2.6, 12.0)).is_false()
 
 
-func test_edging_segment_lookup_matches_bootstrap_courtyard_geometry() -> void:
-	assert_dict(WorldAffordances.edging_segment_at_z(12.0)).is_not_empty()
-	assert_dict(WorldAffordances.edging_segment_at_z(10.0)).is_empty()
-	assert_dict(WorldAffordances.edging_segment_at_z(14.0)).is_empty()
+## edging_edge_index_at() replaces edging_segment_at_z() (2026-08-30's
+## generalisation from one centreline to a list of edges, "the brick lane
+## around each of the small gardens") -- same "inside the run" / "past
+## either end" shape, but returning WHICH edge rather than a z-range
+## dictionary, since there's now more than one to distinguish. Index 0 is
+## always HOME_BED_EDGE -- the first entry edging_edges() builds.
+func test_edging_edge_index_lookup_matches_bootstrap_courtyard_geometry() -> void:
+	assert_int(WorldAffordances.edging_edge_index_at(-3.7, 12.0)).is_equal(0)
+	assert_int(WorldAffordances.edging_edge_index_at(-3.7, 10.0)).is_equal(-1)
+	assert_int(WorldAffordances.edging_edge_index_at(-3.7, 14.0)).is_equal(-1)
+
+
+## The generalisation's whole point: an edge running along X (one of
+## WorldAffordances.PARK_BEDS' "+z" sides, the arcade run) has to mount and
+## measure "along"/"across" exactly as well as the home bed's Z-running
+## one, with no separate code path. Bed (cx=0, cz=-22.6, w=5.2, d=1.5),
+## "+z" side -> centreline z=-21.85, spanning x[-2.84, 2.84] (w/2 +
+## PARK_BED_KERB_T either way).
+func test_edging_generalises_to_an_edge_that_runs_along_x() -> void:
+	# On the centreline, well inside the run.
+	assert_bool(WorldAffordances.near_edging_mount(0.0, -21.85)).is_true()
+	assert_bool(WorldAffordances.near_edging_mount(2.0, -21.85)).is_true()
+	# Past either end of the run.
+	assert_bool(WorldAffordances.near_edging_mount(-3.5, -21.85)).is_false()
+	assert_bool(WorldAffordances.near_edging_mount(3.5, -21.85)).is_false()
+	# Right along the run, but too far off the centreline to mount.
+	assert_bool(WorldAffordances.near_edging_mount(0.0, -20.5)).is_false()
+	# The arcade run's OTHER side (against the wall, z=-23.35, 0.05 m off
+	# its face) was left out of PARK_BEDS -- no room to stand there -- so
+	# it must not mount even though it's the same bed.
+	assert_bool(WorldAffordances.near_edging_mount(0.0, -23.35)).is_false()
+
+
+## edge_coords()/edge_point() are exact inverses of each other regardless
+## of which way the edge runs -- the property _process_wall_walk() and
+## _start_wall_mount() both lean on to move the player without ever
+## branching on orientation. Checked on an edge that runs along neither
+## world axis, the case a purely-x or purely-z edge could pass by luck.
+func test_edge_coords_and_edge_point_round_trip_on_a_diagonal_edge() -> void:
+	var edge := {"a": Vector2(1.0, 2.0), "b": Vector2(5.0, 6.0)}
+	var coords := WorldAffordances.edge_coords(edge, 4.0, 1.0)
+	var xz := WorldAffordances.edge_point(edge, coords["along"], coords["across"])
+	assert_float(xz.x).is_equal_approx(4.0, 0.001)
+	assert_float(xz.y).is_equal_approx(1.0, 0.001)
+	assert_float(WorldAffordances.edge_length(edge)).is_equal_approx(Vector2(4.0, 4.0).length(), 0.001)
 
 
 ## Stones relocated with the garden gap -- same positions relative to the

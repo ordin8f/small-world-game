@@ -86,7 +86,14 @@ const BALANCE_ARM_CLIP := "static"
 var _verb_time: float = 0.0
 var _verb_from: Vector3 = Vector3.ZERO
 var _verb_to: Vector3 = Vector3.ZERO
-var _wall_offset_x: float = 0.0    ## current sideways drift from the wall's centerline, meters
+## Which of WorldAffordances.edging_edges() the child is currently
+## balancing on -- set on mount, held through WALL_MOUNTING/WALL_WALKING,
+## meaningless (and untouched) otherwise. Needed because edges now live at
+## arbitrary positions/orientations rather than all sharing one x, so
+## "which edge" can no longer be re-derived from global_position alone the
+## way the single-edge version re-looked-up its z-segment every tick.
+var _wall_edge_index: int = -1
+var _wall_offset: float = 0.0      ## current drift perpendicular to the mounted edge, meters
 var _wall_wobble_time: float = 0.0
 
 ## Gate 1 (mechanics agent): set by external free-roam mechanics (swing.gd)
@@ -130,7 +137,8 @@ func _reset_to_start() -> void:
 	# A restart mid-verb (unreachable from any authored route today, but
 	# cheap to guard) must not leave the player stuck sliding/balancing.
 	verb = Verb.GROUND
-	_wall_offset_x = 0.0
+	_wall_offset = 0.0
+	_wall_edge_index = -1
 	character_visual.rotation.z = 0.0
 	# ...and no leftover carry/balance arms or half-finished pose, same
 	# reasoning as the verb reset just above.
@@ -219,8 +227,10 @@ func _check_verb_triggers() -> void:
 	var p := global_position
 	if WorldAffordances.near_climb_trigger(p.x, p.z):
 		_start_climb()
-	elif WorldAffordances.near_edging_mount(p.x, p.z):
-		_start_wall_mount()
+		return
+	var edge_index := WorldAffordances.edging_edge_index_at(p.x, p.z)
+	if edge_index != -1:
+		_start_wall_mount(edge_index)
 
 
 # ------------------------------------------------------- tower + slide --
@@ -352,10 +362,11 @@ func _process_slide(delta: float) -> void:
 
 # ----------------------------------------------------------- garden edging --
 
-func _start_wall_mount() -> void:
+func _start_wall_mount(edge_index: int) -> void:
 	verb = Verb.WALL_MOUNTING
 	_verb_time = 0.0
 	_verb_from = global_position
+	_wall_edge_index = edge_index
 	velocity = Vector3.ZERO
 	moving = false
 	character_visual.set_motion(false, false)
@@ -369,23 +380,36 @@ func _process_wall_mount(delta: float) -> void:
 	_verb_time += delta
 	var t := clampf(_verb_time / WALL_MOUNT_SECONDS, 0.0, 1.0)
 	var eased := 1.0 - pow(1.0 - t, 2.0)
-	var target := Vector3(WorldAffordances.EDGING_X, WorldAffordances.EDGING_TOP_Y, _verb_from.z)
+	var edge: Dictionary = WorldAffordances.edging_edges()[_wall_edge_index]
+	# Step straight UP onto the centreline at the same point along the run
+	# the child was already standing at -- mounting shouldn't also shove
+	# them lengthwise. edge_coords()/edge_point() do in two calls, for any
+	# edge orientation, exactly what "keep _verb_from.z, snap x" did when
+	# every edge ran along z.
+	var along: float = WorldAffordances.edge_coords(edge, _verb_from.x, _verb_from.z)["along"]
+	var xz := WorldAffordances.edge_point(edge, along, 0.0)
+	var target := Vector3(xz.x, WorldAffordances.EDGING_TOP_Y, xz.y)
 	global_position = _verb_from.lerp(target, eased)
 	if t >= 1.0:
 		verb = Verb.WALL_WALKING
-		_wall_offset_x = 0.0
+		_wall_offset = 0.0
 		_wall_wobble_time = 0.0
 
 
 ## Precariousness is communicated entirely through speed, a continuous
 ## cosmetic wobble, and a visible sideways lean -- never a UI gauge
 ## (PRODUCT_CONTRACT.md/ART_DIRECTION.md ban meters and fail states).
-## _wall_offset_x is the one number that actually matters for falling: it
+## _wall_offset is the one number that actually matters for falling: it
 ## only moves from sustained sideways INPUT, so the wobble alone can never
 ## cause a fall, and stepping off is always a deliberate, player-driven
 ## choice -- "impossible to fail in a punishing way" per the brief. Walking
 ## off either end of the edging's run dismounts the same way, just as
 ## gently: this is not a failure state, it's just being on the ground again.
+##
+## "Sideways" and "along" are relative to whichever edge is mounted, not
+## world x/z -- edge_tangent()/edge_normal() give the along/across axes for
+## the edge in _wall_edge_index, same two directions _start_wall_mount()
+## and _start_wall_dismount() already work in.
 func _process_wall_walk(delta: float) -> void:
 	var input_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	var input_z := Input.get_action_strength("move_forward") - Input.get_action_strength("move_back")
@@ -393,8 +417,14 @@ func _process_wall_walk(delta: float) -> void:
 	running = false
 	character_visual.set_motion(moving, false)
 
-	var segment := WorldAffordances.edging_segment_at_z(global_position.z)
-	if segment.is_empty():
+	var edge: Dictionary = WorldAffordances.edging_edges()[_wall_edge_index]
+	var length := WorldAffordances.edge_length(edge)
+	var along: float = WorldAffordances.edge_coords(edge, global_position.x, global_position.z)["along"]
+	# Exact run bounds, no overshoot tolerance -- matches the movement
+	# clamp below giving 0.1 m of overhang before this notices, same
+	# "walked a hair past the end, then it lets go" feel the original
+	# single-edge version had from its own segment lookup vs. clamp gap.
+	if along < 0.0 or along > length:
 		_start_wall_dismount()
 		return
 
@@ -402,28 +432,33 @@ func _process_wall_walk(delta: float) -> void:
 		var profile := CameraProfile.profile(global_position.z)
 		var yaw: float = profile["authored_yaw"]
 		var direction := CameraProfile.input_direction(input_x, input_z, yaw)
+		var world_dir := Vector2(direction["x"], direction["z"])
+		var forward: float = world_dir.dot(WorldAffordances.edge_tangent(edge))
+		var lean: float = world_dir.dot(WorldAffordances.edge_normal(edge))
 
-		var next_z: float = clampf(global_position.z + direction["z"] * WALL_WALK_SPEED * delta, segment["z_min"] - 0.1, segment["z_max"] + 0.1)
-		global_position.z = next_z
-		_wall_offset_x = clampf(_wall_offset_x + direction["x"] * WALL_LEAN_SPEED * delta, -WorldAffordances.EDGING_HALF_WIDTH - 0.5, WorldAffordances.EDGING_HALF_WIDTH + 0.5)
+		along = clampf(along + forward * WALL_WALK_SPEED * delta, -0.1, length + 0.1)
+		_wall_offset = clampf(_wall_offset + lean * WALL_LEAN_SPEED * delta, -WorldAffordances.EDGING_HALF_WIDTH - 0.5, WorldAffordances.EDGING_HALF_WIDTH + 0.5)
 
-		if absf(direction["z"]) > 0.01:
-			var target_heading: float = PI if direction["z"] > 0.0 else 0.0
+		if absf(forward) > 0.01:
+			var facing := WorldAffordances.edge_tangent(edge) * signf(forward)
+			var target_heading: float = atan2(-facing.x, -facing.y)
 			heading += _angle_delta(target_heading, heading) * minf(1.0, delta * 8.0)
 			rotation.y = heading
 		walk_cycle += delta * 6.0
 		AudioDirector.play_step(false)
 	else:
-		_wall_offset_x = move_toward(_wall_offset_x, 0.0, delta * 0.35)
+		_wall_offset = move_toward(_wall_offset, 0.0, delta * 0.35)
 
-	global_position.x = WorldAffordances.EDGING_X + _wall_offset_x
+	var xz := WorldAffordances.edge_point(edge, along, _wall_offset)
+	global_position.x = xz.x
+	global_position.z = xz.y
 	global_position.y = WorldAffordances.EDGING_TOP_Y
 
 	_wall_wobble_time += delta
 	var wobble := sin(_wall_wobble_time * 2.6) * 0.045
-	character_visual.rotation.z = wobble - _wall_offset_x * 0.5
+	character_visual.rotation.z = wobble - _wall_offset * 0.5
 
-	if absf(_wall_offset_x) > WorldAffordances.EDGING_HALF_WIDTH:
+	if absf(_wall_offset) > WorldAffordances.EDGING_HALF_WIDTH:
 		_start_wall_dismount()
 
 
@@ -431,21 +466,23 @@ func _start_wall_dismount() -> void:
 	verb = Verb.WALL_DISMOUNT
 	_verb_time = 0.0
 	_verb_from = global_position
-	var landing_x := global_position.x
+	var edge: Dictionary = WorldAffordances.edging_edges()[_wall_edge_index]
+	var landing_xz := Vector2(global_position.x, global_position.z)
 	# A lean-caused dismount (exceeded EDGING_HALF_WIDTH) must land clearly
 	# outside WorldAffordances.near_edging_mount()'s wider EDGING_MOUNT_X_RANGE,
 	# not just past the half-width -- landing anywhere inside that range
 	# means the very next GROUND tick's _check_verb_triggers() sees the
 	# edging again and re-mounts immediately, so "stepping off" would
-	# silently do nothing. A segment-end dismount doesn't need this: z
-	# alone already clears edging_segment_at_z(), so x is left as-is.
-	if absf(_wall_offset_x) > WorldAffordances.EDGING_HALF_WIDTH:
-		var side := signf(_wall_offset_x)
-		landing_x = WorldAffordances.EDGING_X + side * (WorldAffordances.EDGING_MOUNT_X_RANGE + 0.3)
-	_verb_to = Vector3(landing_x, locked_y, global_position.z)
+	# silently do nothing. A run-end dismount doesn't need this: "along"
+	# alone already clears [0, length], so the position is left as-is.
+	if absf(_wall_offset) > WorldAffordances.EDGING_HALF_WIDTH:
+		var along: float = WorldAffordances.edge_coords(edge, global_position.x, global_position.z)["along"]
+		var side := signf(_wall_offset)
+		landing_xz = WorldAffordances.edge_point(edge, along, side * (WorldAffordances.EDGING_MOUNT_X_RANGE + 0.3))
+	_verb_to = Vector3(landing_xz.x, locked_y, landing_xz.y)
 	character_visual.rotation.z = 0.0
 	character_visual.clear_arm_pose()
-	_wall_offset_x = 0.0
+	_wall_offset = 0.0
 	moving = false
 	character_visual.set_motion(false, false)
 

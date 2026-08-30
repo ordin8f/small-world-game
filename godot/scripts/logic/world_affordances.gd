@@ -254,35 +254,209 @@ static func bench_stand_position() -> Vector3:
 
 
 # ---------------------------------------------------------------- edging --
-## Low brick edging around a planting bed by the home threshold (home's
-## west flank, x[-6.3,-3.5] z[10.45,13.65] in _bootstrap_courtyard.gd's
-## _build_garden_bed()) -- where the balance verb now lives. It used to be
-## the tall playground/garden-pocket boundary wall (x=11, still there as a
-## boundary, just no longer a balance affordance): the developer's own
-## words were "the walking on the edge should be on the side of a brick
-## lining of a small garden or area or something -- not the wall, where it
-## is." A real garden bed's edging is both better storytelling and what a
-## child would actually do, and DEMO_PLAN.md's scale diagnosis makes the
-## same point under "order of work" #4.
+## Low brick edging around planting beds -- where the balance verb lives.
+## It used to be the tall playground/garden-pocket boundary wall (x=11,
+## still there as a boundary, just no longer a balance affordance): the
+## developer's own words were "the walking on the edge should be on the
+## side of a brick lining of a small garden or area or something -- not
+## the wall, where it is." A real garden bed's edging is both better
+## storytelling and what a child would actually do.
 ##
-## EDGING_X is the mount edge's own centreline -- the border segment
-## facing the path, the side a player walking the porch actually meets.
-## Top surface at y = 0.3, a real low garden-edging height (roughly knee
-## height on the 1.08 m child), not a wall.
-const EDGING_X := -3.7
+## 2026-08-30 generalised this from ONE bed's ONE east-facing centreline
+## (x=-3.7, the home threshold bed) into a set of independent straight
+## EDGES, because the developer's own follow-up ask was "the brick lane
+## around each of the small gardens" -- every planting bed in the park,
+## not just the one by the door. An edge is just two ground-level
+## endpoints (Vector2(x, z) each); the player's balance is always measured
+## PERPENDICULAR to whichever edge they're on and their travel PARALLEL to
+## it (edge_tangent()/edge_normal()/edge_coords() below), never "x" or "z"
+## specifically -- that's what lets a bed whose long side runs in z serve
+## the exact same verb as one whose long side runs in x, with no
+## orientation branch anywhere.
+##
+## Every edge is DERIVED from the same rectangle
+## (_bootstrap_courtyard.gd's _planting_bed() calls, mirrored here as
+## PARK_BEDS) that builds the visible kerb, so a bed added later gets a
+## matching mount for free and the two can never drift apart the way this
+## project's slide/ride and bench/seat pairs once did (see this file's
+## WALK_PLANE_Y and BENCH_POSITION doc comments for that history). The
+## home bed is the one exception: it predates PARK_BEDS, is built by hand
+## in _build_garden_bed() rather than _planting_bed(), and its four
+## borders were authored to numbers that don't quite satisfy the tidy
+## "outer footprint = cx +/- w/2" arithmetic PARK_BEDS relies on (its
+## east border sits at EDGING_X=-3.7, its west border's own centreline at
+## -6.15 -- 0.05 m short of where a symmetric w=2.8 rectangle would put
+## it). Rather than nudge already-shipped, already-verified geometry to
+## fit a formula, HOME_BED_EDGE is kept as its own small directly-authored
+## edge, unchanged in every number from the original EDGING_X/EDGING_SEGMENTS
+## this replaces -- still single-sourced (_build_garden_bed() reads
+## EDGING_X same as before), just reshaped to the same {a, b} shape every
+## other edge uses so player.gd never has to know which kind it mounted.
 const EDGING_TOP_Y := 0.3
-## A single run the full length of that east border (matches its own
-## rendered span exactly, same convention WALL_SEGMENTS used against its
-## wall meshes) -- one continuous edge around a small bed, unlike the old
-## wall's two segments either side of the garden gap, since there is no
-## gap here to model.
-const EDGING_SEGMENTS := [
-	{"z_min": 10.45, "z_max": 13.65},
-]
-## How close in x, at ground level, mounts the edging.
+## Perpendicular distance, at ground level, that mounts the edging.
 const EDGING_MOUNT_X_RANGE := 0.55
 ## How far off the centreline reads as "still on top" before stepping off.
 const EDGING_HALF_WIDTH := 0.3
+
+## The home bed's mount edge -- see the doc comment above for why this one
+## is hand-authored rather than derived from PARK_BEDS. Same x (-3.7) and
+## z run (10.45..13.65) the original EDGING_X/EDGING_SEGMENTS held.
+const EDGING_X := -3.7
+const HOME_BED_EDGE := {"a": Vector2(EDGING_X, 10.45), "b": Vector2(EDGING_X, 13.65)}
+
+## Kerb height for _planting_bed()'s four borders. Was a local 0.26 m
+## literal inside that function -- 0.04 m short of EDGING_TOP_Y, which
+## would have floated every park bed's balancer 4 cm above its own kerb
+## the moment it became mountable, the exact "visual and affordance
+## authored separately" defect this pass was warned about. Unified here
+## so _planting_bed() and every edge derived from PARK_BEDS agree by
+## construction; "around 0.3 m, knee height" was already the brief for
+## the balance verb, so this also happens to match it.
+const PARK_BED_KERB_H := EDGING_TOP_Y
+## Kerb thickness for _planting_bed()'s four borders, and the amount its
+## north/south caps overhang past w/2 to cover the corners (matching that
+## function's own construction) -- read from here so a mountable +z/-z
+## side's length can agree with what actually got built.
+const PARK_BED_KERB_T := 0.24
+
+## One _planting_bed() rectangle -- outer footprint centre (cx, cz) and
+## full size (w, d) along x and z, exactly the arguments that function
+## takes -- and which of its four sides are worth balancing on ("+x",
+## "-x", "+z" and/or "-z", see _bed_side_edge() for what each means).
+## _bootstrap_courtyard.gd's _build_park_ground() drives its
+## _planting_bed() calls from this same table, so a bed's kerb and its
+## mount can never disagree, and a bed added here gets both for free.
+##
+## Not every side of every bed is included:
+##  - the gate-flank beds' outer side sits against the gate pier/boundary;
+##    the inner side, facing the gate opening a player actually walks
+##    through, is the one a passer-by meets (same "facing the path"
+##    reasoning EDGING_X's own original comment gave for the home bed).
+##  - the arcade run's near-wall side sits 0.05 m off the arcade wall's
+##    own face (_build_arcade_wall(), centre z=-24, thickness 1.2) -- no
+##    room for a child to stand there. The far side, facing the open lawn,
+##    is clear and is the long axis (5.68 m with the kerb's own corner
+##    overhang).
+##  - the west hedge run's near-wall side sits 0.25 m off the west
+##    boundary wall (x=-22.8, half-width 0.4); the far side, facing the
+##    lawn, is the natural approach and the bed's own long axis (4.2 m).
+## All three groups have room on exactly one side; none were dropped for
+## being too short -- even the gate beds' 1.5 m run clears
+## EDGING_MOUNT_X_RANGE*2 with room for a real, if brief, few steps.
+const PARK_BEDS := [
+	{"cx": -4.3, "cz": -5.1, "w": 2.6, "d": 1.5, "sides": ["+x"]},
+	{"cx": 4.3, "cz": -5.1, "w": 2.6, "d": 1.5, "sides": ["-x"]},
+	{"cx": -16.0, "cz": -22.6, "w": 5.2, "d": 1.5, "sides": ["+z"]},
+	{"cx": -8.0, "cz": -22.6, "w": 5.2, "d": 1.5, "sides": ["+z"]},
+	{"cx": 0.0, "cz": -22.6, "w": 5.2, "d": 1.5, "sides": ["+z"]},
+	{"cx": 8.0, "cz": -22.6, "w": 5.2, "d": 1.5, "sides": ["+z"]},
+	{"cx": 16.0, "cz": -22.6, "w": 5.2, "d": 1.5, "sides": ["+z"]},
+	{"cx": -21.4, "cz": -8.0, "w": 1.5, "d": 4.2, "sides": ["+x"]},
+	{"cx": -21.4, "cz": -13.5, "w": 1.5, "d": 4.2, "sides": ["+x"]},
+	{"cx": -21.4, "cz": -19.0, "w": 1.5, "d": 4.2, "sides": ["+x"]},
+]
+
+
+## One side of a PARK_BEDS rectangle as an edge, {"a": Vector2, "b":
+## Vector2} in world (x, z) -- matching the exact span _planting_bed()
+## renders for that side. "+x"/"-x" are the east/west borders (length d,
+## no overhang, same as that function's own KERB_T-wide meshes); "+z"/"-z"
+## are the north/south caps (length w + 2*PARK_BED_KERB_T, since those
+## meshes run wide enough to cover the corners where the side borders
+## meet them).
+static func _bed_side_edge(bed: Dictionary, side: String) -> Dictionary:
+	var cx: float = bed["cx"]
+	var cz: float = bed["cz"]
+	var w: float = bed["w"]
+	var d: float = bed["d"]
+	match side:
+		"+x":
+			return {"a": Vector2(cx + w * 0.5, cz - d * 0.5), "b": Vector2(cx + w * 0.5, cz + d * 0.5)}
+		"-x":
+			return {"a": Vector2(cx - w * 0.5, cz - d * 0.5), "b": Vector2(cx - w * 0.5, cz + d * 0.5)}
+		"+z":
+			return {"a": Vector2(cx - w * 0.5 - PARK_BED_KERB_T, cz + d * 0.5), "b": Vector2(cx + w * 0.5 + PARK_BED_KERB_T, cz + d * 0.5)}
+		"-z":
+			return {"a": Vector2(cx - w * 0.5 - PARK_BED_KERB_T, cz - d * 0.5), "b": Vector2(cx + w * 0.5 + PARK_BED_KERB_T, cz - d * 0.5)}
+	push_error("WorldAffordances._bed_side_edge: unknown side '%s'" % side)
+	return {}
+
+
+## Every mountable edge in the park: the hand-authored home bed plus one
+## entry per (bed, side) pair PARK_BEDS lists. The single list player.gd
+## and near_edging_mount() both work from.
+static func edging_edges() -> Array:
+	var edges: Array = [HOME_BED_EDGE]
+	for bed in PARK_BEDS:
+		for side in bed["sides"]:
+			edges.append(_bed_side_edge(bed, side))
+	return edges
+
+
+## Unit vector along the edge, from a to b -- "forward" along the run.
+## Vector2's (x, y) holds world (x, z) throughout this section, the same
+## convention STONES/PUDDLES already use for ground-plane math.
+static func edge_tangent(edge: Dictionary) -> Vector2:
+	return (edge["b"] - edge["a"]).normalized()
+
+
+## Unit vector perpendicular to the edge, in the ground plane -- the axis
+## drift/lean is measured on. Rotated +90 degrees from the tangent in
+## this specific direction (not the other one) so that for the home
+## bed's own north-south edge this reduces to exactly "+world x", the
+## sign every pre-existing balance number (_wall_offset, the dismount
+## landing, the visual lean) was authored against -- the generalisation
+## has to reduce to the original for the one edge that already shipped.
+static func edge_normal(edge: Dictionary) -> Vector2:
+	var t := edge_tangent(edge)
+	return Vector2(t.y, -t.x)
+
+
+static func edge_length(edge: Dictionary) -> float:
+	return (edge["b"] - edge["a"]).length()
+
+
+## Splits (x, z) into how far ALONG the edge (0 at a, edge_length() at b)
+## and how far ACROSS it (signed, edge_normal() direction, 0 on the
+## centreline) the point sits -- the one decomposition mounting,
+## balancing and dismounting all need, regardless of which way the edge
+## runs.
+static func edge_coords(edge: Dictionary, x: float, z: float) -> Dictionary:
+	var a: Vector2 = edge["a"]
+	var p := Vector2(x, z) - a
+	return {"along": p.dot(edge_tangent(edge)), "across": p.dot(edge_normal(edge))}
+
+
+## World (x, z) for a point `along` an edge's own run and `across` it --
+## the inverse of edge_coords(), and the only place player.gd converts
+## a local (along, across) pair back to global_position.
+static func edge_point(edge: Dictionary, along: float, across: float) -> Vector2:
+	return edge["a"] + edge_tangent(edge) * along + edge_normal(edge) * across
+
+
+## Index into edging_edges() of the edge (x, z) is close enough to mount,
+## or -1 if none -- on the ground, within EDGING_MOUNT_X_RANGE across it
+## and somewhere along its actual run (no overshoot tolerance here; that's
+## _process_wall_walk()'s own clamp headroom for staying mounted, not for
+## getting on in the first place).
+static func edging_edge_index_at(x: float, z: float) -> int:
+	var edges := edging_edges()
+	for i in range(edges.size()):
+		var c := edge_coords(edges[i], x, z)
+		var along: float = c["along"]
+		if along < 0.0 or along > edge_length(edges[i]):
+			continue
+		if absf(c["across"]) <= EDGING_MOUNT_X_RANGE:
+			return i
+	return -1
+
+
+## True if (x, z), at ground level, is close enough to any edge to mount
+## it. Kept as a plain bool query (rather than every caller checking
+## edging_edge_index_at() != -1 itself) since that's most of this
+## function's own test coverage from before the generalisation.
+static func near_edging_mount(x: float, z: float) -> bool:
+	return edging_edge_index_at(x, z) != -1
 
 # ---------------------------------------------------------------- stones --
 ## Four stones just past the garden gap, bootstrap's `for stone in [...]`
@@ -388,23 +562,6 @@ static func at_slide_mouth(x: float, z: float) -> bool:
 	if absf(x - SLIDE_SURFACE_TOP.x) > SLIDE_MOUTH_HALF_X:
 		return false
 	return z > SLIDE_SURFACE_TOP.z - 0.15
-
-
-## The edging segment (an entry of EDGING_SEGMENTS) containing `z`, or {}
-## if none.
-static func edging_segment_at_z(z: float) -> Dictionary:
-	for segment in EDGING_SEGMENTS:
-		if z >= segment["z_min"] and z <= segment["z_max"]:
-			return segment
-	return {}
-
-
-## True if (x, z), at ground level, is close enough to the edging's base
-## to mount it.
-static func near_edging_mount(x: float, z: float) -> bool:
-	if absf(x - EDGING_X) > EDGING_MOUNT_X_RANGE:
-		return false
-	return not edging_segment_at_z(z).is_empty()
 
 
 ## Index (0..3) of the stone (x, z) is standing on, or -1 if it's in a gap.
