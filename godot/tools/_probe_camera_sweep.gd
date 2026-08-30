@@ -1095,6 +1095,13 @@ func _report_worst() -> void:
 	_rank("wallf", true, 14, "picture filled with boundary wall")
 	_rank("open", false, 14, "frame with nothing in it to see")
 	_rank("gain", true, 14, "best angle left unused (a bounded orbit could reach it)")
+	# Where the rig moved the shot MOST -- not a fault list, a "go and look at
+	# these" list. A camera change is only as good as the frames it produces
+	# at the places it actually changed something, and those places are not
+	# the same as the places that score worst.
+	for m in _cells:
+		m["orbit_abs"] = absf(float(m["orbit"]))
+	_rank("orbit_abs", true, 16, "where the shot was turned furthest off its authored angle")
 
 	# Which objects hide the child, and how often.
 	var tally := {}
@@ -1109,6 +1116,26 @@ func _report_worst() -> void:
 	print("")
 	print("--- what actually hides the child, by cell count ---")
 	for entry in ranked:
+		print("%6d cells  %s" % [entry[1], entry[0]])
+
+	# ...and the RENDER-only census, which the tally above cannot show and
+	# which is the number a player's eye actually reports. Camera-orbit task
+	# (2026-08-30): the round that added the orbit moved collider occlusion
+	# down and render occlusion UP, and "is that a soft canopy edge or a
+	# trunk across the child" is not answerable from the two totals. The
+	# names carry their footprints (_segment_blocker), so a line here is
+	# traceable to the object.
+	var vis_tally := {}
+	for m in _cells:
+		if m["vis_blocked"] > 0:
+			vis_tally[m["vis_name"]] = vis_tally.get(m["vis_name"], 0) + 1
+	var vis_ranked: Array = []
+	for k in vis_tally:
+		vis_ranked.append([k, vis_tally[k]])
+	vis_ranked.sort_custom(func(a, b): return a[1] > b[1])
+	print("")
+	print("--- what stands between camera and child in the RENDER, by cell count ---")
+	for entry in vis_ranked:
 		print("%6d cells  %s" % [entry[1], entry[0]])
 
 
