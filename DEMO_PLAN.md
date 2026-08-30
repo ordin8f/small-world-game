@@ -646,6 +646,26 @@ description/package name. Deliberately not renamed: internal identifiers
 user-visible benefit and a real chance of breaking the smoke-test hook, and
 the archived docs, which are a record of what was decided when.
 
+### Repo hygiene: a history rewrite, and the branches it orphaned
+
+The developer rewrote all 137 commits on `main` today to strip
+`Co-Authored-By:`/`Claude-Session:` trailers and force-pushed the result.
+That gives every commit on `main` a new hash back to the root, which
+orphans the merge-base of every branch that still points at a pre-rewrite
+commit — `git branch --merged main` reports nothing merged, for any of
+them, regardless of what they actually contain. That is an artefact of the
+rewrite, not a fact about the branches.
+
+Consolidating the repo's stale branches today hit that wall directly and
+worked around it the same way this project handles every other instrument
+that disagrees with the world: distrust the instrument, measure the thing
+itself. A direct tree-diff against `main` (`git diff <branch> main
+--stat`, then `--name-status` filtered to files only the branch has) stands
+in for ancestry — nine branches confirmed to hold nothing `main` doesn't
+already have, one (`claude/saturday-afternoon-game-fxdh08`) confirmed to
+hold genuinely unique work and left alone. The next person who runs `git
+branch --merged` here will hit the same wall; this is the way through it.
+
 **The pattern, again.** Three more defects this session hid behind a
 passing check for the same reason as the ones logged 2026-08-29: a
 constants-only ground test that never asked what the built scene actually
