@@ -46,6 +46,12 @@ const REVERT_SECONDS := 3.2  ## "briefly" -- long enough to register, short enou
 const FADE_SECONDS := 0.45
 const INTERACT_RADIUS := 1.5
 
+## The delight, when a crate turns into a castle: "emote-yes" is a whole-body
+## nod, which is the only clip in the pack that reads as a child agreeing
+## with what they are seeing. Nothing plays on the way back out -- reverting
+## is the world going quiet again, not a second event.
+const WONDER_CLIP := "emote-yes"
+
 var label: String = "Look closer"
 var radius: float = INTERACT_RADIUS
 
@@ -102,6 +108,11 @@ func interact() -> void:
 	tween.tween_property(_overlay, "scale", Vector3.ONE * IMAGINED_SCALE, FADE_SECONDS)
 	if _perception != null:
 		_perception.set_imagination_target(true, name)
+	# After the overlay and the perception cue, both of which are the actual
+	# mechanic; the child's own reaction is the last thing and gates nothing.
+	var visual := CharacterVisual.of_player()
+	if visual != null:
+		visual.play_pose_once(WONDER_CLIP)
 
 
 func _end_imagining() -> void:

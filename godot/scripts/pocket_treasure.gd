@@ -44,6 +44,11 @@ const BOB_HEIGHT := 0.045
 const BOB_SPEED := 1.7
 const SPIN_SPEED := 0.5
 
+## The same bend-down-and-scoop the ball uses. A keepsake on the ground is
+## the same physical action as a ball on the ground; giving it a different
+## clip would be inventing a distinction the child doesn't make.
+const POCKET_CLIP := "pick-up"
+
 var label: String = "Pick it up"
 var radius: float = INTERACT_RADIUS
 
@@ -86,6 +91,12 @@ func interact() -> void:
 	AudioDirector.play_chime("keepsake")
 	Game.dialogue_shown.emit("You", KIND_DATA[name]["line"], 2.6)
 	Game.unregister_free_interactable(self)
+	# Last, and unawaited: the count, the chime and the line have all
+	# already happened, so the clip can never be what makes finding a
+	# keepsake work.
+	var visual := CharacterVisual.of_player()
+	if visual != null:
+		visual.play_pose_once(POCKET_CLIP)
 
 
 ## A fresh "Play again" makes every treasure findable again -- game.gd's

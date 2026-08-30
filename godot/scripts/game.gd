@@ -242,6 +242,11 @@ func dispatch(event_name: String) -> bool:
 
 func interact() -> void:
 	if active_zone != null:
+		# Presentation, alongside the dispatch rather than in front of it:
+		# the zone is only active when its required_state already matches, so
+		# the dispatch below cannot fail, and nothing here is awaited. The
+		# beat lands at exactly the tick it always did.
+		active_zone.play_player_pose()
 		dispatch(active_zone.event_name)
 	elif active_free_interactable != null:
 		active_free_interactable.interact()
