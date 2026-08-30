@@ -62,7 +62,7 @@ See [`PLAYTEST.md`](PLAYTEST.md) to run it locally, and [`docs/PLAYTEST.md`](doc
 - [`docs/archive/superseded/`](docs/archive/superseded/) — retired direction and documents, kept for record and salvage value
 - [`AGENTS.md`](AGENTS.md) — guardrails for local coding agents
 - [`ASSET_CREDITS.md`](ASSET_CREDITS.md) — sources and licenses for every vendored asset and library
-- [`GODOT_REBUILD_PLAN.md`](GODOT_REBUILD_PLAN.md) — the in-progress Godot 4.7 rebuild (`godot/lost-ball-port` branch)
+- [`docs/archive/superseded/GODOT_REBUILD_PLAN.md`](docs/archive/superseded/GODOT_REBUILD_PLAN.md) — the Godot rebuild plan that preceded `DEMO_PLAN.md`; kept for the historical record, not the current plan
 
 Earlier planning documents — [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) and [`docs/BACKLOG.md`](docs/BACKLOG.md) — were written for the original PlayCanvas/TypeScript direction described above, which was decided but never built. `DEMO_PLAN.md` supersedes them for active work; they remain for the design intent that still applies (route beats, social approaches, Emotional Lens tuning).
 
