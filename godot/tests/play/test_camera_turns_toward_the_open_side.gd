@@ -48,11 +48,31 @@ const OPEN_GROUND := [
 ]
 const OPEN_GROUND_LIMIT_DEG := 1.0
 
-## Hard against the park's west wall. The sweep's worst cell for "a better
-## angle was available and unused": 0.45 window openness with 0.42 more
-## reachable, the camera clamped to x=-22.0 and pinned 1.7 m behind the
-## child at a 55 deg look-down, with 100% of the picture wall.
-const PINNED_AGAINST_THE_WEST_WALL := Vector2(-22.0, -13.5)
+## Beside the left tower's staircase. On the pre-orbit build the shot here
+## is thrown straight north into the back of the staircase and the tower:
+## the rendered frame has the child completely hidden behind the treads,
+## with one blue shoe visible through them. It is the single clearest case
+## in the world of an authored angle that cannot work, and the sweep agrees
+## -- the staircase stood between camera and child at 27 cells before this
+## round and at none after.
+const PINNED_BEHIND_THE_STAIRCASE := Vector2(-6.0, -15.0)
+
+## Hard against the park's west wall, and here the right answer is NOT to
+## turn. An earlier build turned this one 18.8 deg, which bought the full
+## authored distance and a normal follow angle in exchange for pointing the
+## frame into the corner -- window openness 0.45 -> 0.28 -- and the render
+## came back with no child in it anywhere. camera_rig.gd's
+## ORBIT_VIEW_TOLERANCE is what stops it; this is the guard on that guard.
+##
+## Not a duplicate of the open-ground test above, and the difference is the
+## point: there the orbit stays put because nothing better exists, here it
+## stays put because the better-scoring angle is a worse SHOT. Only the
+## second one goes red if the frame constraint is removed.
+const COSTS_MORE_THAN_IT_BUYS := [
+	[-22.0, -14.0],
+	[-22.0, -13.5],
+]
+const COSTS_MORE_LIMIT_DEG := 8.0
 
 ## The garden gap (world_bounds.gd's x=11 wall, opening z in [-9,-7]).
 ## Excluded from the orbit on purpose, and this is the guard on that
@@ -111,7 +131,7 @@ func test_the_authored_angle_is_left_alone_in_open_ground() -> void:
 			.is_between(-OPEN_GROUND_LIMIT_DEG, OPEN_GROUND_LIMIT_DEG)
 
 
-func test_the_shot_turns_off_the_wall_it_was_pinned_against() -> void:
+func test_the_shot_turns_off_the_thing_it_was_pinned_behind() -> void:
 	var runner := scene_runner("res://scenes/main.tscn")
 	await runner.simulate_frames(2)
 	var player: Node3D = Game.player
@@ -119,14 +139,14 @@ func test_the_shot_turns_off_the_wall_it_was_pinned_against() -> void:
 	assert_object(player).is_not_null()
 	assert_object(camera).is_not_null()
 
-	await _settle(player, PINNED_AGAINST_THE_WEST_WALL.x, PINNED_AGAINST_THE_WEST_WALL.y)
+	await _settle(player, PINNED_BEHIND_THE_STAIRCASE.x, PINNED_BEHIND_THE_STAIRCASE.y)
 	var p := player.global_position
 	var eye := camera.global_position
 
 	# It turned at all. 8 deg, not something tighter: the shipped build
-	# settles at 18.8 deg here, and the pre-orbit build at 0.
+	# settles at 28.5 deg off authored here, and the pre-orbit build at 4.5.
 	assert_float(_angle_off_authored(player, camera)) \
-		.override_failure_message("the shot stayed on the axis that had it pinned against the west wall: %.2f deg off authored" % [
+		.override_failure_message("the shot stayed on the axis that put the staircase between camera and child: %.2f deg off authored" % [
 			_angle_off_authored(player, camera)]) \
 		.is_greater(8.0)
 
@@ -134,17 +154,17 @@ func test_the_shot_turns_off_the_wall_it_was_pinned_against() -> void:
 	# the pre-orbit build failed here and neither of which follows from the
 	# angle alone. A shot can be turned 20 deg and still be jammed.
 	#
-	# Separation: 4.17 m before (and only that much because round 4's lift
-	# bought it vertically -- 1.7 m of it horizontally), 8.17 m after, which
-	# is the zone's full authored throw. 6.0 sits in the gap.
+	# Separation: the authored angle here does reach its full 8.17 m -- what
+	# it cannot do is see past the staircase -- so this is a guard against a
+	# turn that buys the angle by collapsing the shot, not a claim that the
+	# turn bought the distance.
 	assert_float(eye.distance_to(p)) \
-		.override_failure_message("the shot is still collapsed at the west wall: %.2f m" % eye.distance_to(p)) \
+		.override_failure_message("the turn collapsed the shot: %.2f m" % eye.distance_to(p)) \
 		.is_greater(6.0)
 
-	# Clearance: 0.28 m off the wall face before -- close enough that the
-	# wall, and the treeline planted just outside it, fill the frame. The
-	# same arithmetic camera_rig.gd's own _clearance_score() uses, against
-	# world_bounds.gd's own boxes.
+	# ...and it did not buy the angle by parking on a wall face instead.
+	# The same arithmetic camera_rig.gd's own _clearance_score() uses,
+	# against world_bounds.gd's own boxes. Measured 4.66 m here.
 	var clearance := INF
 	for box in WorldBounds.COLLIDERS:
 		if not box.get("camera_blocks", false):
@@ -153,7 +173,7 @@ func test_the_shot_turns_off_the_wall_it_was_pinned_against() -> void:
 		var dz: float = maxf(absf(eye.z - box["z"]) - box["half_z"], 0.0)
 		clearance = minf(clearance, sqrt(dx * dx + dz * dz))
 	assert_float(clearance) \
-		.override_failure_message("the shot is still standing on a wall face at the west wall: %.2f m of clearance" % clearance) \
+		.override_failure_message("the turned shot is standing on a wall face: %.2f m of clearance" % clearance) \
 		.is_greater(1.5)
 
 	# None of it may be bought by putting the camera through a wall. Same
@@ -162,8 +182,71 @@ func test_the_shot_turns_off_the_wall_it_was_pinned_against() -> void:
 	query.exclude = [player.get_rid()]
 	query.collision_mask = 2
 	assert_dict(player.get_world_3d().direct_space_state.intersect_ray(query)) \
-		.override_failure_message("the turned shot is through a wall at the west wall") \
+		.override_failure_message("the turned shot is through a wall") \
 		.is_empty()
+
+
+## The other half of "turns where it helps": it must also decline where
+## turning would help by every measure except the one that matters.
+##
+## The build this was written against turned these two cells 18.8 deg and
+## gained the full authored distance, a normal 14 deg follow angle instead of
+## a 55 deg look-down, and 2.4 m of wall clearance instead of 0.4 -- every
+## structural number better -- by pointing the frame into the park's
+## south-west corner. Window openness 0.45 -> 0.28, and the rendered frame
+## had no child in it. camera_rig.gd's ORBIT_VIEW_TOLERANCE forbids the
+## trade; this holds it forbidden.
+func test_the_shot_declines_to_turn_when_turning_would_cost_the_frame() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	var player: Node3D = Game.player
+	var rig: Node3D = Game.camera.get_parent().get_parent()
+
+	for spot in COSTS_MORE_THAN_IT_BUYS:
+		await _settle(player, spot[0], spot[1])
+		assert_float(absf(rad_to_deg(rig._orbit_yaw))) \
+			.override_failure_message("the shot turned %.2f deg at (%.1f, %.1f) to gain room and clearance by pointing the frame into the corner -- the build that did this rendered a frame with no child in it" % [
+				absf(rad_to_deg(rig._orbit_yaw)), spot[0], spot[1]]) \
+			.is_less(COSTS_MORE_LIMIT_DEG)
+
+
+## ...and it must not turn a shot that SHOWS the child into one that does
+## not, which is a different failure from the one above and was caught at a
+## different cell. At (11,-17) the pre-orbit shot is close and steep and
+## unlovely, and it does show the child; an earlier build turned it the full
+## 32 deg onto a line running down the length of the canopy tree at
+## (9.6,-14.6), with the trunk squarely over them.
+##
+## Half a metre away at (10.5,-17.5) the same turn is right and keeps its
+## full 32 deg, so this cannot be satisfied by refusing to turn near trees.
+const MUST_KEEP_SHOWING_THE_CHILD := [
+	[11.0, -17.0],
+	[10.5, -17.5],
+	[-3.5, -17.5],
+]
+
+
+func test_the_shot_never_turns_a_visible_child_into_a_hidden_one() -> void:
+	var runner := scene_runner("res://scenes/main.tscn")
+	await runner.simulate_frames(2)
+	var player: Node3D = Game.player
+	var camera: Camera3D = Game.camera
+	var space_state := player.get_world_3d().direct_space_state
+
+	for spot in MUST_KEEP_SHOWING_THE_CHILD:
+		await _settle(player, spot[0], spot[1])
+		var p := player.global_position
+		# Chest height, and layers 1 AND 2 -- a trunk hides the child as
+		# completely as a wall does. The same query camera_rig.gd's own
+		# _sight_blocked() uses to decide this, asked of the settled result.
+		var query := PhysicsRayQueryParameters3D.create(
+			camera.global_position, p + Vector3(0.0, 0.85, 0.0))
+		query.exclude = [player.get_rid()]
+		query.collision_mask = 3
+		assert_dict(space_state.intersect_ray(query)) \
+			.override_failure_message("the turned shot put something between the camera and the child at (%.1f, %.1f), where the authored shot had them in clear view" % [
+				spot[0], spot[1]]) \
+			.is_empty()
 
 
 func test_the_garden_gap_is_left_exactly_as_round_two_tuned_it() -> void:
@@ -204,7 +287,7 @@ func test_the_shot_eases_into_its_new_angle_rather_than_snapping_to_it() -> void
 	# is the ordinary in-play path (`_initialized` is long since true), so
 	# every step from here is damped.
 	player.global_position = Vector3(
-		PINNED_AGAINST_THE_WEST_WALL.x, player.locked_y, PINNED_AGAINST_THE_WEST_WALL.y)
+		PINNED_BEHIND_THE_STAIRCASE.x, player.locked_y, PINNED_BEHIND_THE_STAIRCASE.y)
 	var tree := Engine.get_main_loop() as SceneTree
 	var previous: float = rig._orbit_yaw
 	var biggest_step := 0.0

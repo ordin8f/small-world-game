@@ -755,15 +755,48 @@ const ORBIT_CLEAR_WEIGHT := 0.7
 ## was, because the orbit finally has a reason to prefer the side of the
 ## trunk the child is on.
 ##
-## What it CANNOT see, and this is a real hole rather than a caveat: the
-## treelines outside every wall, and every tree crown, are render-only. A
-## canopy tree's collider is a 1 m trunk footprint under a five-metre crown
-## (world_bounds.gd), so this ray passes cleanly under a crown that fills
-## the frame. ORBIT_CLEAR_PROP covers some of that by keeping the camera
-## three metres off the trunk; the rest is not visible to any query this rig
-## can afford at 60 Hz.
+## WHAT THIS RAY CANNOT SEE, recorded because a later round will be tempted
+## to fix it the way this one was. Crowns are invisible to it: the canopy
+## tree at (-17.6,-13.4) is an 11.5 m tree with a 6.7 m spread whose collider
+## is, deliberately, one metre across (world_bounds.gd's CANOPY TREES block
+## -- "A canopy you cannot walk under is just a wall with leaves", and layer
+## 1 is the MOVEMENT layer, so a crown-sized collider would wall the player
+## out of the shade the trees exist to give). Measured at the cell where that
+## tree hid the child: this ray passed 4.0 m clear of the trunk.
+##
+## Modelling the crowns instead of the trunks was tried twice and neither
+## model shipped -- see ORBIT_VIEW_TOLERANCE below, which reaches the same
+## place by bounding the outcome rather than guessing at the cause.
 const ORBIT_SIGHT_WEIGHT := 0.5
 const ORBIT_SIGHT_CHEST := 0.85
+
+## How much of the frame's own reach the shot is allowed to GIVE UP to gain
+## the room and the clearance the terms above want. Zero, within noise.
+##
+## This is the constraint that had to exist and did not, and the way it was
+## found is worth recording. The first build with everything else right
+## turned the shot at the park's west edge from a close, steep, awkward frame
+## that SHOWED the child into a well-proportioned one that did not -- the
+## render at (-22,-14) came back with no child in it at all. Measured at that
+## cell, window openness went 0.45 -> 0.28: the orbit had bought room and
+## clearance by pointing the frame further INTO the corner, which is the one
+## trade it must never make, because the whole reason to turn a shot is to
+## improve what is in it.
+##
+## Two occlusion models were tried first and both are gone. A sphere at each
+## rendered crown's centre put that tree 4.9 m clear of the sightline and let
+## the orbit through; the render disagreed. The raw AABB called it blocked --
+## and also called the child hidden whenever they merely stood UNDER a
+## canopy, which had the rig turning 26.9 degrees away from a clean frame at
+## (-10,-11) to escape a tree that was not in the way. Neither could tell
+## "behind a crown" from "under one", which is the distinction that matters
+## and is not cheaply available to any query this rig can afford at 60 Hz.
+##
+## This constraint reaches the same place without modelling occlusion at all:
+## it does not know what is hiding the child, only that the frame got worse,
+## which at every cell that produced a child-less shot was true and was the
+## reason. Stated as a bound on the OUTCOME rather than a guess at the cause.
+const ORBIT_VIEW_TOLERANCE := 0.02
 ## Which of world_bounds.gd's non-camera_blocks boxes are PROPS rather than
 ## the LANE's two wide invisible flanks. The flanks are 24 m across, are
 ## deliberately unrendered, and the camera is deliberately allowed to fly
@@ -963,6 +996,34 @@ func _choose_orbit(p: Vector3, base_yaw: float, wanted: float, eye_y: float) -> 
 	# It is a chord across an arc, so it is an approximation, and the arc
 	# bows outward from it. What it is not is a guess: it is the same two
 	# endpoints the failure had, tested against the same layer.
+	#
+	# ---- AND IT MUST NOT LOSE THE CHILD, OR THE FRAME, TO GET THERE -----
+	# Two conditions, found by two different cells, and each one is the only
+	# thing that catches its own.
+	#
+	# The first is the child. At (11,-17) the shot turned the full 32 degrees
+	# into an angle whose sightline runs down the length of the canopy tree
+	# at (9.6,-14.6) -- a shot that measured better on every other term with
+	# a trunk squarely over the child. Conditional on the authored shot being
+	# clear, so that where the authored angle ALREADY hides the child (behind
+	# the tower staircase at (-6,-15), say) it says nothing and the orbit does
+	# the job it exists for. It only ever forbids trading a visible child for
+	# a hidden one.
+	#
+	# The second is the frame. `room` and `clear` are about
+	# where the CAMERA stands; left to themselves they will happily buy a
+	# roomier position by pointing the frame further into a corner, and at
+	# the park's west edge that is exactly what they did -- window openness
+	# 0.45 -> 0.28, and the rendered frame came back with no child in it.
+	# See ORBIT_VIEW_TOLERANCE for the two occlusion models that were tried
+	# and rejected before this one.
+	#
+	# Half a metre apart, these two cells needed different guards: (10.5,-17.5)
+	# keeps its full turn under both and its frame is the best of the six
+	# hardest turns in the world. That is the argument for bounding outcomes
+	# separately rather than looking for the one rule that covers everything.
+	var authored_view := _window_openness(fan, 0.0)
+	var authored_shows_child := not _sight_blocked(authored_landing, p)
 	while absf(turn) > 1e-3:
 		var turned_star := base_yaw + turn
 		var back_star := Vector3(sin(turned_star), 0.0, cos(turned_star))
@@ -972,7 +1033,10 @@ func _choose_orbit(p: Vector3, base_yaw: float, wanted: float, eye_y: float) -> 
 		var path := PhysicsRayQueryParameters3D.create(authored_landing, landing_star)
 		path.collision_mask = spring_arm.collision_mask
 		path.exclude = _probe_params.exclude
-		if get_world_3d().direct_space_state.intersect_ray(path).is_empty():
+		var can_swing := get_world_3d().direct_space_state.intersect_ray(path).is_empty()
+		var keeps_view := _window_openness(fan, turn) >= authored_view - ORBIT_VIEW_TOLERANCE
+		var keeps_child := not authored_shows_child or not _sight_blocked(landing_star, p)
+		if can_swing and keeps_view and keeps_child:
 			return turn
 		turn *= 0.5
 	return 0.0
@@ -981,8 +1045,8 @@ func _choose_orbit(p: Vector3, base_yaw: float, wanted: float, eye_y: float) -> 
 ## Is anything between a candidate camera position and the child's chest?
 ## Layers 1 AND 2, unlike everywhere else in this file -- a tower or a trunk
 ## hides the child exactly as completely as a wall does, and the reason props
-## are excluded from the arm's own mask is that they should not STOP the
-## camera, not that they are see-through.
+## are off the arm's own mask is that they should not STOP the camera, not
+## that they are see-through.
 func _sight_blocked(from: Vector3, p: Vector3) -> bool:
 	var query := PhysicsRayQueryParameters3D.create(
 		from, Vector3(p.x, p.y + ORBIT_SIGHT_CHEST, p.z))
