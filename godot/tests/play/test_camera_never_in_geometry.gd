@@ -101,22 +101,32 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		# Explicit float type: Dictionary lookups return Variant, so `:=` cannot
 		# infer here -- the same gotcha camera_rig.gd's own doc comment records.
 		var authored_distance: float = CameraProfile.profile(player.global_position.z)["distance"]
-		# 0.10, not 0.45. The expanded world has deliberately tight places -- a
-		# 2 m garden gap and a 6 m lane -- where the spring arm correctly pulls
-		# the camera in because REVEAL's authored 10.5 m simply does not fit.
-		# Measured, that legitimate pull-in bottoms out around 0.36 of authored;
-		# the doorway collapse this assertion exists to catch was 0.06. A 0.20
-		# threshold separates the two cleanly. It is a weaker guard than 0.45 and
-		# that is a deliberate trade: at 0.45 it fires on correct behaviour, and
-		# a test that cries wolf gets deleted.
+		# RESTORED to 0.45 (camera-fix task, round 4, 2026-08-30). This
+		# assertion had been weakened twice -- 0.45 -> 0.20 -> 0.10 -- because
+		# the expanded world had places where SpringArm3D correctly shortened
+		# the shot and the resulting camera really was 1.5 m from the child.
+		# The previous version of this comment recorded that as an honest
+		# limit and pointed at DEMO_PLAN.md: "the real fix is widening the gap
+		# or reducing REVEAL's authored distance, both of which are art
+		# decisions." The second of those is what round 4 did, alongside
+		# fitting the shot to the room BEFORE the arm shortens it
+		# (camera_rig.gd's fit block), and the floor goes back to where it
+		# started rather than being left weakened.
 		#
-		# HONEST LIMIT: measured, the garden-gap crossing pulls to ~0.14 of
-		# authored -- a camera 1.47 m behind the child while they squeeze through
-		# a 2 m opening. That is a genuinely poor shot, and lowering the bar to
-		# 0.10 lets it pass. It is recorded as a known defect in DEMO_PLAN.md
-		# rather than fixed here: the real fix is widening the gap or reducing
-		# REVEAL's authored distance, both of which are art decisions.
-		assert_float(cam_pos.distance_to(player.global_position)).is_greater(authored_distance * 0.10)
+		# Bracketed, not guessed: 0.45 passes and 0.60 fails on this route, so
+		# the margin is real but modest.
+		#
+		# WHAT THIS DOES NOT SAY. It is a bound on THIS route, not a world-wide
+		# invariant, and the difference is measurable rather than rhetorical:
+		# tools/_probe_camera_sweep.gd puts the settled minimum over all 3610
+		# walkable positions at 0.30 (ten cells, deep in the garden pocket),
+		# and a much longer driven route through every region dips to 0.17 for
+		# a few ticks crossing the lane mouth, where the room behind the player
+		# changes by 6 m within one stride and the damped position lags through
+		# it. A route that went there would fail this at 0.45 and would be
+		# right to. The sweep is what covers the world; this covers the story
+		# route.
+		assert_float(cam_pos.distance_to(player.global_position)).is_greater(authored_distance * 0.45)
 
 		# "Behind, not beside." Added for the camera-fix task (2026-08-28):
 		# the home-end pull-in fix that replaced the doorway-collapse fix's

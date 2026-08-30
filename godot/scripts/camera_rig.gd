@@ -235,6 +235,102 @@ func _physics_process(delta: float) -> void:
 
 	var s := sin(yaw)
 	var c := cos(yaw)
+	var back := Vector3(s, 0.0, c)
+	var lat := Vector3(c, 0.0, -s)
+	var forward := Vector3(-s, 0.0, -c)
+
+	# game.mjs:407-409 -- look-at target, ahead of the player by `lead`.
+	# Hoisted above `desired` (the source builds it after) because the
+	# room-fitting below has to aim from it and then move it.
+	var target := Vector3(p.x, target_height, p.z) + forward * lead
+
+	# ---- FIT THE SHOT TO THE ROOM BEHIND THE PLAYER ---------------------
+	# Camera sweep (camera-fix task, round 4, 2026-08-30;
+	# tools/_probe_camera_sweep.gd). Measured over all 3610 walkable
+	# positions rather than the six authored beats, this was the single
+	# worst thing the camera did: 560 of them (15.5% of the world) had the
+	# camera under 0.35 of its authored distance, and the frames are dead
+	# -- at the park's north edge (-9.5,-6) the camera sat 2.40 m from the
+	# child with 80% of the picture filled by the inside face of the
+	# boundary wall; on the south-east lawn (16,-17) it sat 1.48 m away
+	# with the child not fully in frame at all.
+	#
+	# The mechanism is NOT that the shot is too long for the room. It is
+	# WHERE the shortening happens. SpringArm3D shortens the whole arm --
+	# a shot authored at 7.5 m back and 3.2 m up becomes 1.7 m back and
+	# 1.4 m up, because the arm keeps its direction and loses its length,
+	# so the height collapses in exact proportion with the distance and
+	# the camera ends up at the child's own head height, at arm's length,
+	# staring at the back of their neck. That is why the park's whole
+	# northern strip shoots like this: the north boundary wall (z=-4) is
+	# behind the player for every position with x outside the lane mouth.
+	#
+	# Fit the horizontal reach to the room that exists and KEEP THE
+	# AUTHORED HEIGHT. The camera then climbs as it is pushed in -- 0.4 m
+	# behind and 3.2 m up is a raised over-the-shoulder shot with the
+	# child comfortably in frame and 3.2 m of real separation, where 0.4 m
+	# behind and 1.2 m up is a shot of the back of a head. `lateral` and
+	# `lead` scale by the same factor, so this is a dolly along the
+	# authored aim (the same direction-preserving move the home-doorway
+	# branch below already makes), never a swing to one side.
+	#
+	# Two more things fall out of doing it here rather than leaving it to
+	# the spring arm, and they matter as much as the framing:
+	#   - The arm's shortening is applied to the final transform with no
+	#     damping at all, so crossing the edge of a wall SNAPPED. Measured
+	#     at the lane mouth (z=-7), one metre of sideways walking, from
+	#     x=4.5 to x=5.5, moved the camera 7.07 m instantly -- and the two
+	#     frames either side of that line are a decent 3.4 m
+	#     over-the-shoulder and a shot with half the screen filled by the
+	#     lane wall. Folding the same measurement into `desired` puts it
+	#     through `_smoothed_desired`'s existing damping instead.
+	#   - The camera stops arriving pressed against wall faces, so the
+	#     near-plane no longer sits inside rendered geometry.
+	#
+	# Deliberately NOT a yaw redirect: round 3 established with evidence
+	# that steering the camera around the garden seam clips the wall
+	# corners at (11,-9)/(11,-7) in every variant tried, and movement is
+	# authored-yaw-only besides (this file's class doc comment).
+	var room := _room_behind(p, back, distance)
+	if room < distance:
+		var fit := room / distance
+		distance = room
+		lateral *= fit
+		lead *= fit
+		target = Vector3(p.x, target_height, p.z) + forward * lead
+
+		# Keeping the authored height is most of the fix, but not all of
+		# it: the APPROACH->REVEAL blend is only ~16% of the way to REVEAL
+		# at the park's own north edge (z=-5), so the height it preserves
+		# there is 1.67 m, and 0.35 m back at 1.67 m up is still only 1.7 m
+		# of separation -- measured, before this clause, at every position
+		# along the garden pocket's north wall. Buy the separation the room
+		# cannot give horizontally back as height instead.
+		#
+		# Two bounds on that climb, and the second one was found by looking
+		# rather than by arithmetic. LIFT_MAX keeps the camera under the
+		# park's own 4.2 m boundary wall. MAX_LIFT_PITCH exists because the
+		# first version had none: at (16,-17), where the pocket's south
+		# wall leaves 0.35 m of ground behind the player, the unbounded
+		# lift put the camera 4.3 m up looking 83 deg down, and the frame
+		# was the top of the child's head -- separation restored, shot
+		# still useless. Capping the climb at what a 70 deg look-down can
+		# use trades a little separation for a shot that reads as a high
+		# follow rather than a floor plan.
+		#
+		# A version that instead pushed the look-at target FORWARD to flatten
+		# that angle was tried and rejected on the frames it produced: with
+		# the camera nearly on top of the child, moving the aim away from
+		# them drops the child toward the BOTTOM of frame (further from the
+		# camera reads as lower under a steep lens), and it walked the child
+		# straight off the bottom edge at 20 of the 928 sampled positions.
+		# Both directions were shot and looked at; this one keeps the child
+		# centred.
+		var aim_reach := room + lead
+		var lifted := target_height + sqrt(maxf(
+			MIN_SEPARATION * MIN_SEPARATION - room * room, 0.0))
+		var pitch_ceiling := target_height + aim_reach * tan(MAX_LIFT_PITCH)
+		height = clampf(minf(lifted, pitch_ceiling), height, height + LIFT_MAX)
 
 	# game.mjs:394-400 -- desired camera position. `distance` and `lateral`
 	# are offsets along two orthonormal directions relative to the player:
@@ -243,8 +339,6 @@ func _physics_process(delta: float) -> void:
 	# Kept as explicit Vector3s, rather than inlined the way game.mjs writes
 	# desired.x/desired.z directly, because the doorway fix just below
 	# reuses both directions.
-	var back := Vector3(s, 0.0, c)
-	var lat := Vector3(c, 0.0, -s)
 	var raw_offset := back * distance + lat * lateral
 	var raw_x := p.x + raw_offset.x
 	var raw_z := p.z + raw_offset.z
@@ -392,10 +486,6 @@ func _physics_process(delta: float) -> void:
 
 	var desired := Vector3(desired_x, height + _look_pitch * LOOK_PITCH_HEIGHT_SCALE, desired_z)
 
-	# game.mjs:407-409 -- look-at target, ahead of the player by `lead`.
-	var forward := Vector3(-s, 0.0, -c)
-	var target := Vector3(p.x, target_height, p.z) + forward * lead
-
 	# game.mjs:402-403 -- position damped toward `desired`, not snapped to it.
 	if not _initialized:
 		_smoothed_desired = desired
@@ -426,4 +516,141 @@ func _physics_process(delta: float) -> void:
 	if not camera.global_position.is_equal_approx(target):
 		camera.look_at(target, Vector3.UP)
 	camera.fov = CameraProfile.damp(camera.fov, fov, 5.5, delta)
+
+
+## How far the shot can actually reach behind the player before it meets a
+## camera-blocking wall, capped at `wanted`. One sphere cast per tick, on
+## the same physics layer SpringArm3D itself watches -- this measures the
+## same obstruction the arm would, just early enough to compose around it
+## (see the fit block in _physics_process for why that matters).
+##
+## Cast HORIZONTALLY, from the player, one metre up -- not along the arm's
+## own slanted line. Every camera_blocks collider in this world is a 5 m
+## box standing on the ground (tools/_bootstrap_courtyard.gd's
+## _wall_collider), so the clearance measured at 1 m is exactly the
+## clearance the camera meets at 3 m, and measuring it on a fixed
+## horizontal line keeps this independent of the height it is about to
+## decide -- a cast along the arm would depend on the answer it is
+## computing.
+##
+## PROBE_RADIUS must stay UNDER the player's own collision radius (0.32,
+## scenes/player.tscn) and PROBE_Y at the height where the capsule is
+## actually that wide. A first attempt used 0.40 at y=1.0 and was wrong in
+## a way the sweep caught immediately: the player can stand 0.32 m from a
+## wall, so a 0.40 m sphere centred on them STARTS in contact with a wall
+## beside them, cast_motion returns a safe fraction of zero, and the whole
+## west edge of the park (x=-22, nothing at all behind the player) reported
+## no room and shot from 2.6 m directly overhead. y=0.55 is mid-capsule,
+## where the radius is the full 0.32 rather than the 0.21 the hemispherical
+## cap leaves at y=1.0; every camera_blocks collider is a 5 m box standing
+## on the ground, so the height the clearance is measured at is free to be
+## chosen for this reason alone.
+##
+## PROBE_RADIUS must stay UNDER the player's own collision radius (0.32,
+## scenes/player.tscn) and PROBE_Y at the height where the capsule is
+## actually that wide. A first attempt used 0.40 at y=1.0 and was wrong in
+## a way the sweep caught immediately: the player can stand 0.32 m from a
+## wall, so a 0.40 m sphere centred on them STARTS in contact with a wall
+## beside them, cast_motion returns a safe fraction of zero, and the whole
+## west edge of the park (x=-22, nothing at all behind the player)
+## reported no room and shot from directly overhead. y=0.55 is
+## mid-capsule, where the radius is the full 0.32 rather than the 0.21 the
+## hemispherical cap leaves at y=1.0; every camera_blocks collider is a 5 m
+## box standing on the ground, so the height the clearance is measured at
+## is free to be chosen for exactly this reason.
+##
+## This asks "is the path behind the player clear", NOT "does the camera
+## have room around it at the far end", and the difference is a real
+## remaining fault, not an oversight -- see this file's own report of the
+## lane-mouth frame. A fat (0.65 m) swept sphere was tried to cover both
+## and made the world worse on every other measure at once (child partly
+## out of frame at 47 of 928 sampled positions instead of 0, closest shot
+## 1.32 m instead of 2.16, 102 neighbour pairs jumping over 1.5 m instead
+## of 76), because a swept sphere stops the camera BEFORE a pinch it would
+## have flown through to open ground beyond. The camera needs a clear END
+## POINT, not a clear path, and those are different queries; the sweep
+## measures the endpoint one (`clearance to wall`) so the gap is visible
+## rather than assumed away.
+##
+## FLOOR, not zero: `lateral` and `lead` scale with this, so a literal zero
+## would put `desired` directly above `target` and look_at() errors on a
+## direction parallel to UP. 0.35 m is small enough to be a genuinely
+## pinned shot and large enough that the arm is never vertical; if the
+## player is somehow closer to a wall than that, SpringArm3D still trims
+## the last few centimetres exactly as it always has.
+const PROBE_RADIUS := 0.28
+## A prop may pull the shot in only as far as this, and only if it can
+## be cleared at all -- see _room_behind() for what happens when it cannot.
+const PROP_MIN_ROOM := 3.0
+const PROBE_Y := 0.55
+const MIN_ROOM := 0.35
+
+## How far the camera should stay from its own look-at target when the room
+## behind the player cannot give it horizontally, how much height it may
+## climb to get there, and how steeply it is allowed to end up looking.
+## 3.2 m is comfortably outside "the child fills the frame" at REVEAL's
+## 58 deg lens (the child is 1.08 m). 1.4 m of lift keeps the steepest
+## forced shot below the park's own 4.2 m boundary wall. 70 deg is the
+## angle past which the frame stops reading as a high follow shot and
+## starts reading as a floor plan -- picked by shooting the pinned wall
+## positions at several values and looking, not from the arithmetic.
+const MIN_SEPARATION := 3.2
+const LIFT_MAX := 1.4
+const MAX_LIFT_PITCH := deg_to_rad(70.0)
+
+var _probe_params: PhysicsShapeQueryParameters3D = null
+
+
+func _room_behind(p: Vector3, back: Vector3, wanted: float) -> float:
+	if _probe_params == null:
+		var sphere := SphereShape3D.new()
+		sphere.radius = PROBE_RADIUS
+		_probe_params = PhysicsShapeQueryParameters3D.new()
+		_probe_params.shape = sphere
+		_probe_params.collide_with_areas = false
+		_probe_params.collide_with_bodies = true
+	_probe_params.exclude = [Game.player.get_rid()] if is_instance_valid(Game.player) else []
+	# Walls (the arm's own layer) may pin the shot all the way in: there is
+	# genuinely nowhere else for it to be.
+	var wall_room := _cast_back(p, back, wanted, spring_arm.collision_mask)
+	# Props (layer 1 only -- trunks, towers, the bench, the staircase) get a
+	# floor instead. They are the reason the child was hidden from 27% of
+	# the southern park's standing positions, so the camera does have to
+	# come in front of them, but they are also 1 m wide, so a shot that
+	# slams all the way in every time one crosses behind the player pumps.
+	# Measured on the driven route: unbounded, this pulled the worst
+	# transient angle off-behind to 48.3 deg -- past the 45 deg
+	# test_camera_never_in_geometry.gd asserts -- and doubled the typical
+	# per-tick camera motion. Floored, the dolly is a move between two shots
+	# that both read, not a slam onto the child's back.
+	#
+	# The floor is also what keeps the prop layer's honesty problem
+	# harmless: every layer-1 box is a uniform 2.4 m tall whatever it
+	# renders as (world_bounds.gd's own warning about putting props on the
+	# camera layer), so the 0.9 m bench and the open staircase "block"
+	# sightlines that really pass over them. Bounded at PROP_MIN_ROOM the
+	# worst that costs is a shot that comes in to 3 m near a bench.
+	var prop_room := _cast_back(p, back, wanted, 1)
+	if prop_room < PROP_MIN_ROOM:
+		# Too close to compose in front of. Leave the shot at its authored
+		# length and accept that this prop is in the way -- do NOT clamp
+		# `room` up to the floor, which is what a first version did and
+		# which put the camera INSIDE the left tower at (-3.4,-16): the
+		# floor pushed the shot to 3 m behind a player standing 1.85 m
+		# south of a 2.7 m-wide box, layer 1 is not on the arm's own mask
+		# so nothing stopped it, and the rendered frame came back solid
+		# black. Caught by shooting it and looking; every number in the
+		# sweep said that cell had improved.
+		prop_room = wanted
+	return maxf(minf(wall_room, prop_room), MIN_ROOM)
+
+
+func _cast_back(p: Vector3, back: Vector3, wanted: float, mask: int) -> float:
+	_probe_params.collision_mask = mask
+	_probe_params.transform = Transform3D(Basis.IDENTITY, Vector3(p.x, p.y + PROBE_Y, p.z))
+	_probe_params.motion = back * wanted
+	var hit: PackedFloat32Array = get_world_3d().direct_space_state.cast_motion(_probe_params)
+	if hit.size() < 1:
+		return wanted
+	return wanted * hit[0]
 
