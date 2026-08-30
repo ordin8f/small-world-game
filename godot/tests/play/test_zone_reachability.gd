@@ -30,11 +30,37 @@ extends GdUnitTestSuite
 ## walk, and reports far more (walk distances, dead space, sightlines,
 ## invisible walls). This is only the assertion.
 
+## Points in the park that are not zones and never will be, chosen one per
+## corner of the room the 2026-08-30 park pass opened up. Zones alone are
+## not enough here: all five of them sit within 14 m of the world's centre
+## line, so the west lawn could be walled back off at x=-16 and this suite
+## would still pass. These are the developer's own complaint -- "both the
+## left and right hand areas are not reachable" -- as five assertions, and
+## unlike test_world_bounds.gd's version of the same claim they are made
+## against the real physics world the player actually walks in.
+##
+## 1.0 m radius: this asks "can the player get to this corner of the park",
+## not "is this exact 0.5 m cell free", so a bin or a tree standing on the
+## sampled point must not fail it.
+const PARK_CORNERS := [
+	["west lawn", -21.0, -12.0],
+	["north-west corner", -21.0, -5.0],
+	["south-west corner", -21.0, -22.0],
+	["south walk", 0.0, -22.0],
+	["south-east corner", 20.0, -22.0],
+]
+const CORNER_RADIUS := 1.0
+
 const STEP := 0.5
-const X_MIN := -18.0
-const Z_MIN := -22.0
-const X_CELLS := 85
-const Z_CELLS := 81
+## Must cover the whole walkable world or the flood measures a clipped one.
+## Widened with the park (2026-08-30, world_bounds.gd's PARK block): the
+## room's west wall moved to x=-23 and its back wall to z=-24, both outside
+## the old grid, so a zone out there would have been unreachable purely
+## because this grid could not represent it.
+const X_MIN := -25.0
+const Z_MIN := -26.0
+const X_CELLS := 101
+const Z_CELLS := 89
 const NEIGHBORS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 var _space: PhysicsDirectSpaceState3D
@@ -42,7 +68,7 @@ var _params: PhysicsShapeQueryParameters3D
 var _shape_y := 0.54
 
 
-func test_every_interaction_zone_is_reachable_on_foot_from_spawn() -> void:
+func test_every_zone_and_every_park_corner_is_reachable_on_foot_from_spawn() -> void:
 	var runner := scene_runner("res://scenes/main.tscn")
 	await runner.simulate_frames(2)  # let Player, CameraRig and every zone _ready() run
 
@@ -70,6 +96,17 @@ func test_every_interaction_zone_is_reachable_on_foot_from_spawn() -> void:
 				+ "Some wall segment has closed one of the three openings between the "
 				+ "four rooms (home doorway / lane / garden gap). Run "
 				+ "tools/_probe_reachability.gd for the full walk."
+			).is_true()
+
+	# Same flood, deliberately not a second test method -- re-running it
+	# would mean a second 9,000-cell shape-query sweep of the whole world
+	# to answer a question this one has already answered.
+	for corner in PARK_CORNERS:
+		assert_bool(_any_reachable_within(reached, corner[1], corner[2], CORNER_RADIUS)) 			.override_failure_message(
+				"The park's %s at (%.1f, %.1f) cannot be walked to from spawn %s. "
+				% [corner[0], corner[1], corner[2], start]
+				+ "A boundary wall has moved back in -- world_bounds.gd's PARK "
+				+ "block puts them at x=-23, x=22 and z=-24."
 			).is_true()
 
 

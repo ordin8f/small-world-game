@@ -30,11 +30,12 @@ const PALETTE := {
 ## reordered or inserted, an explicit flag can't.
 ##
 ## Four places (2026-08-28 world expansion -- see GODOT_REBUILD_PLAN.md's
-## successor task, "expand the world"): HOME (porch/doorway, x[-7,7]
-## z[8,16]) -> LANE (walled passage, x[-5,5] z[-4,8]) -> PLAYGROUND
-## (open, x[-16,16] z[-20,-4], stepping in to x[-16,11] for z in [-16,-4]
-## where the garden sits alongside it) -> GARDEN POCKET, through the wall
-## gap (x[11,22] z[-16,-4]). Each place's own doc block below explains its
+## successor task, "expand the world"; the third widened again by the
+## 2026-08-30 park pass): HOME (porch/doorway, x[-7,7] z[8,16]) -> LANE
+## (walled passage, x[-5,5] z[-4,8]) -> PARK (open, x[-23,22] z[-24,-16],
+## stepping in to x[-23,11] for z in [-16,-4] where the garden sits
+## alongside it) -> GARDEN POCKET, through the wall gap (x[11,22]
+## z[-16,-4]). Each place's own doc block below explains its
 ## colliders; read can_move_to()'s bound as a loose outer safety net, not
 ## the real shape -- these boxes carve the actual irregular footprint out
 ## of it, same mechanism the old single-room version used for its interior
@@ -83,7 +84,7 @@ const COLLIDERS := [
 	#     rendered geometry).
 	#   - a WIDE, purely invisible flank beyond it, camera_blocks FALSE. Its
 	#     job is sealing the gap between the lane and the wider rooms it
-	#     connects (home at x[-7,7], playground at x[-16,16]) so a player
+	#     connects (home at x[-7,7], the park at x[-23,22]) so a player
 	#     can't walk around the outside of the lane's visible walls -- but
 	#     there is nothing rendered out there for a camera to clip through,
 	#     and REVEAL zone's 10.5 m distance genuinely needs to swing a
@@ -113,14 +114,30 @@ const COLLIDERS := [
 	{"x": -17.5, "z": 2.0, "half_x": 12.2, "half_z": 6.0},
 	{"x": 17.5, "z": 2.0, "half_x": 12.2, "half_z": 6.0},
 
-	# --- PLAYGROUND: open ground (x[-16,16], z[-20,-4]) ----------------------
-	{"x": -16.0, "z": -12.0, "half_x": 0.6, "half_z": 8.0, "camera_blocks": true},
-	# East wall only covers the DEEP end (z -20..-16) -- south of that, the
-	# garden wall below (x=11) is the real east boundary, stepping the
-	# playground's usable width in by 5 m where the garden sits alongside
-	# it. Garden's own north wall closes the corner this step leaves open.
-	{"x": 16.0, "z": -18.0, "half_x": 0.6, "half_z": 2.0, "camera_blocks": true},
-	{"x": 0.0, "z": -20.0, "half_x": 16.6, "half_z": 0.6, "camera_blocks": true},
+	# --- PARK: open ground (x[-23,22] z[-24,-16], x[-23,11] z[-16,-4]) ------
+	# Park pass (2026-08-30). The developer's words: "Both the left and
+	# right hand areas are not reachable ... consider what such parks and
+	# playgrounds look like." The room was x[-16,16] z[-20,-4] -- 32 x 16 m,
+	# and a third of that stepped in behind the garden wall, so the
+	# measured walkable world was 648 m^2 in total. This widens it to
+	# x[-23,22] and deepens it to z=-24: a 45 x 20 m park, which is the
+	# size a real neighbourhood playground actually is and the size the
+	# concept plates imply (concept_03/09 both put a treeline and rooflines
+	# a long way past the play equipment, not four metres past it).
+	#
+	# The three walls below move; nothing else about the room's shape
+	# changes. The garden pocket keeps its own footprint and the gap
+	# through x=11 stays the only way into it -- the pocket's own south
+	# wall (z=-16, x[11,22]) now doubles as the divider between the pocket
+	# and the park's new south-east lawn, which is why the east wall here
+	# only runs z[-24,-16]: south of the pocket, not beside it.
+	{"x": -23.0, "z": -14.0, "half_x": 0.6, "half_z": 10.0, "camera_blocks": true},
+	# East wall covers the DEEP end (z -24..-16) only -- north of that, the
+	# garden wall below (x=11) is the real east boundary. Its half_x and
+	# centre match the garden pocket's own east wall exactly so the two
+	# meet at z=-16 as one flush face rather than a 0.25 m step.
+	{"x": 22.0, "z": -20.0, "half_x": 0.35, "half_z": 4.0, "camera_blocks": true},
+	{"x": -0.5, "z": -24.0, "half_x": 23.1, "half_z": 0.6, "camera_blocks": true},
 	# North boundary (openness pass, 2026-08-29). Movement along z=-4 was
 	# already sealed by the LANE's wide invisible flanks above; these add
 	# nothing to that. What they add is CAMERA collision, matching the wall
@@ -136,7 +153,11 @@ const COLLIDERS := [
 	# for ("the camera must not clip through rendered geometry"); the
 	# flanks stay camera_blocks=false because they are still unrendered,
 	# and this is not them.
-	{"x": -10.9, "z": -3.6, "half_x": 5.6, "half_z": 0.4, "camera_blocks": true},
+	#
+	# The west run reaches x=-23.6 (park pass) so it still meets the new
+	# west wall's outer face; its east end is unchanged at x=-5.3, the
+	# lane wall's own outer face.
+	{"x": -14.45, "z": -3.6, "half_x": 9.15, "half_z": 0.4, "camera_blocks": true},
 	{"x": 8.25, "z": -3.6, "half_x": 3.25, "half_z": 0.4, "camera_blocks": true},
 	# Towers (unchanged footprint/size from the single-room version, just
 	# relocated -- WorldAffordances.TOWER_X/TOWER_Z mirror these).
@@ -148,6 +169,33 @@ const COLLIDERS := [
 	{"x": -6.0, "z": 9.5, "half_x": 0.65, "half_z": 0.65},
 	# Deep garden tree.
 	{"x": 13.9, "z": -13.4, "half_x": 1.0, "half_z": 1.0},
+	# --- PARK TREES (2026-08-30) -------------------------------------------
+	# Six trees standing on the park's own lawn, away from the boundary.
+	# They get colliders because they stand where the player walks; the
+	# treelines OUTSIDE every wall (_bootstrap_courtyard.gd's
+	# _build_park_boundary) deliberately do not, because nobody can reach
+	# them and an unreachable collider is only a thing for the camera to
+	# snag on. camera_blocks stays false throughout, matching every other
+	# tree here -- a trunk is not a wall, and putting one on the camera
+	# layer is how a spring arm ends up stopping in open lawn.
+	{"x": -13.5, "z": -19.0, "half_x": 0.7, "half_z": 0.7},
+	{"x": 16.2, "z": -19.4, "half_x": 0.7, "half_z": 0.7},
+	{"x": 20.5, "z": -21.5, "half_x": 0.7, "half_z": 0.7},
+	# --- CANOPY TREES (claustrophobia pass, 2026-08-30) --------------------
+	# Eight 10-13 m trees planted 1.5-3 m off a path centreline so their
+	# crowns are over the route the player walks -- the park had 1% of its
+	# walkable ground under anything at all, measured
+	# (_probe_reachability.gd's canopy pass). half 0.5, not the 0.7 above:
+	# these are deliberately TRUNK footprints on a crown roughly 5 m
+	# across, because the whole point of a canopy is that you get to walk
+	# under it. A collider matching the crown would turn each of them into
+	# a 5 m round wall and make the park smaller, not bigger.
+	{"x": -7.0, "z": -5.8, "half_x": 0.5, "half_z": 0.5},
+	{"x": -12.8, "z": -6.4, "half_x": 0.5, "half_z": 0.5},
+	{"x": -17.6, "z": -13.4, "half_x": 0.5, "half_z": 0.5},
+	{"x": -5.0, "z": -20.2, "half_x": 0.5, "half_z": 0.5},
+	{"x": 4.6, "z": -20.4, "half_x": 0.5, "half_z": 0.5},
+	{"x": 9.6, "z": -14.6, "half_x": 0.5, "half_z": 0.5},
 	# Lane-flank tree, camera-fix task round 3 (2026-08-30). Sits inside the
 	# LANE's own wide invisible flank (below, {x:16.5,z:2.0,half_x:13.2,
 	# half_z:6.0}, camera_blocks=false) rather than modifying that entry's
@@ -221,13 +269,14 @@ static func circle_intersects_box(x: float, z: float, radius: float, box: Dictio
 
 
 ## A loose outer envelope, not the real shape of the world -- see the
-## COLLIDERS doc comment above. Covers home[-7,7]/lane[-3,3]/
-## playground[-16,16]/garden[11,22]'s combined x extent and
-## playground[-20]/home[16]'s combined z extent, with a small margin
-## outside every room's own wall so this check never fires before the
-## real perimeter colliders do.
+## COLLIDERS doc comment above. Covers home[-7,7]/lane[-5,5]/
+## park[-23,22]/garden[11,22]'s combined x extent and park[-24]/home[16]'s
+## combined z extent, with a small margin outside every room's own wall so
+## this check never fires before the real perimeter colliders do. Widened
+## with the park (2026-08-30); the margin is what it always was, one tenth
+## of a metre past the outermost wall's own outer face.
 static func can_move_to(x: float, z: float, radius: float = 0.32) -> bool:
-	if x < -16.6 or x > 22.6 or z < -20.3 or z > 16.3:
+	if x < -23.7 or x > 22.7 or z < -24.7 or z > 16.3:
 		return false
 	for box in COLLIDERS:
 		if circle_intersects_box(x, z, radius, box):

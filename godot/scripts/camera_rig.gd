@@ -262,11 +262,19 @@ func _physics_process(delta: float) -> void:
 	# collapse bug documented below, because that margin put the clamp
 	# PAST the nearest real wall face instead of short of it. Each bound
 	# below is instead picked to sit clear of the SPECIFIC nearest solid
-	# thing a shot in that direction could reach: z min clears the
-	# playground's own back wall (near face -19.4); x min/max clear the
-	# playground west wall (-15.4) and the garden pocket's east wall
-	# (21.65) respectively -- the two widest rooms, and so the two real
-	# bounds a wide REVEAL-zone shot could actually reach.
+	# thing a shot in that direction could reach: z min clears the park's
+	# own back wall (near face -23.4); x min/max clear the park's west wall
+	# (-22.4) and the garden pocket's east wall (21.65) respectively -- the
+	# two widest rooms, and so the two real bounds a wide REVEAL-zone shot
+	# could actually reach.
+	#
+	# Moved out with the park (2026-08-30, world_bounds.gd's PARK block).
+	# These are not decoration: they are what stops a shot being composed
+	# from outside the world, so a room that grows and clamps that did not
+	# would leave a REVEAL camera pinned 7 m east of a player standing at
+	# the new west boundary, shooting them side-on. Same rule as before --
+	# 1.0 m short of the nearest wall face on each axis, and z max is
+	# untouched because the home end did not move.
 	#
 	# z max is the home end's own bound, and is NOT the doorway piers
 	# (front face 14.0) -- camera-fix task (2026-08-28): the piers only
@@ -300,12 +308,12 @@ func _physics_process(delta: float) -> void:
 	# rig is built on (see this file's class doc comment), not a
 	# regression of the bug above: it only happens on deliberate extreme
 	# input, never at the authored default.
-	var desired_z := clampf(raw_z, -19.0, 15.9)
+	var desired_z := clampf(raw_z, -23.0, 15.9)
 	var desired_x: float
 	if desired_z == raw_z:
 		# Common case: the courtyard has room for the full authored shot
 		# in its intended direction.
-		desired_x = clampf(raw_x, -15.0, 21.0)
+		desired_x = clampf(raw_x, -22.0, 21.0)
 	else:
 		# Doorway collapse fix (Gate 1 camera item; 780c690's commit
 		# message: "at the home doorway the SpringArm3D camera collapses
@@ -380,7 +388,7 @@ func _physics_process(delta: float) -> void:
 		# close, centered shot instead of a wrong one.
 		var used_z := desired_z - p.z
 		var k := clampf(used_z / raw_offset.z, -1.0, 1.0)
-		desired_x = clampf(p.x + raw_offset.x * k, -15.0, 21.0)
+		desired_x = clampf(p.x + raw_offset.x * k, -22.0, 21.0)
 
 	var desired := Vector3(desired_x, height + _look_pitch * LOOK_PITCH_HEIGHT_SCALE, desired_z)
 
