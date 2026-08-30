@@ -1,4 +1,4 @@
-# Small World — Demo Plan
+# Carefree — Demo Plan
 
 > Status: draft for review, 2026-08-28. **Supersedes `GODOT_REBUILD_PLAN.md`.**
 > Binding art contract: `docs/ART_DIRECTION.md` + `docs/concept-art/`.

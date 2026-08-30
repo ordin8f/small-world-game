@@ -1,4 +1,4 @@
-# Small World
+# Carefree
 
 A minimalistic 3D narrative game about an ordinary afternoon in the life of a young child. The world is deliberately small, but it should feel enormous through scale, light, sound, uncertainty, curiosity, and imagination.
 

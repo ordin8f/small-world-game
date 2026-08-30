@@ -494,7 +494,7 @@ function feedbackText() {
   const notes = document.querySelector('#feedback-notes').value.trim();
   const elapsed = Math.round(director.elapsed() / 1000);
   return [
-    'SMALL WORLD — THE LOST BALL PLAYTEST',
+    'CAREFREE — THE LOST BALL PLAYTEST',
     `Date: ${new Date().toISOString()}`,
     `Browser: ${navigator.userAgent}`,
     `Approx. completion time: ${elapsed}s`,

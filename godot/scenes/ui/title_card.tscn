@@ -44,7 +44,7 @@ alignment = 1
 [node name="Eyebrow" type="Label" parent="MenuRoot/Card" unique_id=1487896371]
 layout_mode = 2
 theme_type_variation = &"Eyebrow"
-text = "SMALL WORLD"
+text = "CAREFREE"
 horizontal_alignment = 1
 
 [node name="Wordmark" type="Label" parent="MenuRoot/Card" unique_id=693521416]

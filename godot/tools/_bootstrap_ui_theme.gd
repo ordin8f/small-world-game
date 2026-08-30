@@ -46,7 +46,7 @@ func _init() -> void:
 	ui_bold.font_weight = 600
 
 	# Wide-tracked variant of the UI font for small-caps eyebrow labels
-	# ("SMALL WORLD", menu items) -- a common storybook/title-card device
+	# ("CAREFREE", menu items) -- a common storybook/title-card device
 	# that needs no new font file, just letter-spacing on the existing one.
 	var eyebrow := FontVariation.new()
 	eyebrow.base_font = ui_base

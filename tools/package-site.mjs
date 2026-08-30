@@ -15,7 +15,7 @@ for (const file of ['index.html', 'styles.css', '.nojekyll']) {
 }
 await cp(resolve(root, 'src'), resolve(dist, 'src'), { recursive: true });
 
-console.log('Packaged Small World: The Lost Ball into dist/.');
+console.log('Packaged Carefree: The Lost Ball into dist/.');
 
 // Godot rebuild (godot/lost-ball-port): if a web export already exists,
 // publish it alongside the Three.js build at dist/godot/ without touching

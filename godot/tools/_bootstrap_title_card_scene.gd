@@ -42,7 +42,7 @@ func _init() -> void:
 
 	var eyebrow := Label.new()
 	eyebrow.name = "Eyebrow"
-	eyebrow.text = "SMALL WORLD"
+	eyebrow.text = "CAREFREE"
 	eyebrow.theme_type_variation = "Eyebrow"
 	eyebrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(eyebrow)

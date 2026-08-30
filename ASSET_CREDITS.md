@@ -1,4 +1,4 @@
-# Small World — Asset Ledger
+# Carefree — Asset Ledger
 
 This repository uses only freely redistributable prototype assets. Restored
 from `v02/ASSET_CREDITS.md` (deleted in commit `c16f357` when `v02/` was
@@ -226,7 +226,7 @@ needs regenerating itself.
 
 The doorway, alley, walls, path, puddles, playground silhouette, lighting
 setup, camera system, backpack, and fallback child in the Three.js
-prototype are original geometry/code created for Small World, not derived
+prototype are original geometry/code created for Carefree, not derived
 from the external models above. The same is true of the toon-shader kit,
 character rig, and environments under `src/saturday/` (see
 `docs/SATURDAY_AFTERNOON_BIBLE.md`).

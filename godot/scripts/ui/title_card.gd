@@ -208,7 +208,7 @@ func _on_copy_pressed() -> void:
 func _feedback_text() -> String:
 	var notes := notes_edit.text.strip_edges()
 	return "\n".join([
-		"SMALL WORLD -- THE LOST BALL PLAYTEST",
+		"CAREFREE -- THE LOST BALL PLAYTEST",
 		"World felt child-sized: %s" % _selected_value([scale_yes, scale_partly, scale_no], ["yes", "partly", "no"]),
 		"Emotional shift: %s" % _selected_value([emotion_subtle, emotion_right, emotion_strong], ["too subtle", "about right", "too strong"]),
 		"Would play another afternoon: %s" % _selected_value([continue_yes, continue_maybe, continue_no], ["yes", "maybe", "no"]),

@@ -1,6 +1,6 @@
-# Small World — The Lost Ball
+# Carefree — The Lost Ball
 
-A dependency-free WebGL2 playtest episode for the Small World concept.
+A dependency-free WebGL2 playtest episode for the Carefree concept.
 
 ## Run locally
 

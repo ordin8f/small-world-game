@@ -50,4 +50,4 @@ const gameSource = await readFile(resolve(root, 'src/game.mjs'), 'utf8');
 if (!gameSource.includes('window.__SMALL_WORLD__')) throw new Error('game.mjs is missing the smoke-test hook.');
 if (!gameSource.includes('character-male-a.glb')) throw new Error('game.mjs is missing the visible player asset route.');
 
-console.log('Small World file set looks consistent.');
+console.log('Carefree file set looks consistent.');
