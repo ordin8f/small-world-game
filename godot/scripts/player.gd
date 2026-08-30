@@ -70,14 +70,84 @@ const CLIMB_STEP_SECONDS := 0.45   ## phase 2: step in from the top tread onto t
 const SLIDE_SECONDS := 1.3
 const WALL_MOUNT_SECONDS := 0.3
 const WALL_WALK_SPEED := 1.35      ## slower than walk_speed -- precarious, not punishing
-const WALL_LEAN_SPEED := 0.55      ## m/s the player can drift sideways off the centerline
 const WALL_DISMOUNT_SECONDS := 0.22
+
+## ---------------------------------------------------------------------
+## Balance dynamics (2026-08-30 redesign). Real balance is an inverted
+## pendulum -- the further you are from upright, the faster you go
+## further -- but a literal one is twitchy and punishing, wrong for a game
+## about a child's unremarkable afternoon. These four numbers are the
+## compromise: a slow, watchable autonomous drift the player has to read
+## and lean against (never a per-tick jitter), a DELIBERATELY GENTLE
+## runaway term once already leaning, and a fatigue term that makes
+## standing dead still genuinely untenable forever rather than merely
+## harder. Chosen by simulating this exact model in Python before ever
+## touching the engine (not eyeballed): across 200 random drift phases, a
+## player who does nothing at all falls in 3.1s fastest / 5.9s median /
+## 21.6s slowest; a weak, slow corrector still eventually falls (~30s); an
+## attentive one (reacting within 0.15-0.3s of the lean becoming visible)
+## stays up effectively indefinitely; and an ordinary walk straight across
+## a run never once triggered it in 300 simulated crossings. See
+## _process_wall_walk()'s own comment for how the four combine, and the
+## design report for the simulation itself.
+
+## How fast a full sideways lean input pushes the tilt toward center, or,
+## held past center, the other way -- this is a lean, not a toggle, and
+## not "steering": there is no way to point the tilt at a spot and have it
+## stay, only push against whichever way it is currently going. Faster
+## than the drift/feedback below can produce near the threshold, so a
+## prompt correction always wins; not instant, so it still reads as
+## leaning against something rather than snapping a slider to zero.
+const TILT_CORRECTION_RATE := 0.85
+
+## The "slow unbalance" itself: two incommensurate low-frequency sines,
+## same trick and same reasoning as audio_director.gd's own drone
+## frequencies ("mutually incommensurate, so the chord's internal balance
+## never repeats") -- a sum that never runs on a schedule a player could
+## memorise, but that is still smooth and low-frequency enough to watch
+## coming and answer in time. Periods in seconds; TILT_DRIFT_AMPLITUDE is
+## the m/s scale of their combined peak, before TILT_FATIGUE_RATE grows it.
+const TILT_DRIFT_PERIOD_A := 3.3
+const TILT_DRIFT_PERIOD_B := 5.1
+const TILT_DRIFT_AMPLITUDE := 0.11
+
+## The inverted-pendulum term: the tilt pulls itself further the direction
+## it is already leaning, proportional to how far over it already is --
+## what makes the last few centimetres before the threshold feel like they
+## are accelerating away rather than like holding a needle still.
+## Deliberately modest (a real rigid pendulum's own gain would be much
+## higher): a sharper value made the near-threshold moment twitchy rather
+## than urgent in play, which is the wrong feeling for this game. Damped
+## by TILT_MOVING_STABILITY the same as the drift above.
+const TILT_FEEDBACK_GAIN := 0.5
+
+## Fatigue: standing still gets slowly worse the longer it is held, so
+## there is genuinely no such thing as balancing here forever. Chosen
+## deliberately over constant difficulty -- "you cannot just stand here"
+## is a more honest shape for a 30 cm kerb, and it gives every stand a
+## natural end even for a player who never notices the tilt at all. 0.1/s
+## doubles the drift's amplitude by ten seconds in.
+const TILT_FATIGUE_RATE := 0.1
+
+## Real balance is easier moving than standing still. Scales BOTH the
+## drift and the feedback term while the child is actually walking along
+## the run, not just leaning in place -- 1.0 minus this fraction is what
+## walking strips off the difficulty (see _process_wall_walk()'s
+## `stability`, blended by how much of the current input is along the run
+## versus across it).
+const TILT_MOVING_STABILITY := 0.45
+
+## How far the child visibly leans at the threshold itself, in radians of
+## character_visual.rotation.z. See that assignment's own comment for why
+## the mapping to it is sqrt-shaped rather than linear.
+const TILT_VISUAL_MAX_LEAN := 0.4
 
 ## Arms out sideways for the whole balance, layered over the ordinary
 ## walk/idle clips (character_visual.gd's set_arm_pose). Deliberately NOT a
-## clip swap: the wobble and the lean below are already doing the balancing,
-## and any full-body clip would have replaced the walk cycle with a static
-## pose and left the child gliding along the bricks with still legs. "static"
+## clip swap: the tilt dynamics and the lean below are already doing the
+## balancing, and any full-body clip would have replaced the walk cycle
+## with a static pose and left the child gliding along the bricks with
+## still legs. "static"
 ## is the rig's rest T-pose, and a T-pose is exactly what a child's arms do
 ## on a narrow wall -- the one place in this pack where the useless-looking
 ## clip is the right one.
@@ -93,8 +163,22 @@ var _verb_to: Vector3 = Vector3.ZERO
 ## "which edge" can no longer be re-derived from global_position alone the
 ## way the single-edge version re-looked-up its z-segment every tick.
 var _wall_edge_index: int = -1
-var _wall_offset: float = 0.0      ## current drift perpendicular to the mounted edge, meters
-var _wall_wobble_time: float = 0.0
+## The one balance number: signed meters perpendicular to the mounted
+## edge's centreline, zero upright, sign is which side is going over. Both
+## the tilt _process_wall_walk()'s dynamics run on AND (via edge_point())
+## the physical spot the child's feet land on the kerb's own width -- one
+## number doing both jobs, the way an actual lean shifts your real
+## footing rather than two numbers kept in sync by hand.
+var _wall_offset: float = 0.0
+## Clock for the drift sines and for TILT_FATIGUE_RATE, zeroed on mount so
+## every stand starts from the same calm point regardless of how long the
+## previous one ran.
+var _balance_time: float = 0.0
+## Randomised once per mount (_process_wall_mount()) so the drift doesn't
+## run the identical schedule every single time -- the SHAPE (two smooth,
+## incommensurate sines) reads the same either way, only which way it
+## happens to lean first changes.
+var _drift_phase: float = 0.0
 
 ## Gate 1 (mechanics agent): set by external free-roam mechanics (swing.gd)
 ## that need to fully own the player's transform for a short ride -- the
@@ -138,6 +222,7 @@ func _reset_to_start() -> void:
 	# cheap to guard) must not leave the player stuck sliding/balancing.
 	verb = Verb.GROUND
 	_wall_offset = 0.0
+	_balance_time = 0.0
 	_wall_edge_index = -1
 	character_visual.rotation.z = 0.0
 	# ...and no leftover carry/balance arms or half-finished pose, same
@@ -393,18 +478,30 @@ func _process_wall_mount(delta: float) -> void:
 	if t >= 1.0:
 		verb = Verb.WALL_WALKING
 		_wall_offset = 0.0
-		_wall_wobble_time = 0.0
+		_balance_time = 0.0
+		_drift_phase = randf() * TAU
 
 
-## Precariousness is communicated entirely through speed, a continuous
-## cosmetic wobble, and a visible sideways lean -- never a UI gauge
-## (PRODUCT_CONTRACT.md/ART_DIRECTION.md ban meters and fail states).
-## _wall_offset is the one number that actually matters for falling: it
-## only moves from sustained sideways INPUT, so the wobble alone can never
-## cause a fall, and stepping off is always a deliberate, player-driven
-## choice -- "impossible to fail in a punishing way" per the brief. Walking
-## off either end of the edging's run dismounts the same way, just as
-## gently: this is not a failure state, it's just being on the ground again.
+## Precariousness is communicated entirely through the child's own lean,
+## a slower walk and the ordinary footstep audio while correcting -- never
+## a UI gauge (PRODUCT_CONTRACT.md/ART_DIRECTION.md ban meters and fail
+## states). _wall_offset is the one number that matters for falling, and
+## unlike the first version of this verb it is not purely input-driven:
+## TILT_DRIFT_* pushes it on its own (a slow, smooth, watchable sway, not
+## a jitter), TILT_FEEDBACK_GAIN makes it pull itself further once already
+## leaning (the inverted-pendulum feel, kept deliberately gentle -- see
+## that constant's own comment), and TILT_FATIGUE_RATE means standing
+## dead still is not a place to stay forever. Lateral input is the ONLY
+## counter-force: holding it opposes whichever way the lean is currently
+## going, same as actually leaning against something, and letting go does
+## NOT recentre -- the drift just carries on. Walking forward instead of
+## standing still damps all three (TILT_MOVING_STABILITY): real balance is
+## easier with momentum, hardest standing still, and an ordinary walk
+## across the run essentially never trips it (see player.gd's own balance
+## design report; 300 simulated crossings, zero falls). Stepping off
+## either END of the run remains a deliberate exit with none of this --
+## "along" alone leaving [0, length] dismounts regardless of tilt, so
+## leaving is always available and never has to be earned by falling.
 ##
 ## "Sideways" and "along" are relative to whichever edge is mounted, not
 ## world x/z -- edge_tangent()/edge_normal() give the along/across axes for
@@ -428,16 +525,23 @@ func _process_wall_walk(delta: float) -> void:
 		_start_wall_dismount()
 		return
 
+	# `forward` is how much of the current input runs ALONG the edge (used
+	# below to damp the balance dynamics via TILT_MOVING_STABILITY);
+	# `correction` is how much runs ACROSS it -- the player's one
+	# counter-force against the tilt. Both stay zero standing still, the
+	# hardest case, by design.
+	var forward := 0.0
+	var correction := 0.0
 	if moving:
 		var profile := CameraProfile.profile(global_position.z)
 		var yaw: float = profile["authored_yaw"]
 		var direction := CameraProfile.input_direction(input_x, input_z, yaw)
 		var world_dir := Vector2(direction["x"], direction["z"])
-		var forward: float = world_dir.dot(WorldAffordances.edge_tangent(edge))
+		forward = world_dir.dot(WorldAffordances.edge_tangent(edge))
 		var lean: float = world_dir.dot(WorldAffordances.edge_normal(edge))
+		correction = lean * TILT_CORRECTION_RATE
 
 		along = clampf(along + forward * WALL_WALK_SPEED * delta, -0.1, length + 0.1)
-		_wall_offset = clampf(_wall_offset + lean * WALL_LEAN_SPEED * delta, -WorldAffordances.EDGING_HALF_WIDTH - 0.5, WorldAffordances.EDGING_HALF_WIDTH + 0.5)
 
 		if absf(forward) > 0.01:
 			var facing := WorldAffordances.edge_tangent(edge) * signf(forward)
@@ -446,17 +550,43 @@ func _process_wall_walk(delta: float) -> void:
 			rotation.y = heading
 		walk_cycle += delta * 6.0
 		AudioDirector.play_step(false)
-	else:
-		_wall_offset = move_toward(_wall_offset, 0.0, delta * 0.35)
+
+	_balance_time += delta
+	# input_direction() always hands back a unit vector (or exactly zero,
+	# when `moving` is false and `forward` never got assigned above), so
+	# `forward` alone is already 0..1 in magnitude -- nothing further to
+	# normalise to use it as the moving/standing blend.
+	var stability := lerpf(1.0, TILT_MOVING_STABILITY, absf(forward))
+	var fatigue := 1.0 + TILT_FATIGUE_RATE * _balance_time
+	var drift := TILT_DRIFT_AMPLITUDE * fatigue * stability * (
+		0.65 * sin(_balance_time * (TAU / TILT_DRIFT_PERIOD_A) + _drift_phase)
+		+ 0.35 * sin(_balance_time * (TAU / TILT_DRIFT_PERIOD_B) + _drift_phase * 1.7)
+	)
+	var feedback := _wall_offset * TILT_FEEDBACK_GAIN * stability
+	# `correction` ADDS the same way `lean` always did (this is still a raw
+	# push, same sign convention the original input-only version used) --
+	# it only reads as a correction rather than steering because holding
+	# nothing does NOT recentre any more. Answering the drift means
+	# watching which way the lean is currently going and holding whichever
+	# side currently opposes it, which changes as the drift itself does.
+	_wall_offset += (drift + feedback + correction) * delta
+	# A safety clamp, not the dismount threshold -- the check below fires
+	# first in ordinary play. Only matters on one abnormally large delta
+	# (a stutter), so a single frame's overshoot can't survive past it.
+	_wall_offset = clampf(_wall_offset, -WorldAffordances.EDGING_HALF_WIDTH * 3.0, WorldAffordances.EDGING_HALF_WIDTH * 3.0)
 
 	var xz := WorldAffordances.edge_point(edge, along, _wall_offset)
 	global_position.x = xz.x
 	global_position.z = xz.y
 	global_position.y = WorldAffordances.EDGING_TOP_Y
 
-	_wall_wobble_time += delta
-	var wobble := sin(_wall_wobble_time * 2.6) * 0.045
-	character_visual.rotation.z = wobble - _wall_offset * 0.5
+	# sqrt-shaped rather than linear so a SMALL real lean already reads
+	# clearly -- the early warning the brief asks for, "you feel a wobble
+	# before you can read a number" -- while still landing at exactly
+	# TILT_VISUAL_MAX_LEAN right at the threshold rather than overshooting
+	# a linear mapping's own headroom.
+	var lean_fraction := clampf(absf(_wall_offset) / WorldAffordances.EDGING_HALF_WIDTH, 0.0, 1.0)
+	character_visual.rotation.z = -signf(_wall_offset) * sqrt(lean_fraction) * TILT_VISUAL_MAX_LEAN
 
 	if absf(_wall_offset) > WorldAffordances.EDGING_HALF_WIDTH:
 		_start_wall_dismount()

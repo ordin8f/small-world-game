@@ -125,20 +125,130 @@ func test_walking_off_the_end_of_the_edging_dismounts_just_as_gently() -> void:
 	assert_float(player.global_position.z).is_greater(13.55)
 
 
-func test_cosmetic_wobble_alone_never_causes_a_fall() -> void:
-	# The wobble applied to character_visual.rotation.z must be purely
-	# decorative: standing still and balanced (no sideways input at all)
-	# must never, by itself, cross the dismount threshold.
+## 2026-08-30 balance redesign superseded this: the old wobble was a fixed
+## decorative sine with no gameplay effect at all, so "it never causes a
+## fall" was trivially true and proved nothing about the mechanic actually
+## worth having. The new tilt DOES drift on its own (player.gd's own
+## design report has the reasoning and the numbers), so "never falls" is
+## no longer the honest claim -- split into the two claims that replace
+## it below: a brief pause is always safe, and standing there literally
+## forever is not.
+func test_standing_still_briefly_never_dismounts() -> void:
+	# Watching, thinking, admiring the garden -- an ordinary brief pause
+	# must never read as a fail state. EDGING_HALF_WIDTH divided by the
+	# combined drift+feedback model's own worst-case (fastest) velocity
+	# bounds the earliest a standing-still child could possibly cross the
+	# threshold at just over 3.1s, for ANY drift phase (a fine-grained
+	# Python scan of the exact same model over the full phase range found
+	# no faster crossing -- see the design report). 2s of real-time-
+	# equivalent ticks with no input at all sits comfortably inside that
+	# floor regardless of which phase this particular mount happened to
+	# randomise to.
 	var runner := scene_runner("res://scenes/player.tscn")
 	var player: CharacterBody3D = runner.scene()
 	player.global_position = Vector3(-4.15, 0.0, 13.2)
 	await runner.simulate_frames(2)
 	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
 
-	for _i in range(180):  # 3s of real-time-equivalent ticks, no input held
+	for _i in range(120):  # 2s of real-time-equivalent ticks, no input held
 		await runner.simulate_frames(1)
 
 	assert_bool(player.verb == player.Verb.WALL_WALKING).is_true()
+
+
+func test_standing_still_indefinitely_eventually_overbalances() -> void:
+	# The other half of the same redesign: doing nothing forever is not
+	# safe forever. TILT_FATIGUE_RATE guarantees it by construction, not by
+	# luck -- see player.gd's own balance design report. _drift_phase is
+	# forced to a known value (rather than left to whatever randf() drew
+	# at mount) so this asserts against one reproducible schedule: a Python
+	# integration of the exact same model at phase=0 falls at 3.15s, well
+	# inside _wait_for_verb()'s own 900-tick/15s budget.
+	var runner := scene_runner("res://scenes/player.tscn")
+	var player: CharacterBody3D = runner.scene()
+	player.global_position = Vector3(-4.15, 0.0, 13.2)
+	await runner.simulate_frames(2)
+	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
+	player.set("_drift_phase", 0.0)
+
+	var dismounted := await _wait_for_verb(runner, player, player.Verb.GROUND)
+	assert_bool(dismounted).is_true()
+	assert_float(player.global_position.y).is_equal_approx(0.0, 0.01)
+
+
+## "Tilt responds to input in the right direction": holding the key that
+## opposes a manually-set lean must measurably reduce it. Uses the same
+## DriveRoute._keys_for() trick test_walking_onto_a_park_beds_edging_balances_along_x()
+## already relies on to turn a WORLD direction into the actual keys for
+## whichever camera zone this mount point sits in, rather than hard-coding
+## "move_left" and hoping this edge's geometry and this zone's yaw agree
+## with that guess.
+func test_leaning_against_the_tilt_reduces_it() -> void:
+	var runner := scene_runner("res://scenes/player.tscn")
+	var player: CharacterBody3D = runner.scene()
+	player.global_position = Vector3(-4.15, 0.0, 13.2)
+	await runner.simulate_frames(2)
+	await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
+
+	# No autonomous drift to fight for this one -- isolate the input's own
+	# effect on the tilt so a future retune of TILT_DRIFT_* can't make this
+	# assertion flaky.
+	player.set("_drift_phase", 0.0)
+	player.set("_wall_offset", 0.15)
+	var starting_offset: float = player.get("_wall_offset")
+
+	var edge: Dictionary = WorldAffordances.edging_edges()[player.get("_wall_edge_index")]
+	var yaw: float = CameraProfile.profile(player.global_position.z)["authored_yaw"]
+	# Oppose a POSITIVE offset by pushing toward -edge_normal(edge).
+	var keys: Dictionary = DriveRoute._keys_for(-WorldAffordances.edge_normal(edge), yaw)
+	if keys["x"] == 1:
+		runner.simulate_action_press("move_right")
+	elif keys["x"] == -1:
+		runner.simulate_action_press("move_left")
+	if keys["z"] == 1:
+		runner.simulate_action_press("move_forward")
+	elif keys["z"] == -1:
+		runner.simulate_action_press("move_back")
+
+	await runner.simulate_frames(10)
+	runner.simulate_action_release("move_left")
+	runner.simulate_action_release("move_right")
+	runner.simulate_action_release("move_forward")
+	runner.simulate_action_release("move_back")
+
+	var ending_offset: float = player.get("_wall_offset")
+	assert_float(ending_offset) \
+		.override_failure_message("holding the opposing key did not reduce the tilt (%.3f -> %.3f)" % [starting_offset, ending_offset]) \
+		.is_less(starting_offset)
+
+
+## "The threshold dismounts on the correct side": going over to one side
+## must land the child on THAT side, not merely somewhere off the edging.
+## Nothing before this asserted the SIDE at all, only that some dismount
+## happened -- flipping _start_wall_dismount()'s own `side := signf(_wall_offset)`
+## to the opposite sign passed every test above it. Checks both signs.
+func test_overbalancing_dismounts_on_the_side_that_tipped() -> void:
+	for tip_sign in [1.0, -1.0]:
+		var runner := scene_runner("res://scenes/player.tscn")
+		var player: CharacterBody3D = runner.scene()
+		player.global_position = Vector3(-4.15, 0.0, 13.2)
+		await runner.simulate_frames(2)
+		await _wait_for_verb(runner, player, player.Verb.WALL_WALKING)
+
+		var edge: Dictionary = WorldAffordances.edging_edges()[player.get("_wall_edge_index")]
+		player.set("_wall_offset", tip_sign * (WorldAffordances.EDGING_HALF_WIDTH + 0.05))
+		var dismounted := await _wait_for_verb(runner, player, player.Verb.GROUND)
+		assert_bool(dismounted).is_true()
+
+		var landing: Dictionary = WorldAffordances.edge_coords(edge, player.global_position.x, player.global_position.z)
+		var across: float = landing["across"]
+		assert_float(signf(across)) \
+			.override_failure_message("tipping with sign %.0f landed on the wrong side (across=%.2f)" % [tip_sign, across]) \
+			.is_equal(tip_sign)
+		# Regression (see test_walking_onto_the_garden_edging_balances_slower_and_never_fails_to_step_off's
+		# own comment on this): the landing must clear the mount range on
+		# that side too, or the very next GROUND tick re-mounts it.
+		assert_float(absf(across)).is_greater(WorldAffordances.EDGING_MOUNT_X_RANGE)
 
 
 ## Proves the generalisation end-to-end, not just at the WorldAffordances

@@ -129,6 +129,52 @@ func _run() -> void:
 	# offset test_player_verbs.gd uses.
 	_player.global_position = Vector3(-4.15, 0.0, 13.2)
 	await _wait_for_verb("WALL_WALKING", 60)
+
+	# 2026-08-30 balance redesign: the lean is now the only on-screen
+	# reading of the tilt (PRODUCT_CONTRACT.md bans a meter), so this is
+	# the one place its legibility gets looked at directly rather than
+	# trusted from the numbers. Forcing _wall_offset (same poke
+	# test_player_verbs.gd and this file's own dismount cleanup below
+	# already use) samples the lean at fixed fractions of
+	# WorldAffordances.EDGING_HALF_WIDTH instead of waiting on the live
+	# drift, which would put it somewhere different every capture run.
+	# A couple of ticks between each so _process_wall_walk() actually
+	# applies the forced value to character_visual.rotation.z before the
+	# frame is grabbed.
+	# _capture_from(), not the play camera: this spot's own mood lighting
+	# (perception.gd overwrites the whole scene's lighting every frame, see
+	# EMOTIONAL_LENS.md) reads as near-black from the play camera's own
+	# angle here, and a black frame answers nothing about whether a lean is
+	# legible. This is a measurement, same reasoning _capture_from()'s own
+	# doc comment already gives for the slide/stairs shots.
+	# Fractions kept under ~0.83 of the threshold: TILT_FEEDBACK_GAIN is
+	# positive feedback (see player.gd), so a forced value keeps growing on
+	# its own for as long as the child stands there, and _capture_from()'s
+	# own _capture() bakes in a 20-tick settle wait on top of the 3 below --
+	# ~23 ticks/0.38s of unattended feedback growth, e^(0.5*0.38) =~ 1.21x,
+	# is enough to carry anything closer than that PAST the dismount
+	# threshold before the frame is even grabbed (first found by actually
+	# looking at the captures: 0.97 dismounted mid-wait and every shot after
+	# it silently reused that same landed-on-the-ground frame).
+	var half_width: float = WorldAffordances.EDGING_HALF_WIDTH
+	var tilt_eye := Vector3(-2.2, 1.5, 15.6)
+	var tilt_subject := Vector3(-3.7, 0.9, 13.2)
+	await _capture_from("balance_tilt_00_upright", tilt_eye, tilt_subject)
+	_player.set("_wall_offset", half_width * 0.25)
+	await _wait_ticks(3)
+	await _capture_from("balance_tilt_01_light_lean_right", tilt_eye, tilt_subject)
+	_player.set("_wall_offset", half_width * 0.5)
+	await _wait_ticks(3)
+	await _capture_from("balance_tilt_02_heavy_lean_right", tilt_eye, tilt_subject)
+	_player.set("_wall_offset", half_width * 0.75)
+	await _wait_ticks(3)
+	await _capture_from("balance_tilt_03_near_threshold_right", tilt_eye, tilt_subject)
+	_player.set("_wall_offset", -half_width * 0.5)
+	await _wait_ticks(3)
+	await _capture_from("balance_tilt_04_heavy_lean_left", tilt_eye, tilt_subject)
+	_player.set("_wall_offset", 0.0)
+	await _wait_ticks(3)
+
 	_runner.simulate_action_press("move_forward")
 	await _wait_ticks(45)
 	await _capture("edging_balancing")
