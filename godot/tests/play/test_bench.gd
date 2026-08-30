@@ -53,7 +53,13 @@ func test_walking_up_and_pressing_interact_sits_the_child_on_the_seat() -> void:
 	assert_bool(player.external_control).is_true()
 	# On the seat's own top surface, not sunk into it or hovering over it.
 	assert_vector(player.global_position).is_equal_approx(WorldAffordances.bench_sit_position(), Vector3.ONE * 0.01)
-	assert_float(player.global_position.y).is_greater(WorldAffordances.BENCH_SEAT_TOP_Y)
+	# BENCH_SEAT_TOP_Y is measured in the MODEL's own space, so it only becomes a
+	# world height once the bench's origin is added to it. Comparing a world y
+	# against it directly passed (0.71 > 0.5) while asserting nothing: set
+	# BENCH_POSITION.y to 0.5 and the bench floats half a metre with the old
+	# assertion still green. Found by the author of this test, not by the test.
+	var seat_world_y := WorldAffordances.BENCH_POSITION.y + WorldAffordances.BENCH_SEAT_TOP_Y
+	assert_float(player.global_position.y).is_greater(seat_world_y)
 	# Looking out over the seat (at the chalk circle), not at the backrest.
 	var facing := -Vector3(sin(player.rotation.y), 0.0, cos(player.rotation.y))
 	var to_circle := (WorldAffordances.BENCH_FACES - WorldAffordances.BENCH_POSITION).normalized()

@@ -264,15 +264,31 @@ const CHALK := Color(0.78, 0.76, 0.62)
 ## plaster rather than as more stone.
 const IRONWORK := Color(0.17, 0.17, 0.16)
 
-## Ground layers, top surface in metres. Ordered and spaced so no two are
-## ever coplanar (z-fighting on a 45 m plane is visible from everywhere)
-## and so the order they are drawn in cannot matter. The base earth plane's
-## own top is -0.03, below all of them.
-const Y_LAWN := 0.02
-const Y_PAVING := 0.05
-const Y_BARK := 0.07
-const Y_SOIL := 0.10
-const Y_CHALK := 0.13
+## Ground layers, top surface in metres. Ordered so no two are ever coplanar
+## (z-fighting on a 45 m plane is visible from everywhere) and so the order
+## they are drawn in cannot matter.
+##
+## Every WALKABLE layer must top out at or a hair below player.gd's locked_y
+## (0.0). The player's origin is at their feet -- player.tscn puts the capsule
+## centre at 0.54 on a body whose origin is on the ground -- and locked_y is
+## rewritten every physics tick with no terrain following, so a surface laid
+## ABOVE 0.0 is a surface the child walks inside. The first version of these
+## constants ran 0.02..0.13 and did exactly that: 2 cm deep in the lawn, 5 cm
+## in the flagstones, 7 cm in the bark under the swing and sandbox, which on a
+## child a shade over a metre tall is ankle-deep and worst precisely where the
+## camera is closest.
+##
+## The separation only has to defeat z-fighting, which a millimetre does; it
+## never needed centimetres. So the walkable layers keep their order and their
+## overlap semantics -- later and more specific still wins -- inside a 6 mm
+## band under the player's feet.
+const Y_LAWN := -0.006
+const Y_PAVING := -0.004
+const Y_BARK := -0.002
+const Y_CHALK := 0.0
+## The one layer deliberately left proud: a kerbed planting bed is raised, and
+## the kerb means you cannot stand in it, so it is under nobody's feet.
+const Y_SOIL := 0.06
 
 
 ## 2026-08-28 world expansion: one cramped 20x24.5 m room -> four connected
@@ -305,7 +321,7 @@ func _build_static_world(root: Node3D) -> void:
 	# player walks on and the ground beyond the hedge should not be the same
 	# ground, or the boundary reads as an arbitrary stopping line across an
 	# open field -- which is exactly what the developer was looking at.
-	_mesh(root, "cube", Vector3(0, -0.28, -4), Vector3(50, 0.5, 44), MEADOW, Vector3.ZERO, 0.0, "grass")
+	_mesh(root, "cube", Vector3(0, -0.258, -4), Vector3(50, 0.5, 44), MEADOW, Vector3.ZERO, 0.0, "grass")
 	_build_park_ground(root)
 
 	_build_home(root)
@@ -321,16 +337,17 @@ func _build_static_world(root: Node3D) -> void:
 	# footprint already contained them); the third is the garden one,
 	# relocated with the rest of that pocket. Positions mirror
 	# WorldAffordances.PUDDLES/STONES exactly.
-	# Y raised 0.01 -> 0.055 (park pass): the two lane puddles now lie on
-	# laid paving whose own top is Y_PAVING (0.05), and at the old height
-	# they were underneath it. They stand a shallow 0.03 m proud of the
-	# flags, which is what a puddle on worn stone looks like from a
-	# child's eye and is exactly the reading concept_02/04 give them.
+	# The two lane puddles lie on laid paving, and stand a shallow 0.03 m
+	# proud of the flags (dome top = centre + half the 0.05 y-scale) -- what
+	# a puddle on worn stone looks like from a child's eye, and the reading
+	# concept_02/04 give them. Tracks Y_PAVING rather than restating it, so
+	# the re-datum that pulled the walkable layers under the player's feet
+	# could not leave the puddles floating three centimetres over them.
 	var puddle_color := Color(0.20, 0.32, 0.37, 0.65)
 	for p in [
-		[-1.5, 0.055, 3.2, 1.6, 0.05, 0.9],
-		[2.1, 0.055, 0.8, 1.15, 0.05, 0.75],
-		[12.4, 0.055, -9.4, 1.4, 0.05, 0.8],
+		[-1.5, Y_PAVING + 0.005, 3.2, 1.6, 0.05, 0.9],
+		[2.1, Y_PAVING + 0.005, 0.8, 1.15, 0.05, 0.75],
+		[12.4, Y_PAVING + 0.005, -9.4, 1.4, 0.05, 0.8],
 	]:
 		_mesh(root, "sphere", Vector3(p[0], p[1], p[2]), Vector3(p[3], p[4], p[5]), puddle_color)
 	for stone in [[11.7, -7.7, 0.45], [12.5, -8.4, 0.52], [13.3, -9.1, 0.48], [14.0, -9.9, 0.55]]:
@@ -472,9 +489,23 @@ func _build_static_world(root: Node3D) -> void:
 
 ## One flat ground patch. `top` is the surface height, so a caller writes
 ## the height it wants to see rather than a centre plus half a thickness.
-func _ground(root: Node3D, cx: float, cz: float, w: float, d: float, top: float, color: Color, surface: String, rot_y: float = 0.0) -> void:
+var _ground_serial := 0
+
+
+## `walkable` names what only this file knows: whether the child's feet can land
+## on this patch. A walkable one MUST top out at or below player.gd's locked_y,
+## or the child walks inside it -- test_ground_datum.gd holds that line, and it
+## reads this name because from the built scene a kerbed bed and a lawn are the
+## same thing: a thin, wide, flat slab. The distinction is a design fact, not a
+## measurable one, so it is written down rather than inferred.
+func _ground(root: Node3D, cx: float, cz: float, w: float, d: float, top: float, color: Color, surface: String, rot_y: float = 0.0, walkable: bool = true) -> void:
 	const THICK := 0.16
-	_mesh(root, "cube", Vector3(cx, top - THICK * 0.5, cz), Vector3(w, THICK, d), color, Vector3(0.0, rot_y, 0.0), 0.0, surface)
+	# Numbered because add_child() silently discards a name a sibling already
+	# holds and falls back to @MeshInstance3D@NN -- which is how the first
+	# version of this tagged 40-odd slabs and produced exactly two named nodes.
+	_ground_serial += 1
+	var tag := "%s%03d" % ["GroundWalkable" if walkable else "GroundRaised", _ground_serial]
+	_mesh(root, "cube", Vector3(cx, top - THICK * 0.5, cz), Vector3(w, THICK, d), color, Vector3(0.0, rot_y, 0.0), 0.0, surface, tag)
 
 
 ## A path laid between waypoints: one slab per segment, rotated to it, plus
@@ -514,7 +545,7 @@ func _planting_bed(root: Node3D, cx: float, cz: float, w: float, d: float, seed_
 	# Taken most of the way to stone; still reads as a fired-clay edging,
 	# no longer as the subject of the picture.
 	var kerb := BRICK.lerp(SHADOW_STONE, 0.45)
-	_ground(root, cx, cz, w, d, Y_SOIL, SOIL, "soil")
+	_ground(root, cx, cz, w, d, Y_SOIL, SOIL, "soil", 0.0, false)
 	_mesh(root, "cube", Vector3(cx, KERB_H * 0.5, cz + d * 0.5), Vector3(w + KERB_T * 2.0, KERB_H, KERB_T), kerb)
 	_mesh(root, "cube", Vector3(cx, KERB_H * 0.5, cz - d * 0.5), Vector3(w + KERB_T * 2.0, KERB_H, KERB_T), kerb)
 	_mesh(root, "cube", Vector3(cx + w * 0.5, KERB_H * 0.5, cz), Vector3(KERB_T, KERB_H, d), kerb)
@@ -614,9 +645,9 @@ func _build_park_ground(root: Node3D) -> void:
 	# A second, fainter ring and a scuffed line -- a mark that has been
 	# redrawn, per ART_DIRECTION.md's own "signs of life" note. Kept thin
 	# and low-contrast so the circle the dialogue means stays the readable one.
-	_mesh(root, "ring", Vector3(0.15, Y_CHALK - 0.01, -10.85), Vector3(6.6, 0.06, 6.6), CHALK.darkened(0.35), Vector3.ZERO, 0.04)
+	_mesh(root, "ring", Vector3(0.15, Y_CHALK - 0.001, -10.85), Vector3(6.6, 0.06, 6.6), CHALK.darkened(0.35), Vector3.ZERO, 0.04)
 	for mark in [[-1.9, -13.4, 0.5], [2.2, -8.9, -0.7]]:
-		_mesh(root, "cube", Vector3(mark[0], Y_CHALK - 0.02, mark[1]), Vector3(0.9, 0.02, 0.09), CHALK.darkened(0.2), Vector3(0.0, mark[2], 0.0), 0.04)
+		_mesh(root, "cube", Vector3(mark[0], Y_CHALK - 0.002, mark[1]), Vector3(0.9, 0.02, 0.09), CHALK.darkened(0.2), Vector3(0.0, mark[2], 0.0), 0.04)
 
 	# --- beds -------------------------------------------------------------
 	# Two flanking the gate (the first thing seen on entering, and what

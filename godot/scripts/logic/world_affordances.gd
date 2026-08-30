@@ -133,10 +133,12 @@ const SLIDE_END := Vector3(TOWER_X, 0.0, SLIDE_SURFACE_FOOT.z + 0.55)
 ## bench and go right through it"). Position is unchanged from the openness
 ## pass -- _bootstrap_courtyard.gd now takes it from here rather than
 ## repeating the literal.
-## y is Y_PAVING from _bootstrap_courtyard.gd: the park pass laid a flagstone
-## plaza over the base plane, so a bench at y=0 now sinks 5 cm into it and
-## takes its collider and its seat down with it.
-const BENCH_POSITION := Vector3(-7.0, 0.05, -9.8)
+## y tracks _bootstrap_courtyard.gd's Y_PAVING -- the bench stands on the
+## flagstone plaza, and its collider and BENCH_SEAT_TOP_Y hang off this, so a
+## y that disagrees with the plaza puts the seat somewhere the bench is not.
+## Restated rather than imported because that file is a build-time SceneTree
+## tool and this is runtime logic; test_ground_datum.gd pins the two together.
+const BENCH_POSITION := Vector3(-7.0, -0.004, -9.8)
 
 ## What a sitter looks at: the chalk circle at the Group marker, where the
 ## other children are. The generator's own comment already said the bench
