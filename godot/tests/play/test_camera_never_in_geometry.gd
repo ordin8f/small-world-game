@@ -72,9 +72,21 @@ func test_camera_stays_clear_of_geometry_along_the_full_route() -> void:
 		# pull-in fallback replacing the old sideways swing no longer
 		# needed the tighter bound -- see that file's own comment on these
 		# exact numbers.
+		#
+		# x min -15 -> -22 and z min -19 -> -23 (park pass, 2026-08-30).
+		# These track world_bounds.gd's PARK block, which moved the west
+		# wall to x=-23 and the back wall to z=-24: the assertion is
+		# unchanged in intent -- the camera is never composed from outside
+		# the room it is shooting -- but the room it is shooting is now
+		# 45 x 20 m instead of 32 x 16, and holding the old numbers would
+		# have asserted that the camera stays inside the OLD world while
+		# the player walks out of it. camera_rig.gd's own clamps carry the
+		# same two values and the same reasoning (1.0 m short of the
+		# nearest wall face); this is the guard that they were not
+		# widened past a wall.
 		assert_float(cam_pos.y).is_greater_equal(0.6)
-		assert_float(cam_pos.x).is_between(-15.0 - CLAMP_EPSILON, 21.0 + CLAMP_EPSILON)
-		assert_float(cam_pos.z).is_between(-19.0 - CLAMP_EPSILON, 15.9 + CLAMP_EPSILON)
+		assert_float(cam_pos.x).is_between(-22.0 - CLAMP_EPSILON, 21.0 + CLAMP_EPSILON)
+		assert_float(cam_pos.z).is_between(-23.0 - CLAMP_EPSILON, 15.9 + CLAMP_EPSILON)
 		# Minimum separation. Added after an independent review found this test
 		# passed straight through a real doorway framing collapse: the camera
 		# ended up 0.69 m horizontally from the player, filling the frame with

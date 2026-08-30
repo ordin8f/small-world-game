@@ -53,3 +53,91 @@ func test_home_doorway_and_lane_stay_open() -> void:
 	assert_bool(WorldBounds.can_move_to(4.3, 2.0)).is_true()
 	assert_bool(WorldBounds.can_move_to(4.5, 2.0)).is_false()
 	assert_bool(WorldBounds.can_move_to(-4.5, 2.0)).is_false()
+
+
+## The park's own four boundaries (2026-08-30 park pass, world_bounds.gd's
+## PARK block), pinned the same way the three openings above are: a point
+## just inside each wall's clear band that must be traversable, and one
+## just outside it that must not be.
+##
+## The reason this needs an assertion at all is the reason the pass exists.
+## The developer's report was "both the left and right hand areas are not
+## reachable", and the fix was to move three walls out -- so the exact
+## regression to guard is those walls quietly coming back in. Nothing else
+## in the suite would notice: tests/play/test_zone_reachability.gd floods
+## for the five INTERACTION ZONES, and every one of them sits within 14 m
+## of the world's centre line. The whole west lawn could be walled off at
+## x=-16 again and every other test here would still pass.
+##
+## can_move_to() takes the player's own 0.32 m radius off each face, so the
+## traversable band is inset by that: west wall inner face -22.4 -> -22.08,
+## east -> 21.33, south -23.4 -> -23.08.
+func test_the_parks_own_boundaries_sit_where_the_park_pass_put_them() -> void:
+	# West wall (x=-23, half_x 0.6). 7 m further out than the wall it
+	# replaced at x=-16, which is the openness the developer asked for.
+	assert_bool(WorldBounds.can_move_to(-22.0, -12.0)).is_true()
+	assert_bool(WorldBounds.can_move_to(-22.2, -12.0)).is_false()
+	# The old wall line, now open lawn. z=-9 rather than z=-12: the
+	# claustrophobia pass planted a canopy tree at (-15.6, -11.4), whose
+	# trunk collider legitimately occupies the old z=-12 witness point. The
+	# claim being made here is "x=-16 is inside the park now", not "every
+	# point on x=-16 is empty forever", so the witness moves and the claim
+	# does not weaken -- but keep this spot clear of planting.
+	assert_bool(WorldBounds.can_move_to(-16.0, -9.0)).is_true()
+	assert_bool(WorldBounds.can_move_to(-16.0, -17.0)).is_true()
+
+	# Back wall (z=-24, half_z 0.6), 4 m deeper than the z=-20 it replaced.
+	assert_bool(WorldBounds.can_move_to(0.0, -23.0)).is_true()
+	assert_bool(WorldBounds.can_move_to(0.0, -23.2)).is_false()
+	assert_bool(WorldBounds.can_move_to(0.0, -20.0)).is_true()  # the old wall line
+
+	# East wall of the deep band (x=22, half_x 0.35). Only z[-24,-16]: north
+	# of that the garden wall at x=11 is still the boundary, and the garden
+	# pocket must stay reachable ONLY through its gap.
+	assert_bool(WorldBounds.can_move_to(21.2, -20.0)).is_true()
+	assert_bool(WorldBounds.can_move_to(21.5, -20.0)).is_false()
+	# The old wall line. z=-17.5 rather than z=-20, for the same reason as
+	# the west witness above: a park tree now stands at (16.2, -19.4).
+	assert_bool(WorldBounds.can_move_to(16.0, -17.5)).is_true()
+
+	# ...and the garden pocket is still sealed from the park's new
+	# south-east lawn by its own z=-16 wall, so widening the park did not
+	# quietly open a second way in beside the arch.
+	assert_bool(WorldBounds.can_move_to(16.5, -16.0)).is_false()
+	assert_bool(WorldBounds.can_move_to(20.0, -16.0)).is_false()
+
+
+## The canopy trees keep TRUNK-sized colliders (claustrophobia pass,
+## 2026-08-30). world_bounds.gd's CANOPY TREES block gives each of the six
+## a 0.5 m half-extent under a crown roughly 5 m across, and the point of
+## the whole pass is that the player walks UNDER them: 33% of the park's
+## walkable ground is now beneath a crown, measured by
+## tools/_probe_reachability.gd's canopy pass, and every square metre of
+## that is only walkable because the collider is the trunk.
+##
+## This is a live regression risk, not a hypothetical. A collider that
+## looks a third the size of the mesh it belongs to reads as a bug, and
+## "fixing" it to match the crown would wall off a fifth of the park while
+## every other assertion in this suite kept passing -- the five interaction
+## zones and the five park corners tests/play/test_zone_reachability.gd
+## floods for are all clear of these six trees, so nothing else notices.
+##
+## Each point below sits 1.5 m from a trunk centre: outside a 0.5 m
+## half-extent with room for the player's 0.32 m radius, and inside a
+## crown-sized one. Verified by mutation -- setting these half-extents to
+## 2.5 fails all six.
+func test_canopy_trees_can_be_walked_under() -> void:
+	for spot in [
+		[-5.5, -5.8],    # the gate tree
+		[-11.3, -6.4],   # west path, north
+		[-16.1, -13.4],  # west path, mid
+		[-3.5, -20.2],   # south walk, west
+		[6.1, -20.4],    # south walk, east
+		[8.1, -14.6],    # the plaza's east corner
+	]:
+		assert_bool(WorldBounds.can_move_to(spot[0], spot[1])) 			.override_failure_message(
+				"(%.1f, %.1f) is 1.5 m from a canopy trunk and is no longer walkable. "
+				% [spot[0], spot[1]]
+				+ "A canopy collider has been grown from the trunk to the crown, "
+				+ "which turns each of these trees into a 5 m round wall."
+			).is_true()
