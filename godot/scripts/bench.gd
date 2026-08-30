@@ -13,6 +13,19 @@ extends Node3D
 ## must never gate or delay a story beat, so nothing here talks to
 ## EpisodeDirector beyond standing the player back up on a fresh run.
 ##
+## WHAT THIS VERB IS, so nobody later mistakes it for an unfinished one:
+## it is a pause, not an activity. There is deliberately nothing to do while
+## seated -- no swing to pump, no timer, no reward. It earns its place
+## because of where it points: the bench faces the chalk circle, so sitting
+## is a way to stop and watch the other children, in a game whose whole
+## subject is watching other children and wanting to join in.
+##
+## That is also its one real fragility, and it is a placement fact rather
+## than a code fact: this is furniture the moment it stops facing something
+## worth watching. If WorldAffordances.BENCH_FACES ever moves off the
+## circle, or the children stop gathering there, the right response is to
+## re-aim the bench or cut the verb -- not to bolt an activity onto it.
+##
 ## Unlike swing.tscn this scene carries no geometry of its own. The bench
 ## MODEL is a prop in the generated courtyard (tools/_bootstrap_courtyard.gd)
 ## and its footprint is a WorldBounds collider, so a second copy here would

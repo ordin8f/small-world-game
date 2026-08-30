@@ -264,31 +264,24 @@ const CHALK := Color(0.78, 0.76, 0.62)
 ## plaster rather than as more stone.
 const IRONWORK := Color(0.17, 0.17, 0.16)
 
-## Ground layers, top surface in metres. Ordered so no two are ever coplanar
-## (z-fighting on a 45 m plane is visible from everywhere) and so the order
-## they are drawn in cannot matter.
+## Ground layers, top surface in metres -- ordered and spaced so no two are
+## ever coplanar (z-fighting on a 45 m plane is visible from everywhere) and
+## so the order they are drawn in cannot matter.
 ##
-## Every WALKABLE layer must top out at or a hair below player.gd's locked_y
-## (0.0). The player's origin is at their feet -- player.tscn puts the capsule
-## centre at 0.54 on a body whose origin is on the ground -- and locked_y is
-## rewritten every physics tick with no terrain following, so a surface laid
-## ABOVE 0.0 is a surface the child walks inside. The first version of these
-## constants ran 0.02..0.13 and did exactly that: 2 cm deep in the lawn, 5 cm
-## in the flagstones, 7 cm in the bark under the swing and sandbox, which on a
-## child a shade over a metre tall is ankle-deep and worst precisely where the
-## camera is closest.
-##
-## The separation only has to defeat z-fighting, which a millimetre does; it
-## never needed centimetres. So the walkable layers keep their order and their
-## overlap semantics -- later and more specific still wins -- inside a 6 mm
-## band under the player's feet.
-const Y_LAWN := -0.006
-const Y_PAVING := -0.004
-const Y_BARK := -0.002
-const Y_CHALK := 0.0
-## The one layer deliberately left proud: a kerbed planting bed is raised, and
-## the kerb means you cannot stand in it, so it is under nobody's feet.
-const Y_SOIL := 0.06
+## The heights themselves now live in WorldAffordances, aliased here so
+## every call site below reads the same as it always did. They moved
+## because they are not a drawing decision: player.gd locks the child's Y
+## to the walking plane, so a layer's height is the difference between
+## standing ON the plaza and standing 5 cm inside it, and that has to be
+## checkable by a test (tests/play/test_ground_under_the_childs_feet.gd)
+## which cannot import a one-shot SceneTree tool. Their doc comment has the
+## measurements and why they were re-spaced downward from 0.
+const Y_LAWN := WorldAffordances.Y_LAWN
+const Y_PAVING := WorldAffordances.Y_PAVING
+const Y_BARK := WorldAffordances.Y_BARK
+const Y_SOIL := WorldAffordances.Y_SOIL
+const Y_CHALK := WorldAffordances.Y_CHALK
+const Y_HAIR := WorldAffordances.SURFACE_HAIR
 
 
 ## 2026-08-28 world expansion: one cramped 20x24.5 m room -> four connected
@@ -321,7 +314,7 @@ func _build_static_world(root: Node3D) -> void:
 	# player walks on and the ground beyond the hedge should not be the same
 	# ground, or the boundary reads as an arbitrary stopping line across an
 	# open field -- which is exactly what the developer was looking at.
-	_mesh(root, "cube", Vector3(0, -0.258, -4), Vector3(50, 0.5, 44), MEADOW, Vector3.ZERO, 0.0, "grass")
+	_mesh(root, "cube", Vector3(0, -0.28, -4), Vector3(50, 0.5, 44), MEADOW, Vector3.ZERO, 0.0, "grass")
 	_build_park_ground(root)
 
 	_build_home(root)
@@ -337,22 +330,35 @@ func _build_static_world(root: Node3D) -> void:
 	# footprint already contained them); the third is the garden one,
 	# relocated with the rest of that pocket. Positions mirror
 	# WorldAffordances.PUDDLES/STONES exactly.
-	# The two lane puddles lie on laid paving, and stand a shallow 0.03 m
-	# proud of the flags (dome top = centre + half the 0.05 y-scale) -- what
-	# a puddle on worn stone looks like from a child's eye, and the reading
-	# concept_02/04 give them. Tracks Y_PAVING rather than restating it, so
-	# the re-datum that pulled the walkable layers under the player's feet
-	# could not leave the puddles floating three centimetres over them.
+	# Y raised 0.01 -> 0.055 (park pass): the two lane puddles lie on laid
+	# paving, and at the old height they were underneath it. They stand a
+	# shallow 0.03 m proud of the flags, which is what a puddle on worn
+	# stone looks like from a child's eye and is exactly the reading
+	# concept_02/04 give them.
+	#
+	# Now written as an offset FROM the paving rather than as an absolute,
+	# so that reading is what survives when the layer stack moves -- which
+	# it just did. As an absolute 0.055 these would have been left standing
+	# 6 cm proud of a plaza that had dropped to the child's feet. Unlike the
+	# layers themselves these are deliberately ABOVE the walking plane: you
+	# step into a puddle, and 2 cm of water over the sole of a shoe is the
+	# whole point of the splash.
+	const PUDDLE_PROUD := 0.005  ## centre offset; the flattened sphere adds 0.02 above that
 	var puddle_color := Color(0.20, 0.32, 0.37, 0.65)
 	for p in [
-		[-1.5, Y_PAVING + 0.005, 3.2, 1.6, 0.05, 0.9],
-		[2.1, Y_PAVING + 0.005, 0.8, 1.15, 0.05, 0.75],
-		[12.4, Y_PAVING + 0.005, -9.4, 1.4, 0.05, 0.8],
+		[-1.5, 3.2, 1.6, 0.05, 0.9],
+		[2.1, 0.8, 1.15, 0.05, 0.75],
+		[12.4, -9.4, 1.4, 0.05, 0.8],
 	]:
-		_mesh(root, "sphere", Vector3(p[0], p[1], p[2]), Vector3(p[3], p[4], p[5]), puddle_color)
+		_mesh(root, "sphere", Vector3(p[0], Y_PAVING + PUDDLE_PROUD, p[1]), Vector3(p[2], p[3], p[4]), puddle_color)
+	# Stepping stones, likewise relative to the lawn they sit on rather than
+	# absolute. They stand well proud of it on purpose -- they are stones to
+	# hop between -- and with the player's Y locked the child crosses them
+	# at ankle height rather than on top, which is a limitation of the
+	# locked-Y walker that predates this pass and is not addressed here.
 	for stone in [[11.7, -7.7, 0.45], [12.5, -8.4, 0.52], [13.3, -9.1, 0.48], [14.0, -9.9, 0.55]]:
 		var s: float = stone[2]
-		_mesh(root, "sphere", Vector3(stone[0], 0.09, stone[1]), Vector3(s, 0.16, s * 0.85), PATH, Vector3.ZERO, 0.0, "paving")
+		_mesh(root, "sphere", Vector3(stone[0], Y_LAWN + 0.07, stone[1]), Vector3(s, 0.16, s * 0.85), PATH, Vector3.ZERO, 0.0, "paving")
 	# The bench that used to stand here (-7, -9.8, facing nowhere) is now one
 	# of four in _build_park_furniture(), placed on the path and turned to
 	# face what it looks at. Same position, so every probe landmark and
@@ -489,23 +495,20 @@ func _build_static_world(root: Node3D) -> void:
 
 ## One flat ground patch. `top` is the surface height, so a caller writes
 ## the height it wants to see rather than a centre plus half a thickness.
-var _ground_serial := 0
+##
+## Every patch is NAMED (GroundPatch0, 1, ...) rather than left anonymous
+## like the hundreds of other decorative meshes here. That is the whole
+## mechanism behind tests/play/test_ground_under_the_childs_feet.gd: the
+## invariant that matters is "no walkable surface top rises above the plane
+## player.gd locks the child to", and checking it against the CONSTANTS
+## would miss a call site that passed a literal `top`. Checking it against
+## the built scene cannot, but only if the patches can be found in it.
+var _ground_patch_count: int = 0
 
-
-## `walkable` names what only this file knows: whether the child's feet can land
-## on this patch. A walkable one MUST top out at or below player.gd's locked_y,
-## or the child walks inside it -- test_ground_datum.gd holds that line, and it
-## reads this name because from the built scene a kerbed bed and a lawn are the
-## same thing: a thin, wide, flat slab. The distinction is a design fact, not a
-## measurable one, so it is written down rather than inferred.
-func _ground(root: Node3D, cx: float, cz: float, w: float, d: float, top: float, color: Color, surface: String, rot_y: float = 0.0, walkable: bool = true) -> void:
+func _ground(root: Node3D, cx: float, cz: float, w: float, d: float, top: float, color: Color, surface: String, rot_y: float = 0.0) -> void:
 	const THICK := 0.16
-	# Numbered because add_child() silently discards a name a sibling already
-	# holds and falls back to @MeshInstance3D@NN -- which is how the first
-	# version of this tagged 40-odd slabs and produced exactly two named nodes.
-	_ground_serial += 1
-	var tag := "%s%03d" % ["GroundWalkable" if walkable else "GroundRaised", _ground_serial]
-	_mesh(root, "cube", Vector3(cx, top - THICK * 0.5, cz), Vector3(w, THICK, d), color, Vector3(0.0, rot_y, 0.0), 0.0, surface, tag)
+	_mesh(root, "cube", Vector3(cx, top - THICK * 0.5, cz), Vector3(w, THICK, d), color, Vector3(0.0, rot_y, 0.0), 0.0, surface, "GroundPatch%d" % _ground_patch_count)
+	_ground_patch_count += 1
 
 
 ## A path laid between waypoints: one slab per segment, rotated to it, plus
@@ -545,7 +548,7 @@ func _planting_bed(root: Node3D, cx: float, cz: float, w: float, d: float, seed_
 	# Taken most of the way to stone; still reads as a fired-clay edging,
 	# no longer as the subject of the picture.
 	var kerb := BRICK.lerp(SHADOW_STONE, 0.45)
-	_ground(root, cx, cz, w, d, Y_SOIL, SOIL, "soil", 0.0, false)
+	_ground(root, cx, cz, w, d, Y_SOIL, SOIL, "soil")
 	_mesh(root, "cube", Vector3(cx, KERB_H * 0.5, cz + d * 0.5), Vector3(w + KERB_T * 2.0, KERB_H, KERB_T), kerb)
 	_mesh(root, "cube", Vector3(cx, KERB_H * 0.5, cz - d * 0.5), Vector3(w + KERB_T * 2.0, KERB_H, KERB_T), kerb)
 	_mesh(root, "cube", Vector3(cx + w * 0.5, KERB_H * 0.5, cz), Vector3(KERB_T, KERB_H, d), kerb)
@@ -590,15 +593,20 @@ func _build_park_ground(root: Node3D) -> void:
 	# A darker stone band round its edge. This is the single detail that
 	# makes a paved area read as LAID -- an edging course is how you can
 	# tell a plaza from a light patch on the floor, and from above it is
-	# the only thing that draws the plaza's outline at all. 0.6 m wide and
-	# 0.005 m proud of the paving, so it is a change of stone rather than a
-	# step: nothing to walk into, and nothing for the head-height check to
-	# find (the player's Y is locked at 0 regardless).
+	# the only thing that draws the plaza's outline at all. 0.6 m wide and a
+	# hair proud of the paving, so it is a change of stone rather than a
+	# step: nothing to walk into.
+	#
+	# That hair is Y_HAIR (half a layer step) rather than the 0.005 this was
+	# authored with. 0.005 was chosen against the old widely-spaced stack;
+	# once the stack compressed to sit under the child's feet it would have
+	# landed exactly on Y_SOIL, which is the coplanarity the whole ordering
+	# exists to avoid. Half a step can never collide with a layer.
 	const EDGE_W := 0.6
 	var edge_stone := SHADOW_STONE.lerp(PATH, 0.2)
 	for side in [-1.0, 1.0]:
-		_ground(root, 0.0, PLAZA_Z + side * (PLAZA_D * 0.5 - EDGE_W * 0.5), PLAZA_W, EDGE_W, Y_PAVING + 0.005, edge_stone, "paving")
-		_ground(root, side * (PLAZA_W * 0.5 - EDGE_W * 0.5), PLAZA_Z, EDGE_W, PLAZA_D, Y_PAVING + 0.005, edge_stone, "paving")
+		_ground(root, 0.0, PLAZA_Z + side * (PLAZA_D * 0.5 - EDGE_W * 0.5), PLAZA_W, EDGE_W, Y_PAVING + Y_HAIR, edge_stone, "paving")
+		_ground(root, side * (PLAZA_W * 0.5 - EDGE_W * 0.5), PLAZA_Z, EDGE_W, PLAZA_D, Y_PAVING + Y_HAIR, edge_stone, "paving")
 
 	# --- home porch and the lane, both paved ------------------------------
 	# The lane is narrower than its own walls, with a lawn verge either side
@@ -641,13 +649,42 @@ func _build_park_ground(root: Node3D) -> void:
 	# Radius 2.6 puts all three NPCs (main.tscn: -0.95/0.35/1.45 about x=0,
 	# z=-11) and both the Join and Return zones inside it, which is the only
 	# constraint on the size.
-	_mesh(root, "ring", Vector3(0.0, Y_CHALK, -11.0), Vector3(5.2, 0.09, 5.2), CHALK, Vector3.ZERO, 0.10)
+	#
+	# Y is the mark's own TOP, matching what Y_CHALK means everywhere else
+	# and what _ground()'s `top` means, so each mesh is dropped by half its
+	# own thickness (_mesh() centres what it is given).
+	#
+	# And the marks got THIN. They were 0.09 and 0.06 tall, which is not a
+	# chalk mark, it is a hoop: centred on the old Y_CHALK the main ring
+	# spanned y 0.085..0.175, standing clear of the ground and passing
+	# clear of the ground at the one spot the objective text sends the player
+	# to. Measured rather than reasoned (tools/_probe_chalk.gd): it was a
+	# 2.34 mm mark whose faces sat at y +0.1288..+0.1312 -- a thin line, not a
+	# thick hoop, floating 131 mm in the air. The height was there to keep it
+	# clear of a paving layer that was itself too high; with the layers back
+	# under the child's feet it is not needed, and the "ring" mesh kind's own
+	# doc already says what these want to be -- "the flat mark chalk actually
+	# makes on stone". A centimetre of thickness is a drawn line seen from
+	# the play camera and nothing at all seen from the side, which is right.
+	const CHALK_THICK := 0.012
+	_mesh(root, "ring", Vector3(0.0, Y_CHALK - CHALK_THICK * 0.5, -11.0), Vector3(5.2, CHALK_THICK, 5.2), CHALK, Vector3.ZERO, 0.10)
 	# A second, fainter ring and a scuffed line -- a mark that has been
 	# redrawn, per ART_DIRECTION.md's own "signs of life" note. Kept thin
 	# and low-contrast so the circle the dialogue means stays the readable one.
-	_mesh(root, "ring", Vector3(0.15, Y_CHALK - 0.001, -10.85), Vector3(6.6, 0.06, 6.6), CHALK.darkened(0.35), Vector3.ZERO, 0.04)
+	#
+	# These sit just under the main ring so three overlapping marks do not
+	# fight each other, but the gap has to be measured against the paving they
+	# lie on, not chosen in the abstract. Their original 0.01 and 0.02 put them
+	# 16 mm and 26 mm below the walking plane, and the flagstones are 7.5 mm
+	# below it -- so both were buried and neither rendered. That is the same
+	# mistake the whole ground re-datum was about, one level further down:
+	# centimetre offsets kept inside a stack whose entire step is 2.5 mm. At
+	# 0.6 mm apart all three clear the stone and still never z-fight, because
+	# each mark is only 0.31 mm thick.
+	const CHALK_LAYER := 0.0006
+	_mesh(root, "ring", Vector3(0.15, Y_CHALK - CHALK_LAYER - CHALK_THICK * 0.5, -10.85), Vector3(6.6, CHALK_THICK, 6.6), CHALK.darkened(0.35), Vector3.ZERO, 0.04)
 	for mark in [[-1.9, -13.4, 0.5], [2.2, -8.9, -0.7]]:
-		_mesh(root, "cube", Vector3(mark[0], Y_CHALK - 0.002, mark[1]), Vector3(0.9, 0.02, 0.09), CHALK.darkened(0.2), Vector3(0.0, mark[2], 0.0), 0.04)
+		_mesh(root, "cube", Vector3(mark[0], Y_CHALK - CHALK_LAYER * 2.0 - CHALK_THICK * 0.5, mark[1]), Vector3(0.9, CHALK_THICK, 0.09), CHALK.darkened(0.2), Vector3(0.0, mark[2], 0.0), 0.04)
 
 	# --- beds -------------------------------------------------------------
 	# Two flanking the gate (the first thing seen on entering, and what
@@ -943,15 +980,35 @@ func _park_noticeboard(root: Node3D, x: float, z: float, yaw: float) -> void:
 ## by the house, and furniture floating on a lawn is one of the clearest
 ## tells that a space was assembled rather than laid out.
 func _build_park_furniture(root: Node3D) -> void:
-	# yaw is the direction the bench's back is turned, i.e. it faces the
-	# opposite way; bench.gltf's own front faces local -Z.
+	# yaw points the bench's FRONT: bench.gltf faces its own local +Z.
+	#
+	# This comment used to say the opposite ("yaw is the direction the
+	# bench's back is turned... its front faces local -Z") and it was wrong.
+	# Measured on the mesh (tools/_probe_prop_bounds.gd): every vertex band
+	# above 0.85 -- the backrest -- lies at z -0.72..-0.14, while the seat
+	# slab runs z -0.40..+0.60. Backrest at -Z, so the sitter faces +Z.
+	#
+	# The three yaws below were NOT wrong; only the comment was. Checked one
+	# by one against the target each of their own notes names, reading +Z as
+	# the front: the circle (dot 1.000), the plaza (0.960), west across the
+	# park (0.903). Under the comment's claim all three would have been 180
+	# degrees out and facing walls, which is what made it worth checking
+	# rather than believing. They are left exactly as authored -- they were
+	# tuned against the sightline probe and re-deriving them from landmark
+	# points would have silently rotated two of the three by 16 and 25
+	# degrees. tests/play/test_bench.gd pins the model's facing itself, which
+	# is the fact all four benches actually depend on.
+	#
 	# The one bench you can actually sit on. Position and yaw come from
 	# WorldAffordances, not from the list below: it carries a COLLIDERS entry
 	# and scripts/bench.gd's sit verb, and a hand-written angle here would
 	# silently disagree with them. bench_yaw() derives ~99.7 degrees from the
 	# bench toward the chalk circle; the 90.0 this entry used to carry was
 	# close enough to look right and wrong enough to miss what it faces.
-	_kind(root, WorldAffordances.BENCH_POSITION, "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, WorldAffordances.bench_yaw(), "Bench")
+	# Named apart from the other three: tests/play/test_bench.gd measures the
+	# seat against this mesh's own placement, and "Bench" x4 in one scene
+	# leaves it matching whichever Godot happened to auto-rename first.
+	_kind(root, WorldAffordances.BENCH_POSITION, "res://assets/park/bench.gltf", 1.0, Callable(self, "_primitive_bench"), 1.0, WorldAffordances.bench_yaw(), "SittableBench")
 
 	for bench in [
 		# South-east of the circle, facing back across it. Third position
